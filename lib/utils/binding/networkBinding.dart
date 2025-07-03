@@ -1,0 +1,91 @@
+import 'package:AstrowayCustomer/controllers/advancedPanchangController.dart';
+import 'package:AstrowayCustomer/controllers/astrologerCategoryController.dart';
+import 'package:AstrowayCustomer/controllers/astrologer_assistant_controller.dart';
+import 'package:AstrowayCustomer/controllers/astrologyBlogController.dart';
+import 'package:AstrowayCustomer/controllers/astromallController.dart';
+import 'package:AstrowayCustomer/controllers/callController.dart';
+import 'package:AstrowayCustomer/controllers/IntakeController.dart';
+import 'package:AstrowayCustomer/controllers/chatController.dart';
+import 'package:AstrowayCustomer/controllers/customer_support_controller.dart';
+import 'package:AstrowayCustomer/controllers/dailyHoroscopeController.dart';
+import 'package:AstrowayCustomer/controllers/dropDownController.dart';
+import 'package:AstrowayCustomer/controllers/filtterTabController.dart';
+import 'package:AstrowayCustomer/controllers/follow_astrologer_controller.dart';
+import 'package:AstrowayCustomer/controllers/freeServiceController.dart';
+import 'package:AstrowayCustomer/controllers/gift_controller.dart';
+import 'package:AstrowayCustomer/controllers/history_controller.dart';
+import 'package:AstrowayCustomer/controllers/homeController.dart';
+import 'package:AstrowayCustomer/controllers/imageController.dart';
+import 'package:AstrowayCustomer/controllers/kundliController.dart';
+import 'package:AstrowayCustomer/controllers/kundliMatchingController.dart';
+import 'package:AstrowayCustomer/controllers/languageController.dart';
+import 'package:AstrowayCustomer/controllers/life_cycle_controller.dart';
+import 'package:AstrowayCustomer/controllers/liveAstrologerController.dart';
+import 'package:AstrowayCustomer/controllers/loginController.dart';
+import 'package:AstrowayCustomer/controllers/networkController.dart';
+
+import 'package:AstrowayCustomer/controllers/reportController.dart';
+import 'package:AstrowayCustomer/controllers/reportTabFiltter.dart';
+import 'package:AstrowayCustomer/controllers/reviewController.dart';
+import 'package:AstrowayCustomer/controllers/search_controller.dart';
+import 'package:AstrowayCustomer/controllers/search_place_controller.dart';
+import 'package:AstrowayCustomer/controllers/settings_controller.dart';
+import 'package:AstrowayCustomer/controllers/skillController.dart';
+import 'package:AstrowayCustomer/controllers/splashController.dart';
+import 'package:AstrowayCustomer/controllers/themeController.dart';
+import 'package:AstrowayCustomer/controllers/timer_controller.dart';
+import 'package:AstrowayCustomer/controllers/upcoming_controller.dart';
+import 'package:AstrowayCustomer/controllers/userProfileController.dart';
+import 'package:AstrowayCustomer/controllers/walletController.dart';
+import 'package:get/get.dart';
+import 'package:AstrowayCustomer/controllers/bottomNavigationController.dart';
+
+import '../../controllers/counsellorController.dart';
+import '../../controllers/liveController.dart';
+
+class NetworkBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.put(BottomNavigationController());
+    Get.put(LiveController());
+    Get.lazyPut<SplashController>(() => SplashController(), fenix: true);
+    Get.lazyPut<LoginController>(() => LoginController(), fenix: true);
+    Get.lazyPut<ChatController>(() => ChatController(), fenix: true);
+    Get.lazyPut<CallController>(() => CallController(), fenix: true);
+    Get.lazyPut<UserProfileController>(() => UserProfileController(), fenix: true);
+    Get.lazyPut<ReportController>(() => ReportController(), fenix: true);
+    Get.lazyPut<DropDownController>(() => DropDownController(), fenix: true);
+    Get.lazyPut<AstromallController>(() => AstromallController(), fenix: true);
+    Get.lazyPut<WalletController>(() => WalletController(), fenix: true);
+    Get.lazyPut<DailyHoroscopeController>(() => DailyHoroscopeController(), fenix: true);
+    Get.lazyPut<KundliController>(() => KundliController(), fenix: true);
+    Get.lazyPut<HomeController>(() => HomeController(), fenix: true);
+    Get.lazyPut<AstrologerCategoryController>(() => AstrologerCategoryController(), fenix: true);
+    Get.lazyPut<FreeServiceController>(() => FreeServiceController(), fenix: true);
+    Get.lazyPut<KundliMatchingController>(() => KundliMatchingController(), fenix: true);
+    Get.lazyPut<CounsellorController>(() => CounsellorController(), fenix: true);
+    Get.lazyPut<NetworkController>(() => NetworkController(), fenix: true);
+    Get.lazyPut<GiftController>(() => GiftController(), fenix: true);
+    Get.lazyPut<SearchPlaceController>(() => SearchPlaceController(), fenix: true);
+    Get.lazyPut<ImageControlller>(() => ImageControlller(), fenix: true);
+    Get.lazyPut<SettingsController>(() => SettingsController(), fenix: true);
+    Get.lazyPut<FollowAstrologerController>(() => FollowAstrologerController(), fenix: true);
+    Get.lazyPut<ReviewController>(() => ReviewController(), fenix: true);
+    Get.lazyPut<SkillController>(() => SkillController(), fenix: true);
+    Get.lazyPut<LanguageController>(() => LanguageController(), fenix: true);
+    Get.lazyPut<HomeCheckController>(() => HomeCheckController(), fenix: true);
+    Get.lazyPut<FiltterTabController>(() => FiltterTabController(), fenix: true);
+    Get.lazyPut<TimerController>(() => TimerController(), fenix: true);
+    Get.lazyPut<LiveAstrologerController>(() => LiveAstrologerController(), fenix: true);
+    Get.lazyPut<PanchangController>(() => PanchangController(), fenix: true);
+    Get.lazyPut<IntakeController>(() => IntakeController(), fenix: true);
+    Get.lazyPut<ReportFilterTabController>(() => ReportFilterTabController(), fenix: true);
+    Get.lazyPut<SearchControllerCustom>(() => SearchControllerCustom(), fenix: true);
+    Get.lazyPut<HistoryController>(() => HistoryController(), fenix: true);
+    Get.lazyPut<BlogController>(() => BlogController(), fenix: true);
+    Get.lazyPut<CustomerSupportController>(() => CustomerSupportController(), fenix: true);
+    Get.lazyPut<AstrologerAssistantController>(() => AstrologerAssistantController(), fenix: true);
+    Get.lazyPut<UpcomingController>(() => UpcomingController(), fenix: true);
+    Get.lazyPut<ThemeController>(() => ThemeController(), fenix: true);
+  }
+}
