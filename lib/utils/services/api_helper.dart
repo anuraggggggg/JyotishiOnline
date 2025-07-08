@@ -53,29 +53,25 @@ import '../../model/intake_model.dart';
 import '../../model/login_model.dart';
 
 class APIHelper {
+  Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
+    final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+      'q': query,
+      'format': 'json',
+      'limit': '10',
+      'accept-language': 'en',
+      'addressdetails': '1',
+    });
 
+    final response = await http
+        .get(uri, headers: {'User-Agent': 'astroway-customer-app/1.0'});
 
-Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
-  final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
-    'q': query,
-    'format': 'json',
-    'limit': '10',
-    'accept-language': 'en',
-    'addressdetails': '1',
-  });
-
-  final response = await http.get(uri, headers: {
-    'User-Agent': 'astroway-customer-app/1.0'
-  });
-
-  if (response.statusCode == 200) {
-    final List data = jsonDecode(response.body);
-    return data.map((e) => LocationSuggestion.fromJson(e)).toList();
-  } else {
-    throw Exception('Failed to fetch location suggestions');
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((e) => LocationSuggestion.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to fetch location suggestions');
+    }
   }
-}
-
 
   // login & signup
   Future<dynamic> loginSignUp(LoginModel loginModel) async {
@@ -679,8 +675,6 @@ Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
       debugPrint('Exception in getAstromallCategory():' + e.toString());
     }
   }
-
-
 
   Future<dynamic> getAstromallProduct(
       int id, int startIndex, int fetchRecord) async {
@@ -1346,7 +1340,7 @@ Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
 
   Future<dynamic> addAmountInWallet({
     required double amount,
-    int? cashback, required int userId,
+    int? cashback,
   }) async {
     try {
       final response = await http.post(
@@ -1457,7 +1451,7 @@ Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
                   "sId": sId1,
                   "sId1": sId2,
                   "channelName": channelName,
-                  "callType":"$transactionType"
+                  "callType": "$transactionType"
                 },
               ));
       debugPrint('done : $response');
@@ -1588,16 +1582,17 @@ Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
       debugPrint('Exception in getUpcomingList():' + e.toString());
     }
   }
+
   //Third Party API
   Future<dynamic> getAdvancedPanchang(
       {int? day,
-        int? month,
-        int? year,
-        int? hour,
-        int? min,
-        double? lat,
-        double? lon,
-        double? tzone}) async {
+      int? month,
+      int? year,
+      int? hour,
+      int? min,
+      double? lat,
+      double? lon,
+      double? tzone}) async {
     try {
       final response = await http.post(
         Uri.parse("https://json.astrologyapi.com/v1/advanced_panchang"),
@@ -1684,8 +1679,6 @@ Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
       debugPrint('Exception in getManglic():' + e.toString());
     }
   }
-
-
 
   Future<dynamic> getPanchangVedic(String date) async {
     try {
@@ -1794,7 +1787,6 @@ Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
     }
   }
 
-
   Future<dynamic> getMatching(
       int? dayBoy,
       int? monthBoy,
@@ -1847,7 +1839,6 @@ Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
       debugPrint('Exception in getMatching():' + e.toString());
     }
   }
-
 
   //Search
   Future<dynamic> searchAstrologer(String filterKey, String searchString,
@@ -3070,7 +3061,6 @@ Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
     }
   }
 
-
   Future<dynamic> generateRtmToken(String agoraAppId,
       String agoraAppCertificate, String chatId, String channelName) async {
     try {
@@ -3139,40 +3129,39 @@ Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
   }
 
   Future<dynamic> getSystemFlag() async {
-  try {
-    final response = await http.post(
-      Uri.parse("$baseUrl/getSystemFlag"),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/getSystemFlag"),
+      );
 
-    debugPrint('getSystemFlag1212');
-    debugPrint('$baseUrl/getSystemFlag');
-    debugPrint('${response.statusCode}');
-    debugPrint('done : ${response.body}');
+      debugPrint('getSystemFlag1212');
+      debugPrint('$baseUrl/getSystemFlag');
+      debugPrint('${response.statusCode}');
+      debugPrint('done : ${response.body}');
 
-    if (response.statusCode == 200) {
-      final decoded = json.decode(response.body);
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
 
-      // Check if "recordList" and "status" exist
-      if (decoded != null && decoded["recordList"] != null) {
-        final recordList = List<SystemFlag>.from(
-          decoded["recordList"].map((x) => SystemFlag.fromJson(x)),
-        );
+        // Check if "recordList" and "status" exist
+        if (decoded != null && decoded["recordList"] != null) {
+          final recordList = List<SystemFlag>.from(
+            decoded["recordList"].map((x) => SystemFlag.fromJson(x)),
+          );
 
-        return getAPIResult(response, recordList);
+          return getAPIResult(response, recordList);
+        } else {
+          debugPrint("recordList is null or missing");
+          return null; // Or an empty list, or your own APIResult object with error
+        }
       } else {
-        debugPrint("recordList is null or missing");
-        return null; // Or an empty list, or your own APIResult object with error
+        debugPrint("Status code not 200");
+        return null;
       }
-    } else {
-      debugPrint("Status code not 200");
+    } catch (e) {
+      debugPrint("Exception: api_helper.dart - getSystemFlag(): $e");
       return null;
     }
-  } catch (e) {
-    debugPrint("Exception: api_helper.dart - getSystemFlag(): $e");
-    return null;
   }
-}
-
 
 // Future<dynamic> getSystemFlag() async {
 //   try {
@@ -3208,7 +3197,6 @@ Future<List<LocationSuggestion>> fetchCitySuggestions(String query) async {
 //     return null;
 //   }
 // }
-
 
   Future getLanguagesForMultiLanguage() async {
     try {

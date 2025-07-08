@@ -153,53 +153,53 @@ class AddmoneyToWallet extends BaseRoute {
                 }),
 
                 // --- Start of Custom Payment Option ---
-                const SizedBox(height: 20),
-                Text(
-                  'Or Enter Custom Amount',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: kIsWeb ? 16.sp : null,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ).tr(),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _customAmountController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: 'Enter amount',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    prefixText:
-                        '${global.getSystemFlagValueForLogin(global.systemFlagNameList.currency)} ',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity, // Make button fill width
-                  child: ElevatedButton(
-                    onPressed: () {
-                      _handleCustomAmountPayment(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Get.theme.primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'Pay Custom Amount',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                // --- End of Custom Payment Option ---
+                // const SizedBox(height: 20),
+                // Text(
+                //   'Or Enter Custom Amount',
+                //   style: TextStyle(
+                //     color: Colors.black,
+                //     fontSize: kIsWeb ? 16.sp : null,
+                //     fontWeight: FontWeight.w500,
+                //   ),
+                // ).tr(),
+                // const SizedBox(height: 8),
+                // TextFormField(
+                //   controller: _customAmountController,
+                //   keyboardType: TextInputType.number,
+                //   decoration: InputDecoration(
+                //     hintText: 'Enter amount',
+                //     border: OutlineInputBorder(
+                //       borderRadius: BorderRadius.circular(8),
+                //     ),
+                //     prefixText:
+                //         '${global.getSystemFlagValueForLogin(global.systemFlagNameList.currency)} ',
+                //   ),
+                // ),
+                // const SizedBox(height: 16),
+                // SizedBox(
+                //   width: double.infinity, // Make button fill width
+                //   child: ElevatedButton(
+                //     onPressed: () {
+                //       _handleCustomAmountPayment(context);
+                //     },
+                //     style: ElevatedButton.styleFrom(
+                //       backgroundColor: Get.theme.primaryColor,
+                //       padding: const EdgeInsets.symmetric(vertical: 15),
+                //       shape: RoundedRectangleBorder(
+                //         borderRadius: BorderRadius.circular(8),
+                //       ),
+                //     ),
+                //     child: const Text(
+                //       'Pay Custom Amount',
+                //       style: TextStyle(
+                //         fontSize: 16,
+                //         color: Colors.white,
+                //         fontWeight: FontWeight.bold,
+                //       ),
+                //     ),
+                //   ),
+                // ),
+                // // --- End of Custom Payment Option ---
 
                 const SizedBox(height: 20), // Add some spacing at the bottom
               ],

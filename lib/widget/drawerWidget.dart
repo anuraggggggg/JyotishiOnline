@@ -24,6 +24,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:store_redirect/store_redirect.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../controllers/astrologer_assistant_controller.dart';
 import '../controllers/customer_support_controller.dart';
@@ -72,38 +73,44 @@ class DrawerWidget extends StatelessWidget {
                           Get.to(() => EditUserProfile());
                         }
                       },
-                      child: splashController.currentUser?.profile == "" || splashController.currentUser?.profile == null
+                      child: splashController.currentUser?.profile == "" ||
+                              splashController.currentUser?.profile == null
                           ? CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Get.theme.primaryColor.withOpacity(0.2),
-                        child: Icon(
-                          Icons.person,
-                          size: 30,
-                          color: Get.theme.primaryColor,
-                        ),
-                      )
+                              radius: 30,
+                              backgroundColor:
+                                  Get.theme.primaryColor.withOpacity(0.2),
+                              child: Icon(
+                                Icons.person,
+                                size: 30,
+                                color: Get.theme.primaryColor,
+                              ),
+                            )
                           : CachedNetworkImage(
-                        imageUrl: "${global.imgBaseurl}${splashController.currentUser?.profile}",
-                        imageBuilder: (context, imageProvider) {
-                          return CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Colors.white,
-                            backgroundImage: NetworkImage("${global.imgBaseurl}${splashController.currentUser?.profile}"),
-                          );
-                        },
-                        placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                        errorWidget: (context, url, error) {
-                          return CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Get.theme.primaryColor.withOpacity(0.2),
-                            child: Icon(
-                              Icons.person,
-                              size: 30,
-                              color: Get.theme.primaryColor,
+                              imageUrl:
+                                  "${global.imgBaseurl}${splashController.currentUser?.profile}",
+                              imageBuilder: (context, imageProvider) {
+                                return CircleAvatar(
+                                  radius: 30,
+                                  backgroundColor: Colors.white,
+                                  backgroundImage: NetworkImage(
+                                      "${global.imgBaseurl}${splashController.currentUser?.profile}"),
+                                );
+                              },
+                              placeholder: (context, url) => const Center(
+                                  child: CircularProgressIndicator()),
+                              errorWidget: (context, url, error) {
+                                return CircleAvatar(
+                                  radius: 30,
+                                  backgroundColor:
+                                      Get.theme.primaryColor.withOpacity(0.2),
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 30,
+                                    color: Get.theme.primaryColor,
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
                     ),
                     SizedBox(width: 15),
                     Expanded(
@@ -111,7 +118,8 @@ class DrawerWidget extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            splashController.currentUser == null || splashController.currentUser!.name == ""
+                            splashController.currentUser == null ||
+                                    splashController.currentUser!.name == ""
                                 ? "Guest User"
                                 : "${splashController.currentUser!.name}",
                             style: Get.textTheme.titleLarge?.copyWith(
@@ -137,7 +145,8 @@ class DrawerWidget extends StatelessWidget {
                             ),
                           if (splashController.currentUser != null &&
                               splashController.currentUser!.contactNo != null &&
-                              splashController.currentUser!.contactNo!.isNotEmpty)
+                              splashController
+                                  .currentUser!.contactNo!.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 2.0),
                               child: Text(
@@ -163,13 +172,16 @@ class DrawerWidget extends StatelessWidget {
                       icon: Icons.note_alt_outlined,
                       title: 'Get Report',
                       onTap: () async {
-                        final BottomNavigationController bottomNavigationController = Get.find<BottomNavigationController>();
+                        final BottomNavigationController
+                            bottomNavigationController =
+                            Get.find<BottomNavigationController>();
                         bottomNavigationController.astrologerList = [];
                         bottomNavigationController.astrologerList.clear();
                         bottomNavigationController.isAllDataLoaded = false;
                         bottomNavigationController.update();
                         global.showOnlyLoaderDialog(context);
-                        await bottomNavigationController.getAstrologerList(isLazyLoading: false);
+                        await bottomNavigationController.getAstrologerList(
+                            isLazyLoading: false);
                         global.hideLoader();
                         Get.to(() => GetReportScreen());
                       },
@@ -180,30 +192,33 @@ class DrawerWidget extends StatelessWidget {
                       title: 'Chat with Astrologer',
                       onTap: () async {
                         global.showOnlyLoaderDialog(context);
-                        final navController = Get.find<BottomNavigationController>();
+                        final navController =
+                            Get.find<BottomNavigationController>();
                         navController.astrologerList = [];
                         navController.astrologerList.clear();
                         navController.isAllDataLoaded = false;
                         navController.update();
-                        await navController.getAstrologerList(isLazyLoading: false);
+                        await navController.getAstrologerList(
+                            isLazyLoading: false);
                         global.hideLoader();
                         navController.setBottomIndex(1, 0);
                       },
                     ),
 
-                    _buildMenuItem(
-                      icon: Icons.people_alt_outlined,
-                      title: 'Chat With Counsellors',
-                      onTap: () async {
-                        global.showOnlyLoaderDialog(context);
-                        final counsellorController = Get.find<CounsellorController>();
-                        counsellorController.counsellorList = [];
-                        counsellorController.update();
-                        await counsellorController.getCounsellorsData(false);
-                        global.hideLoader();
-                        Get.to(() => CounsellorScreen());
-                      },
-                    ),
+                    // _buildMenuItem(
+                    //   icon: Icons.people_alt_outlined,
+                    //   title: 'Chat With Counsellors',
+                    //   onTap: () async {
+                    //     global.showOnlyLoaderDialog(context);
+                    //     final counsellorController =
+                    //         Get.find<CounsellorController>();
+                    //     counsellorController.counsellorList = [];
+                    //     counsellorController.update();
+                    //     await counsellorController.getCounsellorsData(false);
+                    //     global.hideLoader();
+                    //     Get.to(() => CounsellorScreen());
+                    //   },
+                    // ),
 
                     _buildMenuItem(
                       icon: Icons.verified_user_outlined,
@@ -211,11 +226,13 @@ class DrawerWidget extends StatelessWidget {
                       onTap: () async {
                         bool isLogin = await global.isLogin();
                         if (isLogin) {
-                          final followAstrologerController = Get.find<FollowAstrologerController>();
+                          final followAstrologerController =
+                              Get.find<FollowAstrologerController>();
                           followAstrologerController.followedAstrologer.clear();
                           followAstrologerController.isAllDataLoaded = false;
                           global.showOnlyLoaderDialog(context);
-                          await followAstrologerController.getFollowedAstrologerList(false);
+                          await followAstrologerController
+                              .getFollowedAstrologerList(false);
                           global.hideLoader();
                           Get.to(() => MyFollowingScreen());
                         }
@@ -264,7 +281,8 @@ class DrawerWidget extends StatelessWidget {
                         icon: Icons.settings_outlined,
                         title: 'Settings',
                         onTap: () async {
-                          final settingsController = Get.find<SettingsController>();
+                          final settingsController =
+                              Get.find<SettingsController>();
                           global.showOnlyLoaderDialog(context);
                           await settingsController.getBlockAstrologerList();
                           global.hideLoader();
@@ -286,31 +304,82 @@ class DrawerWidget extends StatelessWidget {
                       onTap: () async {
                         bool isLogin = await global.isLogin();
                         if (isLogin) {
-                          final customerSupportController = Get.find<CustomerSupportController>();
-                          final astrologerAssistantController = Get.find<AstrologerAssistantController>();
+                          final customerSupportController =
+                              Get.find<CustomerSupportController>();
+                          final astrologerAssistantController =
+                              Get.find<AstrologerAssistantController>();
                           global.showOnlyLoaderDialog(context);
                           await customerSupportController.getCustomerTickets();
-                          await astrologerAssistantController.getChatWithAstrologerAssisteant();
+                          await astrologerAssistantController
+                              .getChatWithAstrologerAssisteant();
                           global.hideLoader();
                           Get.to(() => CustomerSupportChat());
                         }
                       },
                     ),
-
                     _buildMenuItem(
                       icon: Icons.logout,
                       title: 'Logout my account',
-                      onTap: () async {
-                        bool isLogin = await global.isLogin();
-                        if (isLogin) {
-                          final customerSupportController = Get.find<CustomerSupportController>();
-                          final astrologerAssistantController = Get.find<AstrologerAssistantController>();
-                          global.showOnlyLoaderDialog(context);
-                          await customerSupportController.getCustomerTickets();
-                          await astrologerAssistantController.getChatWithAstrologerAssisteant();
-                          global.hideLoader();
-                          Get.to(() => CustomerSupportChat());
-                        }
+                      onTap: () {
+                        Get.dialog(
+                          AlertDialog(
+                            backgroundColor:
+                                Theme.of(context).dialogBackgroundColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            title: Text(
+                              "Are you sure you want to logout?",
+                              style: Get.textTheme.titleMedium,
+                              textAlign: TextAlign.center,
+                            ).tr(),
+                            content: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      Get.back(); // Close the dialog
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      side: BorderSide(
+                                          color: Get.theme.primaryColor),
+                                      foregroundColor: Get.theme.primaryColor,
+                                    ),
+                                    child: Text('No').tr(),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () async {
+                                      final historyController =
+                                          Get.find<HistoryController>();
+
+                                      // Clear all history lists
+                                      historyController.chatHistoryList.clear();
+                                      historyController.astroMallHistoryList
+                                          .clear();
+                                      historyController.reportHistoryList
+                                          .clear();
+                                      historyController.callHistoryList.clear();
+                                      historyController.paymentLogsList.clear();
+                                      historyController.walletTransactionList
+                                          .clear();
+
+                                      global.logoutUser(); // Log the user out
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Get.theme.primaryColor,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: Text('YES').tr(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
                       },
                     ),
                   ],
@@ -325,7 +394,8 @@ class DrawerWidget extends StatelessWidget {
 
               // Social Media Section
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -336,14 +406,26 @@ class DrawerWidget extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ).tr(),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildSocialIcon("assets/images/facebook.png"),
-                        _buildSocialIcon("assets/images/instagram.png"),
-                        _buildSocialIcon("assets/images/twitter.png"),
-                        _buildSocialIcon("assets/images/youtube.png"),
+                        // Updated _buildSocialIcon calls with URLs
+                        _buildSocialIcon("assets/images/facebook.png",
+                            "https://www.facebook.com/share/1BpiDsfv33/"),
+                        _buildSocialIcon("assets/images/instagram.png",
+                            "https://www.instagram.com/jyotishionline?igsh=cjZ6dGkwejhveHl3"),
+                        // _buildSocialIcon(
+                        //   "assets/images/twitter.png",
+                        //   "https://twitter.com/Umeed_app", // Assuming this is the Twitter link
+                        // ),
+                        _buildSocialIcon("assets/images/youtube.png",
+                            "https://youtube.com/@jyotishionlinekerala?si=JoK_x9PvuRuwFids"),
+                        // Adding LinkedIn, assuming you have a linkedin.png asset
+                        _buildSocialIcon(
+                          "assets/images/linkedin.png",
+                          "https://www.linkedin.com/in/jyotishi-online-0b7849373?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
+                        ),
                       ],
                     ),
                   ],
@@ -352,7 +434,8 @@ class DrawerWidget extends StatelessWidget {
 
               // App Version
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Text(
                   "App Version: 1.0.0",
                   style: Get.textTheme.bodySmall?.copyWith(
@@ -395,13 +478,14 @@ class DrawerWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildSocialIcon(String imagePath) {
+  Widget _buildSocialIcon(String imagePath, String url) {
+    // Added 'url' parameter
     return InkWell(
       onTap: () {
-        // Add social media link functionality here
+        _launchUrl(url); // Call the URL launcher function
       },
       child: Container(
-        padding: EdgeInsets.all(8),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.grey.withOpacity(0.1),
@@ -410,9 +494,16 @@ class DrawerWidget extends StatelessWidget {
           imagePath,
           height: 20,
           width: 20,
-          color: Colors.grey[600],
         ),
       ),
     );
+  }
+
+// Add this helper function within your class or as a top-level function
+  Future<void> _launchUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri)) {
+      throw Exception('Could not launch $uri');
+    }
   }
 }

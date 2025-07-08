@@ -1818,6 +1818,373 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
+                      //--------------------------------------LIVE ASTROLOGER LIST---------------------------------
+                      GetBuilder<BottomNavigationController>(builder: (c) {
+                        return Get.find<BottomNavigationController>()
+                                    .liveAstrologer
+                                    .length ==
+                                0
+                            ? const SizedBox()
+                            : SizedBox(
+                                height: 38.h,
+                                child: Card(
+                                  elevation: 0,
+                                  margin: EdgeInsets.only(top: 6),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.zero),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    'Live Astrologers',
+                                                    style: Get
+                                                        .theme
+                                                        .primaryTextTheme
+                                                        .titleMedium!
+                                                        .copyWith(
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500),
+                                                  ).tr(),
+                                                  Padding(
+                                                    padding: EdgeInsets.only(
+                                                        left: 5),
+                                                    child: GestureDetector(
+                                                      onTap: () async {
+                                                        global
+                                                            .showOnlyLoaderDialog(
+                                                                context);
+                                                        await bottomControllerMain
+                                                            .getLiveAstrologerList();
+                                                        global.hideLoader();
+                                                      },
+                                                      child: Icon(
+                                                        Icons.refresh,
+                                                        size: 20,
+                                                      ),
+                                                    ),
+                                                  )
+                                                ],
+                                              ),
+                                              GestureDetector(
+                                                onTap: () async {
+                                                  Get.to(() =>
+                                                      LiveAstrologerListScreen());
+                                                },
+                                                child: Text(
+                                                  'View All',
+                                                  style: Get
+                                                      .theme
+                                                      .primaryTextTheme
+                                                      .bodySmall!
+                                                      .copyWith(
+                                                    fontWeight: FontWeight.w400,
+                                                    color: Colors.blue[500],
+                                                  ),
+                                                ).tr(),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        GetBuilder<BottomNavigationController>(
+                                          builder: (c) {
+                                            return Expanded(
+                                              child: ListView.builder(
+                                                itemCount: Get.find<
+                                                        BottomNavigationController>()
+                                                    .liveAstrologer
+                                                    .length,
+                                                shrinkWrap: true,
+                                                scrollDirection:
+                                                    Axis.horizontal,
+                                                padding: EdgeInsets.only(
+                                                    top: 10, left: 10),
+                                                itemBuilder: (context, index) {
+                                                  return GestureDetector(
+                                                      onTap: () async {
+                                                        bottomControllerMain
+                                                            .anotherLiveAstrologers = Get
+                                                                .find<
+                                                                    BottomNavigationController>()
+                                                            .liveAstrologer
+                                                            .where((element) =>
+                                                                element
+                                                                    .astrologerId !=
+                                                                Get.find<
+                                                                        BottomNavigationController>()
+                                                                    .liveAstrologer[
+                                                                        index]
+                                                                    .astrologerId)
+                                                            .toList();
+                                                        bottomControllerMain
+                                                            .update();
+                                                        print("channel name");
+                                                        print(
+                                                            "${Get.find<BottomNavigationController>().liveAstrologer[index].channelName}");
+                                                        await liveController
+                                                            .getWaitList(Get.find<
+                                                                    BottomNavigationController>()
+                                                                .liveAstrologer[
+                                                                    index]
+                                                                .channelName);
+                                                        int index2 = liveController
+                                                            .waitList
+                                                            .indexWhere((element) =>
+                                                                element
+                                                                    .userId ==
+                                                                global
+                                                                    .currentUserId);
+                                                        if (index2 != -1) {
+                                                          liveController
+                                                                  .isImInWaitList =
+                                                              true;
+                                                          liveController
+                                                              .update();
+                                                        } else {
+                                                          liveController
+                                                                  .isImInWaitList =
+                                                              false;
+                                                          liveController
+                                                              .update();
+                                                        }
+                                                        liveController
+                                                            .isImInLive = true;
+                                                        liveController
+                                                                .isJoinAsChat =
+                                                            false;
+                                                        liveController
+                                                                .isLeaveCalled =
+                                                            false;
+                                                        liveController.update();
+                                                        bool isLogin =
+                                                            await global
+                                                                .isLogin();
+                                                        if (isLogin) {
+                                                          Get.to(
+                                                            () =>
+                                                                LiveAstrologerScreen(
+                                                              token: Get.find<
+                                                                      BottomNavigationController>()
+                                                                  .liveAstrologer[
+                                                                      index]
+                                                                  .token,
+                                                              channel: Get.find<
+                                                                      BottomNavigationController>()
+                                                                  .liveAstrologer[
+                                                                      index]
+                                                                  .channelName,
+                                                              astrologerName: Get
+                                                                      .find<
+                                                                          BottomNavigationController>()
+                                                                  .liveAstrologer[
+                                                                      index]
+                                                                  .name,
+                                                              astrologerProfile: Get
+                                                                      .find<
+                                                                          BottomNavigationController>()
+                                                                  .liveAstrologer[
+                                                                      index]
+                                                                  .profileImage,
+                                                              astrologerId: Get
+                                                                      .find<
+                                                                          BottomNavigationController>()
+                                                                  .liveAstrologer[
+                                                                      index]
+                                                                  .astrologerId,
+                                                              isFromHome: true,
+                                                              charge: Get.find<
+                                                                      BottomNavigationController>()
+                                                                  .liveAstrologer[
+                                                                      index]
+                                                                  .charge,
+                                                              isForLiveCallAcceptDecline:
+                                                                  false,
+                                                              isFromNotJoined:
+                                                                  false,
+                                                              isFollow: Get.find<
+                                                                      BottomNavigationController>()
+                                                                  .liveAstrologer[
+                                                                      index]
+                                                                  .isFollow!,
+                                                              videoCallCharge: Get
+                                                                      .find<
+                                                                          BottomNavigationController>()
+                                                                  .liveAstrologer[
+                                                                      index]
+                                                                  .videoCallRate,
+                                                            ),
+                                                          );
+                                                        }
+                                                      },
+                                                      child: Container(
+                                                          decoration: BoxDecoration(
+                                                              borderRadius: BorderRadius
+                                                                  .circular(FontSizes(
+                                                                          context)
+                                                                      .width2())),
+                                                          margin: EdgeInsets.symmetric(
+                                                              horizontal:
+                                                                  FontSizes(
+                                                                          context)
+                                                                      .width1()),
+                                                          child: Stack(
+                                                            children: [
+                                                              ClipRRect(
+                                                                borderRadius: BorderRadius
+                                                                    .circular(FontSizes(
+                                                                            context)
+                                                                        .width2()),
+                                                                child: Get.find<BottomNavigationController>()
+                                                                            .liveAstrologer[index]
+                                                                            .profileImage !=
+                                                                        ""
+                                                                    ? Container(
+                                                                        width:
+                                                                            120,
+                                                                        height:
+                                                                            200,
+                                                                        margin: EdgeInsets.only(
+                                                                            right:
+                                                                                4),
+                                                                        child:
+                                                                            Image(
+                                                                          fit: BoxFit
+                                                                              .cover,
+                                                                          colorBlendMode:
+                                                                              BlendMode.darken,
+                                                                          color:
+                                                                              Colors.black45,
+                                                                          width:
+                                                                              FontSizes(context).width30(),
+                                                                          height:
+                                                                              FontSizes(context).height20(),
+                                                                          image:
+                                                                              NetworkImage(
+                                                                            "${global.imgBaseurl}${Get.find<BottomNavigationController>().liveAstrologer[index].profileImage}",
+                                                                          ),
+                                                                        ),
+                                                                      )
+                                                                    : Container(
+                                                                        //NO image then it will set
+                                                                        width:
+                                                                            120,
+                                                                        height:
+                                                                            200,
+                                                                        margin: EdgeInsets.only(
+                                                                            right:
+                                                                                4),
+                                                                        decoration: BoxDecoration(
+                                                                            color: Colors.black.withOpacity(0.3),
+                                                                            borderRadius: BorderRadius.circular(10),
+                                                                            border: Border.all(
+                                                                              color: Color.fromARGB(255, 214, 214, 214),
+                                                                            ),
+                                                                            image: DecorationImage(
+                                                                                fit: BoxFit.cover,
+                                                                                image: AssetImage(
+                                                                                  Images.deafultUser,
+                                                                                ),
+                                                                                colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.3), BlendMode.darken))),
+                                                                      ),
+                                                              ),
+                                                              Positioned(
+                                                                right: FontSizes(
+                                                                        context)
+                                                                    .width2(),
+                                                                top: FontSizes(
+                                                                        context)
+                                                                    .height01(),
+                                                                child:
+                                                                    Container(
+                                                                        padding: EdgeInsets.symmetric(
+                                                                            horizontal: FontSizes(context)
+                                                                                .width2()),
+                                                                        decoration: BoxDecoration(
+                                                                            borderRadius: BorderRadius.circular(FontSizes(context)
+                                                                                .width2()),
+                                                                            color: Get
+                                                                                .theme.primaryColor),
+                                                                        child:
+                                                                            CustomText(
+                                                                          text:
+                                                                              "Live",
+                                                                          fontWeight:
+                                                                              FontWeight.w600,
+                                                                          color:
+                                                                              whiteColor,
+                                                                        )),
+                                                              ),
+                                                              Positioned(
+                                                                left: FontSizes(
+                                                                        context)
+                                                                    .width2(),
+                                                                bottom: FontSizes(
+                                                                        context)
+                                                                    .height1(),
+                                                                child: Column(
+                                                                  crossAxisAlignment:
+                                                                      CrossAxisAlignment
+                                                                          .start,
+                                                                  children: [
+                                                                    CustomText(
+                                                                      text:
+                                                                          "${Get.find<BottomNavigationController>().liveAstrologer[index].name}",
+                                                                      color:
+                                                                          whiteColor,
+                                                                      maxLine:
+                                                                          1,
+                                                                      fontsize:
+                                                                          FontSizes(context)
+                                                                              .font4(),
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w700,
+                                                                    ),
+                                                                    CustomText(
+                                                                      text:
+                                                                          "${Get.find<BottomNavigationController>().liveAstrologer[index].videoCallRate} /min",
+                                                                      color: Get
+                                                                          .theme
+                                                                          .primaryColor,
+                                                                      maxLine:
+                                                                          1,
+                                                                      fontsize:
+                                                                          FontSizes(context)
+                                                                              .font3(),
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w600,
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              )
+                                                            ],
+                                                          )));
+                                                },
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                      }),
+
                       bottomNavigationController.astrologerList.isNotEmpty
                           ? Container(
                               margin: EdgeInsets.symmetric(horizontal: 20),
@@ -3035,372 +3402,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                           ],
                                                         ),
                                                       ));
-                                                },
-                                              ),
-                                            );
-                                          },
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                      }),
-                      //--------------------------------------LIVE ASTROLOGER LIST---------------------------------
-                      GetBuilder<BottomNavigationController>(builder: (c) {
-                        return Get.find<BottomNavigationController>()
-                                    .liveAstrologer
-                                    .length ==
-                                0
-                            ? const SizedBox()
-                            : SizedBox(
-                                height: 38.h,
-                                child: Card(
-                                  elevation: 0,
-                                  margin: EdgeInsets.only(top: 6),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.zero),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 10),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Text(
-                                                    'Live Astrologers',
-                                                    style: Get
-                                                        .theme
-                                                        .primaryTextTheme
-                                                        .titleMedium!
-                                                        .copyWith(
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w500),
-                                                  ).tr(),
-                                                  Padding(
-                                                    padding: EdgeInsets.only(
-                                                        left: 5),
-                                                    child: GestureDetector(
-                                                      onTap: () async {
-                                                        global
-                                                            .showOnlyLoaderDialog(
-                                                                context);
-                                                        await bottomControllerMain
-                                                            .getLiveAstrologerList();
-                                                        global.hideLoader();
-                                                      },
-                                                      child: Icon(
-                                                        Icons.refresh,
-                                                        size: 20,
-                                                      ),
-                                                    ),
-                                                  )
-                                                ],
-                                              ),
-                                              GestureDetector(
-                                                onTap: () async {
-                                                  Get.to(() =>
-                                                      LiveAstrologerListScreen());
-                                                },
-                                                child: Text(
-                                                  'View All',
-                                                  style: Get
-                                                      .theme
-                                                      .primaryTextTheme
-                                                      .bodySmall!
-                                                      .copyWith(
-                                                    fontWeight: FontWeight.w400,
-                                                    color: Colors.blue[500],
-                                                  ),
-                                                ).tr(),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        GetBuilder<BottomNavigationController>(
-                                          builder: (c) {
-                                            return Expanded(
-                                              child: ListView.builder(
-                                                itemCount: Get.find<
-                                                        BottomNavigationController>()
-                                                    .liveAstrologer
-                                                    .length,
-                                                shrinkWrap: true,
-                                                scrollDirection:
-                                                    Axis.horizontal,
-                                                padding: EdgeInsets.only(
-                                                    top: 10, left: 10),
-                                                itemBuilder: (context, index) {
-                                                  return GestureDetector(
-                                                      onTap: () async {
-                                                        bottomControllerMain
-                                                            .anotherLiveAstrologers = Get
-                                                                .find<
-                                                                    BottomNavigationController>()
-                                                            .liveAstrologer
-                                                            .where((element) =>
-                                                                element
-                                                                    .astrologerId !=
-                                                                Get.find<
-                                                                        BottomNavigationController>()
-                                                                    .liveAstrologer[
-                                                                        index]
-                                                                    .astrologerId)
-                                                            .toList();
-                                                        bottomControllerMain
-                                                            .update();
-                                                        print("channel name");
-                                                        print(
-                                                            "${Get.find<BottomNavigationController>().liveAstrologer[index].channelName}");
-                                                        await liveController
-                                                            .getWaitList(Get.find<
-                                                                    BottomNavigationController>()
-                                                                .liveAstrologer[
-                                                                    index]
-                                                                .channelName);
-                                                        int index2 = liveController
-                                                            .waitList
-                                                            .indexWhere((element) =>
-                                                                element
-                                                                    .userId ==
-                                                                global
-                                                                    .currentUserId);
-                                                        if (index2 != -1) {
-                                                          liveController
-                                                                  .isImInWaitList =
-                                                              true;
-                                                          liveController
-                                                              .update();
-                                                        } else {
-                                                          liveController
-                                                                  .isImInWaitList =
-                                                              false;
-                                                          liveController
-                                                              .update();
-                                                        }
-                                                        liveController
-                                                            .isImInLive = true;
-                                                        liveController
-                                                                .isJoinAsChat =
-                                                            false;
-                                                        liveController
-                                                                .isLeaveCalled =
-                                                            false;
-                                                        liveController.update();
-                                                        bool isLogin =
-                                                            await global
-                                                                .isLogin();
-                                                        if (isLogin) {
-                                                          Get.to(
-                                                            () =>
-                                                                LiveAstrologerScreen(
-                                                              token: Get.find<
-                                                                      BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .token,
-                                                              channel: Get.find<
-                                                                      BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .channelName,
-                                                              astrologerName: Get
-                                                                      .find<
-                                                                          BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .name,
-                                                              astrologerProfile: Get
-                                                                      .find<
-                                                                          BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .profileImage,
-                                                              astrologerId: Get
-                                                                      .find<
-                                                                          BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .astrologerId,
-                                                              isFromHome: true,
-                                                              charge: Get.find<
-                                                                      BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .charge,
-                                                              isForLiveCallAcceptDecline:
-                                                                  false,
-                                                              isFromNotJoined:
-                                                                  false,
-                                                              isFollow: Get.find<
-                                                                      BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .isFollow!,
-                                                              videoCallCharge: Get
-                                                                      .find<
-                                                                          BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .videoCallRate,
-                                                            ),
-                                                          );
-                                                        }
-                                                      },
-                                                      child: Container(
-                                                          decoration: BoxDecoration(
-                                                              borderRadius: BorderRadius
-                                                                  .circular(FontSizes(
-                                                                          context)
-                                                                      .width2())),
-                                                          margin: EdgeInsets.symmetric(
-                                                              horizontal:
-                                                                  FontSizes(
-                                                                          context)
-                                                                      .width1()),
-                                                          child: Stack(
-                                                            children: [
-                                                              ClipRRect(
-                                                                borderRadius: BorderRadius
-                                                                    .circular(FontSizes(
-                                                                            context)
-                                                                        .width2()),
-                                                                child: Get.find<BottomNavigationController>()
-                                                                            .liveAstrologer[index]
-                                                                            .profileImage !=
-                                                                        ""
-                                                                    ? Container(
-                                                                        width:
-                                                                            120,
-                                                                        height:
-                                                                            200,
-                                                                        margin: EdgeInsets.only(
-                                                                            right:
-                                                                                4),
-                                                                        child:
-                                                                            Image(
-                                                                          fit: BoxFit
-                                                                              .cover,
-                                                                          colorBlendMode:
-                                                                              BlendMode.darken,
-                                                                          color:
-                                                                              Colors.black45,
-                                                                          width:
-                                                                              FontSizes(context).width30(),
-                                                                          height:
-                                                                              FontSizes(context).height20(),
-                                                                          image:
-                                                                              NetworkImage(
-                                                                            "${global.imgBaseurl}${Get.find<BottomNavigationController>().liveAstrologer[index].profileImage}",
-                                                                          ),
-                                                                        ),
-                                                                      )
-                                                                    : Container(
-                                                                        //NO image then it will set
-                                                                        width:
-                                                                            120,
-                                                                        height:
-                                                                            200,
-                                                                        margin: EdgeInsets.only(
-                                                                            right:
-                                                                                4),
-                                                                        decoration: BoxDecoration(
-                                                                            color: Colors.black.withOpacity(0.3),
-                                                                            borderRadius: BorderRadius.circular(10),
-                                                                            border: Border.all(
-                                                                              color: Color.fromARGB(255, 214, 214, 214),
-                                                                            ),
-                                                                            image: DecorationImage(
-                                                                                fit: BoxFit.cover,
-                                                                                image: AssetImage(
-                                                                                  Images.deafultUser,
-                                                                                ),
-                                                                                colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.3), BlendMode.darken))),
-                                                                      ),
-                                                              ),
-                                                              Positioned(
-                                                                right: FontSizes(
-                                                                        context)
-                                                                    .width2(),
-                                                                top: FontSizes(
-                                                                        context)
-                                                                    .height01(),
-                                                                child:
-                                                                    Container(
-                                                                        padding: EdgeInsets.symmetric(
-                                                                            horizontal: FontSizes(context)
-                                                                                .width2()),
-                                                                        decoration: BoxDecoration(
-                                                                            borderRadius: BorderRadius.circular(FontSizes(context)
-                                                                                .width2()),
-                                                                            color: Get
-                                                                                .theme.primaryColor),
-                                                                        child:
-                                                                            CustomText(
-                                                                          text:
-                                                                              "Live",
-                                                                          fontWeight:
-                                                                              FontWeight.w600,
-                                                                          color:
-                                                                              whiteColor,
-                                                                        )),
-                                                              ),
-                                                              Positioned(
-                                                                left: FontSizes(
-                                                                        context)
-                                                                    .width2(),
-                                                                bottom: FontSizes(
-                                                                        context)
-                                                                    .height1(),
-                                                                child: Column(
-                                                                  crossAxisAlignment:
-                                                                      CrossAxisAlignment
-                                                                          .start,
-                                                                  children: [
-                                                                    CustomText(
-                                                                      text:
-                                                                          "${Get.find<BottomNavigationController>().liveAstrologer[index].name}",
-                                                                      color:
-                                                                          whiteColor,
-                                                                      maxLine:
-                                                                          1,
-                                                                      fontsize:
-                                                                          FontSizes(context)
-                                                                              .font4(),
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w700,
-                                                                    ),
-                                                                    CustomText(
-                                                                      text:
-                                                                          "${Get.find<BottomNavigationController>().liveAstrologer[index].videoCallRate} /min",
-                                                                      color: Get
-                                                                          .theme
-                                                                          .primaryColor,
-                                                                      maxLine:
-                                                                          1,
-                                                                      fontsize:
-                                                                          FontSizes(context)
-                                                                              .font3(),
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w600,
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                              )
-                                                            ],
-                                                          )));
                                                 },
                                               ),
                                             );

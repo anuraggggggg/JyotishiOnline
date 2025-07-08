@@ -63,10 +63,10 @@ String stripeBaseApi = 'https://api.stripe.com/v1';
 // String webBaseUrl = "https://astroway.diploy.in/api/";
 // String appMode = "LIVE";
 
-String baseUrl = "https://jyotishionline.com/astro/api";
-String imgBaseurl = "https://jyotishionline.com/astro/";
-String webBaseUrl = "https://jyotishionline.com/astro/api/";
-String appMode = "LIVE";
+// String baseUrl = "https://jyotishionline.com/astro/api";
+// String imgBaseurl = "https://jyotishionline.com/astro/";
+// String webBaseUrl = "https://jyotishionline.com/astro/api/";
+// String appMode = "LIVE";
 
 // Map<String, dynamic> appParameters = {
 //   "LIVE": {
@@ -79,10 +79,26 @@ String appMode = "LIVE";
 //   }
 // };
 
+// Map<String, dynamic> appParameters = {
+//   "LIVE": {
+//     "apiUrl": "https://jyotishionline.com/astro/api",
+//     "imageBaseurl": "https://jyotishionline.com/astro/",
+//   },
+//   "DEV": {
+//     "apiUrl": "http://192.168.29.223:8001/api",
+//     "imageBaseurl": "http://192.168.29.223:8001/",
+//   }
+// };
+
+String baseUrl = "https://jyotishionline.com/api";
+String imgBaseurl = "https://jyotishionline.com/";
+String webBaseUrl = "https://jyotishionline.com/api/";
+String appMode = "LIVE";
+
 Map<String, dynamic> appParameters = {
   "LIVE": {
-    "apiUrl": "https://jyotishionline.com/astro/api",
-    "imageBaseurl": "https://jyotishionline.com/astro/",
+    "apiUrl": "https://jyotishionline.com/api",
+    "imageBaseurl": "https://jyotishionline.com/",
   },
   "DEV": {
     "apiUrl": "http://192.168.29.223:8001/api",

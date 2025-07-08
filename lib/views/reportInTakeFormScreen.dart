@@ -224,44 +224,58 @@ class ReportInTakeForm extends StatelessWidget {
                   // )),
                 ),
                 Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextFieldLabelWidget(
-                        label: 'Gender',
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFieldLabelWidget(
+                      label: 'Gender',
+                    ),
+                    Flexible(
+                      flex: 1,
+                      child: RadioListTile(
+                        title: Text("Male").tr(),
+                        value: "male",
+                        groupValue: reportController.gender,
+                        dense: true,
+                        activeColor: Get.theme.primaryColor,
+                        contentPadding: EdgeInsets.all(0.0),
+                        onChanged: (value) {
+                          reportController.updateGeneder(value);
+                        },
                       ),
-                      Flexible(
-                        flex: 1,
-                        child: RadioListTile(
-                          title: Text("Male").tr(),
-                          value: "male",
-                          groupValue: reportController.gender,
-                          dense: true,
-                          activeColor: Get.theme.primaryColor,
-                          contentPadding: EdgeInsets.all(0.0),
-                          onChanged: (value) {
-                            reportController.updateGeneder(value);
-                          },
-                        ),
+                    ),
+                    Flexible(
+                      flex: 1,
+                      child: RadioListTile(
+                        title: Text("Female").tr(),
+                        value: "female",
+                        groupValue: reportController.gender,
+                        activeColor: Get.theme.primaryColor,
+                        contentPadding: EdgeInsets.all(0.0),
+                        dense: true,
+                        onChanged: (value) {
+                          reportController.updateGeneder(value);
+                        },
                       ),
-                      Flexible(
-                        flex: 1,
-                        child: RadioListTile(
-                          title: Text("Female").tr(),
-                          value: "female",
-                          groupValue: reportController.gender,
-                          activeColor: Get.theme.primaryColor,
-                          contentPadding: EdgeInsets.all(0.0),
-                          dense: true,
-                          onChanged: (value) {
-                            reportController.updateGeneder(value);
-                          },
-                        ),
+                    ),
+                    Flexible(
+                      // Added for "Other" gender option
+                      flex: 1,
+                      child: RadioListTile(
+                        title: Text("Other").tr(), // Display "Other"
+                        value:
+                            "other", // The value to be stored when "Other" is selected
+                        groupValue: reportController.gender,
+                        activeColor: Get.theme.primaryColor,
+                        contentPadding: EdgeInsets.all(0.0),
+                        dense: true,
+                        onChanged: (value) {
+                          reportController.updateGeneder(value);
+                        },
                       ),
-                      SizedBox(
-                        width: 78,
-                      )
-                    ]),
+                    ),
+                  ],
+                ),
                 InkWell(
                   onTap: () async {
                     reportController.firstNamefocus.unfocus();

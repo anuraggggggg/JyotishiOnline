@@ -22,13 +22,13 @@ class AstrologyServicesPage extends StatelessWidget {
     {
       'title': 'Detailed Kundli',
       'icon': Icons.auto_stories,
-      "subtitletitleinMalayam": "വിശദമായ കുണ്ഡലി",
+      "subtitletitleinMalayam": "സമ്പൂർണ ജാതകം",
       'price': 599,
     },
     {
       "title": "Daily Horoscope",
       "icon": Icons.calendar_month,
-      "subtitletitleinMalayam": "ദൈനംദിന ജാതകം",
+      "subtitletitleinMalayam": "ദിവസ ഫലം",
       'price': 100,
     },
     {

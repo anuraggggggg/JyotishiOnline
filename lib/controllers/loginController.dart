@@ -10,7 +10,7 @@ import 'package:AstrowayCustomer/model/device_info_login_model.dart';
 import 'package:AstrowayCustomer/model/login_model.dart';
 import 'package:AstrowayCustomer/utils/services/api_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart'; // <--- Ensure this import is present for Rx and GetxController
+import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 import '../views/verifyPhoneScreen.dart';
@@ -18,16 +18,15 @@ import '../views/bottomNavigationBarScreen.dart';
 import 'package:AstrowayCustomer/utils/AppColors.dart';
 
 class LoginController extends GetxController {
-  TextEditingController phoneController = TextEditingController();
-  SplashController splashController = Get.find<SplashController>();
-  APIHelper apiHelper = APIHelper();
-  HomeController homeController = Get.find<HomeController>();
+  late TextEditingController phoneController;
+  late SplashController splashController;
+  late APIHelper apiHelper;
+  late HomeController homeController;
 
-  // CHANGE 1: Make countryCode an RxString
-  RxString countryCode = "+91".obs; // Initialize as observable
+  RxString countryCode = "+91".obs;
+  RxBool isLoading = false.obs;
 
   String? errorText;
-
   String? _sentOtp;
   String? get sentOtp => _sentOtp;
 
@@ -38,13 +37,15 @@ class LoginController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    phoneController = TextEditingController();
+    splashController = Get.find<SplashController>();
+    apiHelper = APIHelper();
+    homeController = Get.find<HomeController>();
     _sentOtp = null;
   }
 
-  // CHANGE 2: Update the value using .value
   void updateCountryCode(String? code) {
-    countryCode.value = code ?? "+91"; // Update the observable's value
-    // No need for update() here, setting .value automatically triggers rebuild for Obx
+    countryCode.value = code ?? "+91";
   }
 
   bool validedPhone() {
@@ -67,8 +68,6 @@ class LoginController extends GetxController {
     _sentOtp = null;
     update();
 
-    developer.log("sendOtpToPhone called. _sentOtp cleared to: $_sentOtp");
-
     String phone = phoneController.text.trim();
     String onlyDigits = phone.replaceAll(RegExp(r'\D'), '');
 
@@ -84,7 +83,6 @@ class LoginController extends GetxController {
     final otp = generateOtp();
     _sentOtp = otp;
     update();
-    developer.log("Generated OTP (SMS): $otp. Stored _sentOtp: $_sentOtp");
 
     final message =
         "Your OTP for mobile application jyotishionline login is $otp jyotishi online";
@@ -92,9 +90,9 @@ class LoginController extends GetxController {
         "http://sms.messageindia.in/v2/sendSMS?username=sameerji&message=$message&sendername=JYTSHI&smstype=TRANS&numbers=$onlyDigits&apikey=242d4043-4734-4ae8-acb6-bcbb5b855bcc&peid=1701175032658751812&templateid=1707175048832142304";
 
     try {
-      global.showOnlyLoaderDialog(Get.context!);
+      isLoading.value = true;
       final response = await http.get(Uri.parse(url));
-      global.hideLoader();
+      isLoading.value = false;
 
       final body = jsonDecode(response.body);
 
@@ -114,7 +112,7 @@ class LoginController extends GetxController {
         );
       }
     } catch (e) {
-      global.hideLoader();
+      isLoading.value = false;
       _sentOtp = null;
       update();
       global.showToast(
@@ -130,12 +128,8 @@ class LoginController extends GetxController {
     _sentOtp = null;
     update();
 
-    developer.log("sendOtpViaWhatsApp called. _sentOtp cleared to: $_sentOtp");
-
     String phone = phoneNumber.trim();
     String onlyDigits = phone.replaceAll(RegExp(r'\D'), '');
-
-    // CHANGE 3: Access countryCode.value here
     String formattedPhoneNumber = "${countryCode.value}$onlyDigits";
 
     if (!validedPhone()) {
@@ -150,25 +144,19 @@ class LoginController extends GetxController {
     final otp = generateOtp();
     _sentOtp = otp;
     update();
-    developer.log("Generated OTP (WhatsApp): $otp. Stored _sentOtp: $_sentOtp");
 
     final message = "Your OTP for login is $otp";
     final url =
         "http://148.251.129.118/wapp/api/send?apikey=c26b5da4b3e9485cbf3413df31080450&mobile=$formattedPhoneNumber&msg=$message";
 
     try {
-      global.showOnlyLoaderDialog(Get.context!);
-      developer.log("WhatsApp API URL: $url");
+      isLoading.value = true;
       final response = await http.get(Uri.parse(url));
-      global.hideLoader();
+      isLoading.value = false;
 
-      developer.log("WhatsApp API Raw Response Body: ${response.body}");
       final data = jsonDecode(response.body);
-      developer.log("WhatsApp API Parsed Data: $data");
 
       if (data["status"] == "success" && data["statuscode"] == 200) {
-        developer
-            .log("✅ WhatsApp OTP sent successfully to $formattedPhoneNumber");
         timer();
         await Future.delayed(Duration(milliseconds: 100));
         Get.to(() => VerifyPhoneScreen(phoneNumber: onlyDigits));
@@ -183,7 +171,7 @@ class LoginController extends GetxController {
             bgColor: Colors.red);
       }
     } catch (e) {
-      global.hideLoader();
+      isLoading.value = false;
       _sentOtp = null;
       update();
       developer.log("WhatsApp OTP error: $e");
@@ -197,7 +185,6 @@ class LoginController extends GetxController {
   Future<void> sendOtpViaEmail({required String email}) async {
     _sentOtp = null;
     update();
-    developer.log("sendOtpViaEmail called. _sentOtp cleared to: $_sentOtp");
 
     if (email.isEmpty || !email.contains('@')) {
       global.showToast(
@@ -211,20 +198,17 @@ class LoginController extends GetxController {
     final otp = generateOtp();
     _sentOtp = otp;
     update();
-    developer.log("Generated OTP (Email): $otp. Stored _sentOtp: $_sentOtp");
 
-    global.showOnlyLoaderDialog(Get.context!);
+    isLoading.value = true;
     await Future.delayed(Duration(seconds: 2));
-    global.hideLoader();
+    isLoading.value = false;
     global.showToast(
       message: "Email OTP sent (simulated)",
       textColor: global.textColor,
       bgColor: global.toastBackGoundColor,
     );
     timer();
-    Get.to(() => VerifyPhoneScreen(
-          phoneNumber: email,
-        ));
+    Get.to(() => VerifyPhoneScreen(phoneNumber: email));
   }
 
   Future<void> verifyOtp({
@@ -232,10 +216,7 @@ class LoginController extends GetxController {
     required String otp,
     required BuildContext context,
   }) async {
-    developer.log("Verifying OTP: Entered='$otp', Stored _sentOtp='$_sentOtp'");
-
     if (_sentOtp != null && otp == _sentOtp) {
-      developer.log("OTP matched! Proceeding to login/signup.");
       _sentOtp = null;
       update();
 
@@ -245,7 +226,6 @@ class LoginController extends GetxController {
         await loginAndSignupUser(int.tryParse(phone), "");
       }
     } else {
-      developer.log("OTP mismatch! Entered: '$otp', Expected: '$_sentOtp'");
       global.hideLoader();
       global.showToast(
         message: "Invalid OTP",
@@ -271,11 +251,10 @@ class LoginController extends GetxController {
 
   Future<void> loginAndSignupUser(int? phoneNumber, String email) async {
     try {
-      global.showOnlyLoaderDialog(Get.context!);
+      isLoading.value = true;
       await global.getDeviceData();
 
       final loginModel = LoginModel()
-        // CHANGE 4: Access countryCode.value here
         ..countryCode = countryCode.value
         ..deviceInfo = DeviceInfoLoginModel(
           appId: global.appId,
@@ -312,11 +291,8 @@ class LoginController extends GetxController {
           Get.put(BottomController());
         }
 
-        global.hideLoader();
-
         Get.offAll(() => BottomNavigationBarScreen(index: 0));
       } else {
-        global.hideLoader();
         global.showToast(
           message: result.message ?? 'Failed to sign in',
           textColor: global.textColor,
@@ -324,13 +300,14 @@ class LoginController extends GetxController {
         );
       }
     } catch (e) {
-      global.hideLoader();
       developer.log("❌ Login Error: $e");
       global.showToast(
         message: "Login failed. Please try again.",
         textColor: Colors.white,
         bgColor: Colors.red,
       );
+    } finally {
+      isLoading.value = false;
     }
   }
 
