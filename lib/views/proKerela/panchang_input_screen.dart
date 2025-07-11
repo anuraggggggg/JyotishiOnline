@@ -356,7 +356,7 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Align(
-                          alignment: Alignment.center, 
+                          alignment: Alignment.center,
                           child: Text(
                             'Enter Cosmic Details',
                             style: TextStyle(

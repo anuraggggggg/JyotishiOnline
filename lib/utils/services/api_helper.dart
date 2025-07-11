@@ -2399,6 +2399,32 @@ class APIHelper {
     }
   }
 
+  Future<dynamic> sendPanchangDeduction({required double amount}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/sendGift'), // Temporarily using the same endpoint
+        headers: await global.getApiHeaders(true),
+        body: json.encode({
+          "giftId": 0, // Just placeholder if backend ignores it
+          "astrologerId": 0, // Panchang is not astrologer-specific
+          "amount": amount,
+          "service": "panchang" // optional, for logging purpose
+        }),
+      );
+
+      dynamic recordList;
+      if (response.statusCode == 200) {
+        recordList = json.decode(response.body)['recordList'];
+      } else {
+        recordList = null;
+      }
+
+      return getAPIResult(response, recordList);
+    } catch (e) {
+      debugPrint('❌ Exception in sendPanchangDeduction: $e');
+    }
+  }
+
   //Notifications
   Future<dynamic> getNotifications() async {
     try {

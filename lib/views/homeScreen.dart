@@ -2252,16 +2252,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                         bottomNavigationController
                                             .astrologerList[index];
                                     return InkWell(
-                                      onTap: () async {
-                                        Get.find<ReviewController>()
-                                            .getReviewData(astrologer.id!);
-                                        global.showOnlyLoaderDialog(context);
-                                        await bottomNavigationController
-                                            .getAstrologerbyId(astrologer.id!);
-                                        global.hideLoader();
-                                        await Get.to(() =>
-                                            AstrologerProfile(index: index));
+                                      onTap: () {
+                                        WidgetsBinding.instance
+                                            .addPostFrameCallback((_) async {
+                                          Get.find<ReviewController>()
+                                              .getReviewData(astrologer.id!);
+                                          global.showOnlyLoaderDialog(context);
+                                          await bottomNavigationController
+                                              .getAstrologerbyId(
+                                                  astrologer.id!);
+                                          global.hideLoader();
+                                          await Get.to(() =>
+                                              AstrologerProfile(index: index));
+                                        });
                                       },
+
+                                      // onTap: () async {
+                                      //   Get.find<ReviewController>()
+                                      //       .getReviewData(astrologer.id!);
+                                      //   global.showOnlyLoaderDialog(context);
+                                      //   await bottomNavigationController
+                                      //       .getAstrologerbyId(astrologer.id!);
+                                      //   global.hideLoader();
+                                      //   await Get.to(() =>
+                                      //       AstrologerProfile(index: index));
+                                      // },
                                       borderRadius: BorderRadius.circular(12),
                                       child: Column(
                                         mainAxisAlignment:

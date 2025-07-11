@@ -51,6 +51,7 @@ class LiveAstrologerScreen extends StatefulWidget {
   final bool? isFromNotJoined;
   final double videoCallCharge;
   final bool isFollow;
+  bool isRtmChannelJoined = false;
 
   LiveAstrologerScreen(
       {super.key,
@@ -101,6 +102,7 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
   bool isHostJoin = false;
   bool isHostJoinAsAudio = false;
   bool isSetConn = false;
+  bool isRtmChannelJoined = false;
   final BottomNavigationController bottomNavigationController =
       Get.find<BottomNavigationController>();
   final FollowAstrologerController followAstrologerController =
@@ -110,7 +112,8 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
   final TextEditingController messageController = TextEditingController();
 
   AgoraRtmClient? client;
-  late AgoraRtmChannel channel;
+  // late AgoraRtmChannel channel;
+  AgoraRtmChannel? channel;
 
   ValueNotifier<int> viewer = ValueNotifier<int>(0);
 
@@ -1423,8 +1426,7 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
                                                                           .textTheme
                                                                           .bodySmall!
                                                                           .copyWith(
-                                                                              color:
-                                                                                  Colors.white),
+                                                                              color: Colors.white),
                                                                     ),
                                                                   ),
                                                                   reverseList[index].gift !=
@@ -3740,14 +3742,18 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
 
   Future<void> createClient() async {
     log('message createClient ......called createClient');
+
     client = await AgoraRtmClient.createInstance(
-        global.getSystemFlagValue(global.systemFlagNameList.agoraAppId));
+      global.getSystemFlagValue(global.systemFlagNameList.agoraAppId),
+    );
+
+    // Listen for peer-to-peer messages (not channel messages)
     client!.onMessageReceived = (RtmMessage message, String peerId) {
-      log('message sent ...... ${message.text}');
+      log('Direct message from $peerId: ${message.text}');
       setState(() {
         messageList.add(MessageModel(
           message: message.text,
-          userName: message.text,
+          userName: peerId,
           profile: currentUserProfile,
           isMe: true,
         ));
@@ -3755,11 +3761,13 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
       });
     };
 
-    await generateToken();
-    login();
+    await generateToken(); // ✅ Token is generated
+    await login(); // ✅ Properly wait for login
+    await createAndJoinChannel(
+        "testchannel"); // ✅ Replace with your actual channel name
   }
 
-  void login() async {
+  login() async {
     if (chatuid.isEmpty) {
       log('Enter userId');
     }
@@ -3777,18 +3785,85 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
 
   void joinChannel() async {
     if (channelId.isEmpty) {
-      log("Please input channel id to join.");
+      log("⚠️ Channel ID is empty. Cannot join.");
       return;
     }
+
     try {
       channel = await createChannel(channelId);
-      await channel.join();
-      channel.getMembers().then((value) {
-        print("Members count: " + value.toString());
-        viewer.value = value.length;
-      });
+      await channel!.join();
+      isRtmChannelJoined = true;
+      print("🚀 RTM channel '$channelId' joined successfully.");
+
+      // If you want to fetch members safely, do it later from elsewhere
+      fetchChannelMembersSafely();
     } catch (e) {
-      log("Exception in joinChannel:- $e");
+      isRtmChannelJoined = false;
+      log("❌ Exception in joinChannel: $e");
+    }
+  }
+
+  Future<void> fetchChannelMembersSafely() async {
+    if (!isRtmChannelJoined || channel == null) {
+      print("🔒 Cannot fetch members — channel not joined.");
+      return;
+    }
+
+    try {
+      final members = await channel!.getMembers();
+      viewer.value = members.length;
+      print("👥 RTM member count: ${members.length}");
+    } catch (e) {
+      print("⚠️ Failed to get RTM members: $e");
+    }
+  }
+
+//   Future<void> createAndJoinChannel(String channelName) async {
+//   log("Creating and joining channel: $channelName");
+
+//   channel = await client!.createChannel(channelName);
+
+//   // Join the channel
+//   await channel!.join();
+
+//   // Listen for messages from others
+//   channel!.onMessageReceived = (RtmMessage message, RtmMember fromMember) {
+//     log('Message from ${fromMember.userId}: ${message.text}');
+//     setState(() {
+//       messageList.add(MessageModel(
+//         message: message.text,
+//         userName: fromMember.userId,
+//         profile: "", // Set accordingly
+//         isMe: false,
+//       ));
+//       reverseList = messageList.reversed.toList();
+//     });
+//   };
+// }
+
+  Future<void> createAndJoinChannel(String channelName) async {
+    log("Creating and joining channel: $channelName");
+
+    try {
+      channel = await client!.createChannel(channelName);
+      await channel!.join();
+
+      // Listen for messages from other members in the channel
+      channel!.onMessageReceived =
+          (RtmMessage message, AgoraRtmMember fromMember) {
+        log('Message from ${fromMember.userId}: ${message.text}');
+        setState(() {
+          messageList.add(MessageModel(
+            message: message.text,
+            userName: fromMember.userId, // 👍 correct usage
+            profile: "", // ✅ Replace with actual profile if needed
+            isMe: false,
+          ));
+          reverseList = messageList.reversed.toList();
+        });
+      };
+    } catch (e) {
+      log("Exception in createAndJoinChannel: $e");
     }
   }
 
@@ -4030,28 +4105,54 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
 //MOBILE SUPPORT
   void sendChannelMessage(String channelMessage, String? gift) async {
     try {
-      await channel.sendMessage2(RtmMessage.fromText(
-          '$currentUserName&&$channelMessage&&$currentUserProfile&&$gift'));
-      log('channelId -------->$channelId');
+      if (channel == null) {
+        print("❌ RTM channel is not initialized.");
+        return;
+      }
+
+      final members = await channel!.getMembers();
+      if (members.isEmpty) {
+        print("🚫 RTM channel has no members — joining again...");
+        await channel!.join(); // Retry join
+        final retryMembers = await channel!.getMembers();
+        if (retryMembers.isEmpty) {
+          print("🛑 Still no members — aborting send.");
+          return;
+        }
+      }
+
+      final safeGift = gift ?? "";
+      final composedMessage =
+          '$currentUserName&&$channelMessage&&$currentUserProfile&&$safeGift';
+      print("📡 Sending composed RTM message: $composedMessage");
+
+      try {
+        await channel!.sendMessage(RtmMessage.fromText(composedMessage));
+        print("✅ Message sent successfully to channelId: $channelId");
+      } catch (sendError) {
+        print("❌ Failed to send, retrying in 500ms...");
+        await Future.delayed(Duration(milliseconds: 500));
+        await channel!.sendMessage(RtmMessage.fromText(composedMessage));
+        print("✅ Message sent on retry.");
+      }
+
       setState(() {
         messageList.add(MessageModel(
           message: channelMessage,
           userName: currentUserName,
           profile: currentUserProfile,
           isMe: true,
-          gift: gift,
+          gift: safeGift,
         ));
         reverseList = messageList.reversed.toList();
       });
-      if (liveController.isJoinAsChat) {
-        print('live chat sendchannelmessage $astrologerId2');
+
+      if (liveController.isJoinAsChat && astrologerId2 != null) {
         await sendMessage(astrologerId2!);
       }
-
-      print('channel message sent :-');
-    } catch (e) {
-      // ignore: avoid_print
-      print("Exception in sendChannelMessage: -${e.toString()}");
+    } catch (e, stackTrace) {
+      print("💥 sendChannelMessage error: ${e.runtimeType} — ${e.toString()}");
+      print("🔍 StackTrace:\n$stackTrace");
     }
   }
 }
