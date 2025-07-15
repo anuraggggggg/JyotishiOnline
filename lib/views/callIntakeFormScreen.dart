@@ -274,44 +274,71 @@ class _CallIntakeFormScreenState extends State<CallIntakeFormScreen> {
                 ),
                 SizedBox(height: 10),
                 Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextFieldLabelWidget(
-                        label: 'Gender',
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFieldLabelWidget(
+                      label: 'Gender',
+                    ),
+                    Flexible(
+                      flex: 1,
+                      child: RadioListTile(
+                        title: Text(
+                          "Male",
+                          style:
+                              TextStyle(fontSize: 12), // Reduced text size here
+                        ).tr(),
+                        value: "male",
+                        groupValue: callIntakeController.gender,
+                        dense: true,
+                        activeColor: Get.theme.primaryColor,
+                        contentPadding: EdgeInsets.all(0.0),
+                        onChanged: (value) {
+                          callIntakeController.updateGeneder(value);
+                        },
                       ),
-                      Flexible(
-                        flex: 1,
-                        child: RadioListTile(
-                          title: Text("Male").tr(),
-                          value: "male",
-                          groupValue: callIntakeController.gender,
-                          dense: true,
-                          activeColor: Get.theme.primaryColor,
-                          contentPadding: EdgeInsets.all(0.0),
-                          onChanged: (value) {
-                            callIntakeController.updateGeneder(value);
-                          },
-                        ),
+                    ),
+                    Flexible(
+                      flex: 1,
+                      child: RadioListTile(
+                        title: Text(
+                          "Female",
+                          style:
+                              TextStyle(fontSize: 12), // Reduced text size here
+                        ).tr(),
+                        value: "female",
+                        groupValue: callIntakeController.gender,
+                        activeColor: Get.theme.primaryColor,
+                        contentPadding: EdgeInsets.all(0.0),
+                        dense: true,
+                        onChanged: (value) {
+                          callIntakeController.updateGeneder(value);
+                        },
                       ),
-                      Flexible(
-                        flex: 1,
-                        child: RadioListTile(
-                          title: Text("Female").tr(),
-                          value: "female",
-                          groupValue: callIntakeController.gender,
-                          activeColor: Get.theme.primaryColor,
-                          contentPadding: EdgeInsets.all(0.0),
-                          dense: true,
-                          onChanged: (value) {
-                            callIntakeController.updateGeneder(value);
-                          },
-                        ),
-                      ),
-                      SizedBox(
-                        width: 78,
-                      )
-                    ]),
+                    ),
+                    // Flexible(
+                    //   flex: 1,
+                    //   child: RadioListTile(
+                    //     title: Text(
+                    //       "Other",
+                    //       style:
+                    //           TextStyle(fontSize: 12), // Reduced text size here
+                    //     ).tr(),
+                    //     value: "other",
+                    //     groupValue: callIntakeController.gender,
+                    //     activeColor: Get.theme.primaryColor,
+                    //     contentPadding: EdgeInsets.all(0.0),
+                    //     dense: true,
+                    //     onChanged: (value) {
+                    //       callIntakeController.updateGeneder(value);
+                    //     },
+                    //   ),
+                    // ),
+                    // SizedBox(
+                    //   width: 50,
+                    // )
+                  ],
+                ),
                 InkWell(
                   onTap: () async {
                     callIntakeController.namefocus.unfocus();

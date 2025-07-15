@@ -928,17 +928,58 @@ class APIHelper {
         headers: await global.getApiHeaders(true),
         Uri.parse("$baseUrl/liveAstrologer/get"),
       );
+
+      debugPrint('--- Raw API Response Start ---');
+      debugPrint(response.body); // Print the entire raw JSON response body
+      debugPrint('--- Raw API Response End ---');
+
       dynamic recordList;
       if (response.statusCode == 200) {
-        recordList = List<LiveAstrologerModel>.from(json
-            .decode(response.body)["recordList"]
-            .map((x) => LiveAstrologerModel.fromJson(x)));
+        final decodedBody = json.decode(response.body);
+
+        // Print the full decoded JSON map for inspection
+        debugPrint('--- Decoded JSON Body Start ---');
+        debugPrint(decodedBody.toString());
+        debugPrint('--- Decoded JSON Body End ---');
+
+        // Check if 'recordList' key exists and is a List
+        if (decodedBody.containsKey("recordList") &&
+            decodedBody["recordList"] is List) {
+          recordList = List<LiveAstrologerModel>.from(decodedBody["recordList"]
+              .map((x) => LiveAstrologerModel.fromJson(x)));
+
+          debugPrint('--- Parsed LiveAstrologerModels Start ---');
+          // Iterate and print each LiveAstrologerModel object's data
+          for (var i = 0; i < recordList.length; i++) {
+            final astrologer = recordList[i];
+            debugPrint('Astrologer ${i + 1}:');
+            debugPrint('  ID: ${astrologer.id}');
+            debugPrint('  Astrologer ID: ${astrologer.astrologerId}');
+            debugPrint('  Name: ${astrologer.name}');
+            debugPrint('  Profile Image: ${astrologer.profileImage}');
+            debugPrint('  Channel Name: ${astrologer.channelName}');
+            debugPrint('  Token: ${astrologer.token}');
+            debugPrint('  Chat Token: ${astrologer.chatToken}');
+            debugPrint('  Charge: ${astrologer.charge}');
+            debugPrint('  Video Call Rate: ${astrologer.videoCallRate}');
+            debugPrint('  Is Follow: ${astrologer.isFollow}');
+            debugPrint('--------------------');
+          }
+          debugPrint('--- Parsed LiveAstrologerModels End ---');
+        } else {
+          debugPrint(
+              'Error: "recordList" key not found or is not a list in the response.');
+          recordList = null; // Ensure recordList is null if parsing fails
+        }
       } else {
         recordList = null;
+        debugPrint('API Error - Status Code: ${response.statusCode}');
+        debugPrint(
+            'Error Response Body: ${response.body}'); // Print error body as well
       }
       return getAPIResult(response, recordList);
     } catch (e) {
-      debugPrint('Exception in getLiveAstrologer():' + e.toString());
+      debugPrint('Exception in getLiveAstrologer(): ' + e.toString());
     }
   }
 

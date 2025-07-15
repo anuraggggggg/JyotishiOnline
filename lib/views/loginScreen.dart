@@ -26,7 +26,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   late final LoginController loginController;
   late final HomeController homeController;
-  // Local reactive variable to hold the currently selected PhoneNumber
   final Rx<PhoneNumber> _selectedPhoneNumber = PhoneNumber(isoCode: "IN").obs;
 
   @override
@@ -34,11 +33,13 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
     loginController = Get.find<LoginController>();
     homeController = Get.find<HomeController>();
+  }
 
-    // Initialize _selectedPhoneNumber based on the initial country code from loginController
-    // This assumes loginController.countryCode.value might have a default or saved value.
-    // If you always want to start with IN unless explicitly changed by user, this is fine.
-    // For more robust initialisation based on saved user data, you might need a utility to convert dialCode to isoCode.
+  // --- IMPORTANT: Add this to dispose the TextEditingController properly when the screen is removed ---
+  @override
+  void dispose() {
+    loginController.phoneController.dispose();
+    super.dispose();
   }
 
   @override
@@ -115,9 +116,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                     ),
                                     child: InternationalPhoneNumberInput(
-                                      // The key is now dynamic, forcing the widget to rebuild on country change
-                                      key: ValueKey(
-                                          _selectedPhoneNumber.value.isoCode!),
+                                      // REMOVE THIS LINE:
+                                      // key: ValueKey(_selectedPhoneNumber.value.isoCode!),
                                       textFieldController:
                                           loginController.phoneController,
                                       inputDecoration: const InputDecoration(
@@ -156,8 +156,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                         hintStyle: const TextStyle(
                                             color: Colors.black),
                                       ),
-                                      // Use the local reactive variable for the initial value
-                                      initialValue: _selectedPhoneNumber.value,
+                                      initialValue: _selectedPhoneNumber
+                                          .value, // Keep this, it's fine
                                       formatInput: false,
                                       keyboardType:
                                           const TextInputType.numberWithOptions(
@@ -228,6 +228,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               SizedBox(height: 10),
 
                               // SMS button - visible only for foreign users
+                              // NOTE: The original condition `loginController.countryCode.value == "+91"`
+                              // makes it visible for India. If you meant *foreign* users,
+                              // the condition should be `loginController.countryCode.value != "+91"`.
+                              // I'm keeping your original logic for now.
                               if (loginController.countryCode.value ==
                                   "+91") ...[
                                 GestureDetector(

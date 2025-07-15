@@ -18,32 +18,32 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: "AIzaSyAyiZi-oi6QilI2X-7hNcCgtbmRT2WLAhs",
-    authDomain: "astroway-diploy.firebaseapp.com",
-    projectId: "astroway-diploy",
-    storageBucket: "astroway-diploy.appspot.com",
-    messagingSenderId: "381086206621", //381086206621
-    appId: "1:381086206621:android:b5c7542da161358d32e274",
-    measurementId: "G-KBPRBBZRYC",
+    apiKey: "AIzaSyCf43So6LDiOrI4x4Lt3uD_KAIi0VFPLu8",
+    authDomain: "jyotiuser-173d9.firebaseapp.com",
+    projectId: "jyotiuser-173d9",
+    storageBucket: "jyotiuser-173d9.firebasestorage.app",
+    messagingSenderId: "1049596131961", //381086206621
+    appId: "1:1049596131961:android:1701dd36d5fe9213bdb2a8",
+    measurementId: "G-B2HHX4PRVW",
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: "AIzaSyDsrsuJ2tx83rRPdTrAUKQRNhmmCTbEzxA",
-    appId: "1:381086206621:ios:50ef1a4a2bd8342b32e274",
-    messagingSenderId: "381086206621",
-    projectId: "astroway-diploy",
-    storageBucket: "astroway-diploy.appspot.com",
+    apiKey: "AIzaSyDLKSYwB_cM_L2NyWMjBlXYvRHH9iGWlyE",
+    appId: "1:611219590951:web:8f1dbb0ef29b36dd81a302",
+    messagingSenderId: "611219590951",
+    projectId: "jyoti-astrologer",
+    storageBucket: "jyoti-astrologer.firebasestorage.app",
     iosBundleId: 'com.astrowaydiploy.user',
     measurementId: "G-KBPRBBZRYC",
   );
 
   static const FirebaseOptions web = FirebaseOptions(
-      apiKey: "AIzaSyAyiZi-oi6QilI2X-7hNcCgtbmRT2WLAhs",
-      authDomain: "astroway-diploy.firebaseapp.com",
-      databaseURL: "https://astroway-diploy-default-rtdb.firebaseio.com",
-      projectId: "astroway-diploy",
-      storageBucket: "astroway-diploy.appspot.com",
-      messagingSenderId: "381086206621",
-      appId: "1:381086206621:web:f09b5db876e2323d32e274",
-      measurementId: "G-XY1LD81J6X");
+      apiKey: "AIzaSyDLKSYwB_cM_L2NyWMjBlXYvRHH9iGWlyE",
+      authDomain: "jyoti-astrologer.firebaseapp.com",
+      databaseURL: "https://jyotishiweb-default-rtdb.firebaseio.com/",
+      projectId: "jyoti-astrologer",
+      storageBucket: "jyoti-astrologer.firebasestorage.app",
+      messagingSenderId: "611219590951",
+      appId: "1:611219590951:web:8f1dbb0ef29b36dd81a302",
+      measurementId: "G-B2HHX4PRVW");
 }

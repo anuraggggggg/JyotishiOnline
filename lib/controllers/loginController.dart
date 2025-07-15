@@ -9,7 +9,7 @@ import 'package:AstrowayCustomer/main.dart';
 import 'package:AstrowayCustomer/model/device_info_login_model.dart';
 import 'package:AstrowayCustomer/model/login_model.dart';
 import 'package:AstrowayCustomer/utils/services/api_helper.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; // Keep this for TextEditingController
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:AstrowayCustomer/utils/global.dart' as global;
@@ -18,6 +18,7 @@ import '../views/bottomNavigationBarScreen.dart';
 import 'package:AstrowayCustomer/utils/AppColors.dart';
 
 class LoginController extends GetxController {
+  // `late` is still correct here because it's initialized in onInit()
   late TextEditingController phoneController;
   late SplashController splashController;
   late APIHelper apiHelper;
@@ -37,7 +38,10 @@ class LoginController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    // Initialize TextEditingController here as before
     phoneController = TextEditingController();
+    developer
+        .log('LoginController onInit: phoneController created.'); // Add log
     splashController = Get.find<SplashController>();
     apiHelper = APIHelper();
     homeController = Get.find<HomeController>();
@@ -313,7 +317,9 @@ class LoginController extends GetxController {
 
   @override
   void onClose() {
-    phoneController.dispose();
+    // REMOVED phoneController.dispose();
+    developer.log(
+        'LoginController onClose: phoneController NOT disposed (permanent)'); // Add log
     time?.cancel();
     super.onClose();
   }

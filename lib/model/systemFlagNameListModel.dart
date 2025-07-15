@@ -49,7 +49,7 @@ class SystemFlagNameList {
     astrologyApiKey = 'AstrologyApiKey';
     rapidApiKey = 'RapidApiKey';
     rapidApiHost = 'RapidApiHost';
-    agoraAppId = 'AgoraAppId';
+    agoraAppId = "b6df511a43ee4ad086a076c9b385e140";
     agoraAppCertificate = 'AgoraAppCertificate';
     agoraKey = 'AgoraKey';
     agoraSecret = 'AgoraSecret';

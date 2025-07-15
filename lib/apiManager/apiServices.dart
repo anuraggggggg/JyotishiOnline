@@ -16,8 +16,8 @@ import '../model/proKerla/planetPositionModel.dart';
 // static const String baseAstrologyUrl = 'https://api.prokerala.com/v2/astrology';
 
 class ApiService {
-  final String clientId = '0eb707a4-c19e-4cd3-ab59-c45a022eeceb';
-  final String clientSecret = 'orckG5duJhLrrxZEGsXKcFnJiK07JXRm8cTBVZXT';
+  final String clientId = 'd1d07048-0a01-4de4-99cc-0d4ae9b335fc';
+  final String clientSecret = 'zFCp9fKjGRDm0uLaCdlSiMNXJppaOOXMnXoVqymd';
 
   String? _accessToken;
   DateTime? _tokenExpiry;

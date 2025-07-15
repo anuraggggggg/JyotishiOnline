@@ -118,7 +118,7 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
   ValueNotifier<int> viewer = ValueNotifier<int>(0);
 
   String chatuid = "";
-  String channelId = "";
+  String channelId = "jyotishionline";
   String peerUserId = "";
   SplashController splashController = Get.find<SplashController>();
   String currentUserName = "";
@@ -1513,7 +1513,7 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
                                                         BorderRadius.circular(
                                                             20),
                                                   ),
-                                                  hintText: 'say hi..',
+                                                  hintText: '`say hi..',
                                                   prefixIcon: Icon(
                                                     Icons.chat,
                                                     color: Colors.white,
@@ -4110,12 +4110,25 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
         return;
       }
 
-      final members = await channel!.getMembers();
-      if (members.isEmpty) {
-        print("🚫 RTM channel has no members — joining again...");
-        await channel!.join(); // Retry join
-        final retryMembers = await channel!.getMembers();
-        if (retryMembers.isEmpty) {
+      // Fetch channel members properly
+      final List<RtmChannelMember> rawMembers = await channel!.getMembers();
+      print("🚀 Raw members: $rawMembers");
+
+      List<String> userIds = rawMembers.map((m) => m.userId).toList();
+      print("👥 Members in channel: $userIds");
+
+      if (userIds.isEmpty) {
+        print("⚠️ No members yet. Waiting 1 second and retrying...");
+        await Future.delayed(Duration(seconds: 1));
+
+        final List<RtmChannelMember> retryRawMembers =
+            await channel!.getMembers();
+        print("🔁 Raw retry members: $retryRawMembers");
+
+        userIds = retryRawMembers.map((m) => m.userId).toList();
+        print("🔁 Retried Members: $userIds");
+
+        if (userIds.isEmpty) {
           print("🛑 Still no members — aborting send.");
           return;
         }

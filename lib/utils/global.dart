@@ -106,22 +106,50 @@ Map<String, dynamic> appParameters = {
   }
 };
 
-String agoraChannelName = ""; //valid 24hr
-String agoraToken = "";
-String channelName = "astrowayLive";
-String agoraLiveToken = "";
-String liveChannelName = "astrowayLive";
-String agoraChatUserId = "astrowayLive";
-String chatChannelName = "astrowayLive";
-String agoraChatToken = "";
-String encodedString = "&&";
-Color coursorColor = Color(0xFF757575);
-int? currentUserId;
-String agoraResourceId = "";
-String agoraResourceId2 = "";
-String agoraSid1 = "";
-String agoraSid2 = "";
-String? googleAPIKey;
+// String agoraChannelName = "jytoshi"; //valid 24hr
+// String agoraToken = "4590361f9ede41d282dc26c9acb2a91c";
+// String channelName = "jytoshi";
+// String agoraLiveToken = "4590361f9ede41d282dc26c9acb2a91c";
+// // String liveChannelName = "Jyotishionline";
+// String agoraLiveChannelName = "";
+// String agoraChatUserId = "jytoshi";
+// String chatChannelName = "jytoshi";
+// String agoraChatToken = "611367204#1573622";
+// String encodedString = "&&";
+// Color coursorColor = Color(0xFF757575);
+// int? currentUserId;
+// String agoraResourceId = "";
+// String agoraResourceId2 = "";
+// String agoraSid1 = "";
+// String agoraSid2 = "";
+// String? googleAPIKey;
+
+String agoraChannelName = "jyotishionline"; // Use the new channel name
+String agoraToken =
+    "007eJxTYDgqk9jN8bHxkGxWYoLfDVc9tqqlW63jGT4vDFI7l/Qo8qMCQ5JZSpqpoWGiiXFqqkliioGFWaKBuVmyZZKxhWmqoYmBsWdZRkMgI8P6CR8YGRkgEMTnY8iqzC/JLM7IzM/LycxLZWAAAE/OIvc="; // New temp token
+String channelName = "jyotishionline"; // Use the new channel name
+String agoraLiveToken =
+    "007eJxTYDgqk9jN8bHxkGxWYoLfDVc9tqqlW63jGT4vDFI7l/Qo8qMCQ5JZSpqpoWGiiXFqqkliioGFWaKBuVmyZZKxhWmqoYmBsWdZRkMgI8P6CR8YGRkgEMTnY8iqzC/JLM7IzM/LycxLZWAAAE/OIvc="; // New temp token
+// String liveChannelName = "Jyotishionline"; // This was commented out, keeping it that way
+String agoraLiveChannelName =
+    "jyotishionline"; // Assuming this should also be the new channel name
+String agoraChatUserId = "jyotishionline"; // New chat user ID
+String chatChannelName = "jyotishionline"; // New chat channel name
+String agoraChatToken = "411367204#1576328"; // New Agora Chat Token
+String encodedString = "&&"; // Unchanged
+Color coursorColor = Color(0xFF757575); // Unchanged
+int? currentUserId; // Unchanged
+String agoraResourceId = ""; // Unchanged
+String agoraResourceId2 = ""; // Unchanged
+String agoraSid1 = ""; // Unchanged
+String agoraSid2 = ""; // Unchanged
+
+// New Agora App ID - assuming you need this as a separate variable
+String agoraAppId = "b6df511a43ee4ad086a076c9b385e140";
+// Agora App Certificate is typically kept on the server-side for security reasons,
+// it should NOT be hardcoded in your client-side application.
+// If you need it for server-side logic, keep it secure.
+// String agoraAppCertificate = "YOUR_APP_CERTIFICATE_HERE"; // Do not put this in client-side code
 String lat = "21.124857";
 String lng = "73.112610";
 var nativeAndroidPlatform = const MethodChannel('nativeAndroid');
@@ -183,7 +211,7 @@ Future<void> callOnFcmApiSendPushNotifications({
       }
     };
     final url = Uri.parse(
-        'https://fcm.googleapis.com/v1/projects/astroway-diploy/messages:send');
+        'https://fcm.googleapis.com/v1/projects/jyotiuser-173d9/messages:send');
     final response = await http.post(
       url,
       headers: headers,

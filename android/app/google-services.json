@@ -1,47 +1,21 @@
 {
   "project_info": {
-    "project_number": "381086206621",
-    "firebase_url": "https://astroway-diploy-default-rtdb.firebaseio.com",
-    "project_id": "astroway-diploy",
-    "storage_bucket": "astroway-diploy.appspot.com"
+    "project_number": "1049596131961",
+    "project_id": "jyotiuser-173d9",
+    "storage_bucket": "jyotiuser-173d9.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:381086206621:android:f21e5cf69a3fbcc632e274",
+        "mobilesdk_app_id": "1:1049596131961:android:1701dd36d5fe9213bdb2a8",
         "android_client_info": {
-          "package_name": "com.astrowaydiploy.astrologer"
+          "package_name": "com.jyotishi.user"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAyiZi-oi6QilI2X-7hNcCgtbmRT2WLAhs"
-        },
-        {
-          "current_key": "AIzaSyBNWnN2vKDFSOtxh3eTwa1L5yiFxaYsxts"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:381086206621:android:f82a6af18b824fbd32e274",
-        "android_client_info": {
-          "package_name": "com.astrowaydiploy.user"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAyiZi-oi6QilI2X-7hNcCgtbmRT2WLAhs"
-        },
-        {
-          "current_key": "AIzaSyBNWnN2vKDFSOtxh3eTwa1L5yiFxaYsxts"
+          "current_key": "AIzaSyCf43So6LDiOrI4x4Lt3uD_KAIi0VFPLu8"
         }
       ],
       "services": {
