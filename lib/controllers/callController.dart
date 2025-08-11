@@ -93,13 +93,7 @@ class CallController extends GetxController
             textColor: global.textColor,
             bgColor: global.toastBackGoundColor,
           );
-        } else {
-          global.showToast(
-            message: 'Failed to send call request',
-            textColor: global.textColor,
-            bgColor: global.toastBackGoundColor,
-          );
-        }
+        } 
       });
     } catch (e) {
       print('Exception in sendCallRequest : - ${e.toString()}');

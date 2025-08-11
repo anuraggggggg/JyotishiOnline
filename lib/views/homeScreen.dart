@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
@@ -54,6 +55,7 @@ import 'package:flutter_image_slideshow/flutter_image_slideshow.dart';
 
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'package:responsive_sizer/responsive_sizer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1818,6 +1820,411 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
+<<<<<<< Updated upstream
+=======
+                      //--------------------------------------LIVE ASTROLOGER LIST---------------------------------
+                      GetBuilder<BottomNavigationController>(builder: (c) {
+                        return Get.find<BottomNavigationController>()
+                                    .liveAstrologer
+                                    .length ==
+                                0
+                            ? const SizedBox()
+                            : SizedBox(
+                                height: 38.h,
+                                child: Card(
+                                  elevation: 0,
+                                  margin: EdgeInsets.only(top: 6),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.zero,
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    'Live Astrologers',
+                                                    style: Get
+                                                        .theme
+                                                        .primaryTextTheme
+                                                        .titleMedium!
+                                                        .copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ).tr(),
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            left: 5),
+                                                    child: GestureDetector(
+                                                      onTap: () async {
+                                                        global
+                                                            .showOnlyLoaderDialog(
+                                                                context);
+                                                        await bottomControllerMain
+                                                            .getLiveAstrologerList();
+                                                        global.hideLoader();
+                                                      },
+                                                      child: const Icon(
+                                                          Icons.refresh,
+                                                          size: 20),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              GestureDetector(
+                                                onTap: () {
+                                                  Get.to(() =>
+                                                      LiveAstrologerListScreen());
+                                                },
+                                                child: Text(
+                                                  'View All',
+                                                  style: Get
+                                                      .theme
+                                                      .primaryTextTheme
+                                                      .bodySmall!
+                                                      .copyWith(
+                                                    fontWeight: FontWeight.w400,
+                                                    color: Colors.blue[500],
+                                                  ),
+                                                ).tr(),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        GetBuilder<BottomNavigationController>(
+                                            builder: (c) {
+                                          return Expanded(
+                                            child: ListView.builder(
+                                              itemCount:
+                                                  c.liveAstrologer.length,
+                                              shrinkWrap: true,
+                                              scrollDirection: Axis.horizontal,
+                                              padding: const EdgeInsets.only(
+                                                  top: 10, left: 10),
+                                              itemBuilder: (context, index) {
+                                                final astrologer =
+                                                    c.liveAstrologer[index];
+
+                                                return GestureDetector(
+                                                  onTap: () async {
+                                                    print(
+                                                        "📸 Requesting Camera Permission");
+                                                    final permissionCamera =
+                                                        await Permission.camera
+                                                            .request();
+                                                    print(
+                                                        "🎤 Requesting Microphone Permission");
+                                                    final permissionMic =
+                                                        await Permission
+                                                            .microphone
+                                                            .request();
+
+                                                    print(
+                                                        "📸 Camera Permission: \${permissionCamera.status}");
+                                                    print(
+                                                        "🎤 Microphone Permission: \${permissionMic.status}");
+
+                                                    if (!permissionCamera
+                                                            .isGranted ||
+                                                        !permissionMic
+                                                            .isGranted) {
+                                                      print(
+                                                          "❌ Permission denied. Cannot proceed to LiveAstrologerScreen.");
+                                                      Get.snackbar(
+                                                          "Permission Required",
+                                                          "Camera and Microphone are required for live call.");
+                                                      return;
+                                                    }
+                                                    bottomControllerMain
+                                                            .anotherLiveAstrologers =
+                                                        c.liveAstrologer
+                                                            .where((element) =>
+                                                                element
+                                                                    .astrologerId !=
+                                                                astrologer
+                                                                    .astrologerId)
+                                                            .toList();
+                                                    bottomControllerMain
+                                                        .update();
+
+                                                    print(
+                                                        '🚀 Navigating to LiveAstrologerScreen');
+                                                    print(
+                                                        '📡 Channel: ${astrologer.channelName}');
+                                                    print(
+                                                        '🔐 Token: ${astrologer.token}');
+                                                    print(
+                                                        '🧙 Astrologer Name: ${astrologer.name}');
+                                                    print(
+                                                        '🖼️ Profile Image: ${astrologer.profileImage}');
+                                                    print(
+                                                        '🆔 Astrologer ID: ${astrologer.astrologerId}');
+                                                    print(
+                                                        '💰 Charge: ${astrologer.charge}');
+                                                    print(
+                                                        '🎥 Video Call Rate: ${astrologer.videoCallRate}');
+                                                    print(
+                                                        '❤️ Is Follow: ${astrologer.isFollow}');
+
+                                                    print(
+                                                        "🔍 Navigating with data: ${jsonEncode({
+                                                          'token':
+                                                              astrologer.token,
+                                                          'channel': astrologer
+                                                              .channelName,
+                                                          'name':
+                                                              astrologer.name,
+                                                          'profile': astrologer
+                                                              .profileImage,
+                                                          'id': astrologer
+                                                              .astrologerId,
+                                                          'charge':
+                                                              astrologer.charge,
+                                                          'videoCallRate':
+                                                              astrologer
+                                                                  .videoCallRate,
+                                                          'isFollow': astrologer
+                                                              .isFollow,
+                                                        })}");
+
+                                                    await liveController
+                                                        .getWaitList(astrologer
+                                                            .channelName);
+                                                    liveController
+                                                            .isImInWaitList =
+                                                        liveController.waitList
+                                                            .any((e) =>
+                                                                e.userId ==
+                                                                global
+                                                                    .currentUserId);
+
+                                                    liveController
+                                                      ..isImInLive = true
+                                                      ..isJoinAsChat = false
+                                                      ..isLeaveCalled = false
+                                                      ..update();
+
+                                                    if (await global
+                                                        .isLogin()) {
+                                                      Get.to(() =>
+                                                          LiveAstrologerScreen(
+                                                            token: astrologer
+                                                                .token,
+                                                            channel: astrologer
+                                                                .channelName,
+                                                            astrologerName:
+                                                                astrologer.name,
+                                                            astrologerProfile:
+                                                                astrologer
+                                                                    .profileImage,
+                                                            astrologerId:
+                                                                astrologer
+                                                                    .astrologerId,
+                                                            isFromHome: true,
+                                                            charge: astrologer
+                                                                .charge,
+                                                            isForLiveCallAcceptDecline:
+                                                                false,
+                                                            isFromNotJoined:
+                                                                false,
+                                                            isFollow: astrologer
+                                                                    .isFollow ??
+                                                                false,
+                                                            videoCallCharge:
+                                                                astrologer
+                                                                    .videoCallRate,
+                                                          ));
+                                                    }
+                                                  },
+                                                  child: Container(
+                                                    decoration: BoxDecoration(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              FontSizes(context)
+                                                                  .width2()),
+                                                    ),
+                                                    margin:
+                                                        EdgeInsets.symmetric(
+                                                            horizontal:
+                                                                FontSizes(
+                                                                        context)
+                                                                    .width1()),
+                                                    child: Stack(
+                                                      children: [
+                                                        ClipRRect(
+                                                          borderRadius: BorderRadius
+                                                              .circular(FontSizes(
+                                                                      context)
+                                                                  .width2()),
+                                                          child: astrologer
+                                                                  .profileImage
+                                                                  .isNotEmpty
+                                                              ? Container(
+                                                                  width: 120,
+                                                                  height: 200,
+                                                                  margin:
+                                                                      const EdgeInsets
+                                                                          .only(
+                                                                          right:
+                                                                              4),
+                                                                  child: Image
+                                                                      .network(
+                                                                    "${global.imgBaseurl}${astrologer.profileImage}",
+                                                                    fit: BoxFit
+                                                                        .cover,
+                                                                    colorBlendMode:
+                                                                        BlendMode
+                                                                            .darken,
+                                                                    color: Colors
+                                                                        .black45,
+                                                                    width: FontSizes(
+                                                                            context)
+                                                                        .width30(),
+                                                                    height: FontSizes(
+                                                                            context)
+                                                                        .height20(),
+                                                                  ),
+                                                                )
+                                                              : Container(
+                                                                  width: 120,
+                                                                  height: 200,
+                                                                  margin:
+                                                                      const EdgeInsets
+                                                                          .only(
+                                                                          right:
+                                                                              4),
+                                                                  decoration:
+                                                                      BoxDecoration(
+                                                                    color: Colors
+                                                                        .black
+                                                                        .withOpacity(
+                                                                            0.3),
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                            10),
+                                                                    border: Border.all(
+                                                                        color: const Color
+                                                                            .fromARGB(
+                                                                            255,
+                                                                            214,
+                                                                            214,
+                                                                            214)),
+                                                                    image:
+                                                                        const DecorationImage(
+                                                                      fit: BoxFit
+                                                                          .cover,
+                                                                      image: AssetImage(
+                                                                          Images
+                                                                              .deafultUser),
+                                                                      colorFilter: ColorFilter.mode(
+                                                                          Colors
+                                                                              .black45,
+                                                                          BlendMode
+                                                                              .darken),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                        ),
+                                                        Positioned(
+                                                          right:
+                                                              FontSizes(context)
+                                                                  .width2(),
+                                                          top:
+                                                              FontSizes(context)
+                                                                  .height01(),
+                                                          child: Container(
+                                                            padding: EdgeInsets.symmetric(
+                                                                horizontal: FontSizes(
+                                                                        context)
+                                                                    .width2()),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              borderRadius: BorderRadius
+                                                                  .circular(FontSizes(
+                                                                          context)
+                                                                      .width2()),
+                                                              color: Get.theme
+                                                                  .primaryColor,
+                                                            ),
+                                                            child: CustomText(
+                                                              text: "Live",
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              color: whiteColor,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Positioned(
+                                                          left:
+                                                              FontSizes(context)
+                                                                  .width2(),
+                                                          bottom:
+                                                              FontSizes(context)
+                                                                  .height1(),
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              CustomText(
+                                                                text: astrologer
+                                                                    .name,
+                                                                color:
+                                                                    whiteColor,
+                                                                maxLine: 1,
+                                                                fontsize: FontSizes(
+                                                                        context)
+                                                                    .font4(),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                              ),
+                                                              CustomText(
+                                                                text:
+                                                                    "${astrologer.videoCallRate} /min",
+                                                                color: Get.theme
+                                                                    .primaryColor,
+                                                                maxLine: 1,
+                                                                fontsize: FontSizes(
+                                                                        context)
+                                                                    .font3(),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        )
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          );
+                                        }),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                      }),
+
+>>>>>>> Stashed changes
                       bottomNavigationController.astrologerList.isNotEmpty
                           ? Container(
                               margin: EdgeInsets.symmetric(horizontal: 20),

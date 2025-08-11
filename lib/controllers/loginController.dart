@@ -232,12 +232,20 @@ class LoginController extends GetxController {
     required String otp,
     required BuildContext context,
   }) async {
+<<<<<<< Updated upstream
     developer.log("Verifying OTP: Entered='$otp', Stored _sentOtp='$_sentOtp'");
+=======
+    developer.log("🔐 Sent OTP (stored): $_sentOtp");
+    developer.log("🔑 Entered OTP: $otp");
+    developer.log("📞 Verifying for phone/email: $phone");
+>>>>>>> Stashed changes
 
     if (_sentOtp != null && otp == _sentOtp) {
       developer.log("OTP matched! Proceeding to login/signup.");
       _sentOtp = null;
       update();
+
+      developer.log("✅ OTP matched. Proceeding to login/signup...");
 
       if (phone.contains('@')) {
         await loginAndSignupUser(null, phone);
@@ -245,7 +253,11 @@ class LoginController extends GetxController {
         await loginAndSignupUser(int.tryParse(phone), "");
       }
     } else {
+<<<<<<< Updated upstream
       developer.log("OTP mismatch! Entered: '$otp', Expected: '$_sentOtp'");
+=======
+      developer.log("❌ OTP Mismatch! Verification failed.");
+>>>>>>> Stashed changes
       global.hideLoader();
       global.showToast(
         message: "Invalid OTP",

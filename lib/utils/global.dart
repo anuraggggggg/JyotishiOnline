@@ -85,11 +85,53 @@ Map<String, dynamic> appParameters = {
     "imageBaseurl": "https://jyotishionline.com/astro/",
   },
   "DEV": {
-    "apiUrl": "http://192.168.29.223:8001/api",
-    "imageBaseurl": "http://192.168.29.223:8001/",
+    "apiUrl": "https://jyotishionline.com/api",
+    "imageBaseurl": "https://jyotishionline.com/api",
   }
 };
 
+<<<<<<< Updated upstream
+=======
+// String agoraChannelName = "jytoshi"; //valid 24hr
+// String agoraToken = "4590361f9ede41d282dc26c9acb2a91c";
+// String channelName = "jytoshi";
+// String agoraLiveToken = "4590361f9ede41d282dc26c9acb2a91c";
+// // String liveChannelName = "Jyotishionline";
+// String agoraLiveChannelName = "";
+// String agoraChatUserId = "jytoshi";
+// String chatChannelName = "jytoshi";
+// String agoraChatToken = "611367204#1573622";
+// String encodedString = "&&";
+// Color coursorColor = Color(0xFF757575);
+// int? currentUserId;
+// String agoraResourceId = "";
+// String agoraResourceId2 = "";
+// String agoraSid1 = "";
+// String agoraSid2 = "";
+// String? googleAPIKey;
+
+// String agoraChannelName = "Jyotishionline";
+// String agoraToken =
+//     "007eJxTYDjwMiUv/JyN1MQagZWnGiVeHt4xzUZ3X4JVh6BTxUTp5UoKDMmmqZYGiUmp5pYphiZpyYmWpiam5skW5gZJiYnJiYaG2TXlGQ2BjAwL/k5gYmSAQBBfkCGrMr8kszgjMz8vJzMvNS+1nIEBAANYJR4=";
+// String agoraLiveToken =
+//     "007eJxTYDjwMiUv/JyN1MQagZWnGiVeHt4xzUZ3X4JVh6BTxUTp5UoKDMmmqZYGiUmp5pYphiZpyYmWpiam5skW5gZJiYnJiYaG2TXlGQ2BjAwL/k5gYmSAQBBfkCGrMr8kszgjMz8vJzMvNS+1nIEBAANYJR4=";
+// String channelName = "Jyotishionline";
+// String agoraLiveChannelName = "Jyotishionline";
+// String liveChannelName = "Jyotishionline";
+// String agoraChatToken =
+//     "007eJxTYEi3lLeylpY9ILaNoYvPcE/3+ifWn++tK7+96J/ngarLUgEKDMmmqZYGiUmp5pYphiZpyYmWpiam5skW5gZJiYnJiYaGHM8rMxoCGRmkHQ4zMjKwMjACIYivwpBqZGqcZmhkoGtmbJmqa2iYZqCbaGGRBOQaGJkYGZkaplpaAgANWyXQ";
+// String agoraChatUserId = "jyotishi";
+// String chatChannelName = "jyotishi";
+// String encodedString = "&&";
+// String appName = "";
+// Color coursorColor = Color(0xFF757575); // Unchanged
+// int? currentUserId; // Unchanged
+// String agoraResourceId = ""; // Unchanged
+// String agoraResourceId2 = ""; // Unchanged
+// String agoraSid1 = ""; // Unchanged
+// String agoraSid2 = ""; // Unchanged
+
+>>>>>>> Stashed changes
 String agoraChannelName = ""; //valid 24hr
 String agoraToken = "";
 String channelName = "astrowayLive";
@@ -113,6 +155,20 @@ int? localUid;
 int? localLiveUid;
 int? localLiveUid2;
 bool isHost = false;
+
+// New Agora App ID - assuming you need this as a separate variable
+String agoraAppId = "c5e90abe79d14fca95457c870baaca11";
+// Agora App Certificate is typically kept on the server-side for security reasons,
+// it should NOT be hardcoded in your client-side application.
+// If you need it for server-side logic, keep it secure.
+// String agoraAppCertificate = "YOUR_APP_CERTIFICATE_HERE"; // Do not put this in client-side code
+// String lat = "21.124857";
+// String lng = "73.112610";
+// var nativeAndroidPlatform = const MethodChannel('nativeAndroid');
+// int? localUid;
+// int? localLiveUid;
+// int? localLiveUid2;
+// bool isHost = false;
 
 Future<void> callOnFcmApiSendPushNotifications({
   List<String?>? fcmTokem,

@@ -272,12 +272,6 @@ class ChatController extends GetxController
             textColor: global.textColor,
             bgColor: global.toastBackGoundColor,
           );
-        } else {
-          global.showToast(
-            message: 'Failed to send chat request',
-            textColor: global.textColor,
-            bgColor: global.toastBackGoundColor,
-          );
         }
       });
     } catch (e) {
