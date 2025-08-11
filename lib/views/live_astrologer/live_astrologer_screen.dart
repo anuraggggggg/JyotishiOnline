@@ -4030,11 +4030,6 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
 //MOBILE SUPPORT
   void sendChannelMessage(String channelMessage, String? gift) async {
     try {
-<<<<<<< Updated upstream
-      await channel.sendMessage2(RtmMessage.fromText(
-          '$currentUserName&&$channelMessage&&$currentUserProfile&&$gift'));
-      log('channelId -------->$channelId');
-=======
       if (channel == null) {
         print("❌ RTM channel is not initialized.");
         return;
@@ -4066,7 +4061,6 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
         print("✅ Message sent on retry.");
       }
 
->>>>>>> Stashed changes
       setState(() {
         messageList.add(MessageModel(
           message: channelMessage,

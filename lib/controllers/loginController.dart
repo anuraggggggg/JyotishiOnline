@@ -232,13 +232,9 @@ class LoginController extends GetxController {
     required String otp,
     required BuildContext context,
   }) async {
-<<<<<<< Updated upstream
-    developer.log("Verifying OTP: Entered='$otp', Stored _sentOtp='$_sentOtp'");
-=======
     developer.log("🔐 Sent OTP (stored): $_sentOtp");
     developer.log("🔑 Entered OTP: $otp");
     developer.log("📞 Verifying for phone/email: $phone");
->>>>>>> Stashed changes
 
     if (_sentOtp != null && otp == _sentOtp) {
       developer.log("OTP matched! Proceeding to login/signup.");
@@ -252,20 +248,16 @@ class LoginController extends GetxController {
       } else {
         await loginAndSignupUser(int.tryParse(phone), "");
       }
-    } else {
-<<<<<<< Updated upstream
-      developer.log("OTP mismatch! Entered: '$otp', Expected: '$_sentOtp'");
-=======
-      developer.log("❌ OTP Mismatch! Verification failed.");
->>>>>>> Stashed changes
-      global.hideLoader();
-      global.showToast(
-        message: "Invalid OTP",
-        textColor: Colors.white,
-        bgColor: Colors.red,
-      );
-    }
+  } else {
+    developer.log("OTP mismatch! Entered: '$otp', Expected: '$_sentOtp'");
+    developer.log("❌ OTP Mismatch! Verification failed.");
+    global.showToast(
+      message: "Invalid OTP",
+      textColor: Colors.white,
+      bgColor: Colors.red,
+    );
   }
+}
 
   void timer() {
     maxSecond = 60;

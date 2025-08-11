@@ -1820,8 +1820,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
-<<<<<<< Updated upstream
-=======
                       //--------------------------------------LIVE ASTROLOGER LIST---------------------------------
                       GetBuilder<BottomNavigationController>(builder: (c) {
                         return Get.find<BottomNavigationController>()
@@ -2224,7 +2222,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               );
                       }),
 
->>>>>>> Stashed changes
                       bottomNavigationController.astrologerList.isNotEmpty
                           ? Container(
                               margin: EdgeInsets.symmetric(horizontal: 20),
