@@ -103,7 +103,7 @@ class LoginController extends GetxController {
           body[0]['status'] == 'success') {
         timer();
         await Future.delayed(Duration(milliseconds: 100));
-        Get.to(() => VerifyPhoneScreen(phoneNumber: onlyDigits));
+        Get.to(() => VerifyPhoneScreen(phoneNumber: onlyDigits, countryCode: '',));
       } else {
         _sentOtp = null;
         update();
@@ -171,7 +171,7 @@ class LoginController extends GetxController {
             .log("✅ WhatsApp OTP sent successfully to $formattedPhoneNumber");
         timer();
         await Future.delayed(Duration(milliseconds: 100));
-        Get.to(() => VerifyPhoneScreen(phoneNumber: onlyDigits));
+        Get.to(() => VerifyPhoneScreen(phoneNumber: onlyDigits, countryCode: '',));
       } else {
         _sentOtp = null;
         update();
@@ -223,7 +223,7 @@ class LoginController extends GetxController {
     );
     timer();
     Get.to(() => VerifyPhoneScreen(
-          phoneNumber: email,
+          phoneNumber: email, countryCode: '+91',
         ));
   }
 

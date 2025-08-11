@@ -1,38 +1,40 @@
-// ignore_for_file: deprecated_member_use, must_be_immutable
-
 import 'dart:io';
-import 'package:AstrowayCustomer/controllers/loginController.dart';
-import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/foundation.dart';
+import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:sms_autofill/sms_autofill.dart';
-import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:responsive_sizer/responsive_sizer.dart';
-import 'package:permission_handler/permission_handler.dart'; // 👈 Added
-
+import 'package:easy_localization/easy_localization.dart';
+import 'package:AstrowayCustomer/controllers/loginController.dart';
+import 'package:AstrowayCustomer/utils/global.dart' as global;
 import '../theme/appTheme.dart';
 
 class VerifyPhoneScreen extends StatefulWidget {
   final String phoneNumber;
+  final String countryCode;
 
-  VerifyPhoneScreen({Key? key, required this.phoneNumber}) : super(key: key);
+  VerifyPhoneScreen(
+      {Key? key, required this.phoneNumber, required this.countryCode})
+      : super(key: key);
 
   @override
   State<VerifyPhoneScreen> createState() => _VerifyPhoneScreenState();
 }
 
-class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> with CodeAutoFill {
+class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
+    with CodeAutoFill {
   final LoginController loginController = Get.find<LoginController>();
-  final TextEditingController pinEditingControllerlogin = TextEditingController();
+  final TextEditingController pinEditingControllerlogin =
+      TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    requestSmsPermission(); // 👈 Ask for SMS permission
-    listenForCode(); // 👈 Start listening for OTP
+    requestSmsPermission();
+    listenForCode();
     SmsAutoFill().getAppSignature.then((signature) {
-      debugPrint("App Signature: $signature"); // 👈 For backend SMS format
+      debugPrint("App Signature: $signature");
     });
   }
 
@@ -59,6 +61,40 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> with CodeAutoFill
     cancel();
     pinEditingControllerlogin.dispose();
     super.dispose();
+  }
+
+  Future<void> _verifyOtp() async {
+    try {
+      global.showOnlyLoaderDialog(context);
+      final response = await FastAPIServices().verifyOtp(
+        contactNo: widget.phoneNumber,
+        countryCode: widget.countryCode,
+        otp: loginController.smsCode,
+      );
+      global.hideLoader();
+
+      if (response.statusCode == 200) {
+        global.showToast(
+          message: "OTP verified successfully!",
+          textColor: global.textColor,
+          bgColor: Colors.green,
+        );
+        // TODO: Navigate to dashboard or home page
+      } else {
+        global.showToast(
+          message: "OTP verification failed!",
+          textColor: Colors.white,
+          bgColor: Colors.red,
+        );
+      }
+    } catch (e) {
+      global.hideLoader();
+      global.showToast(
+        message: "Error verifying OTP. Please try again.",
+        textColor: Colors.white,
+        bgColor: Colors.red,
+      );
+    }
   }
 
   @override
@@ -99,7 +135,8 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> with CodeAutoFill
                     controller: pinEditingControllerlogin,
                     currentCode: pinEditingControllerlogin.text,
                     decoration: UnderlineDecoration(
-                      textStyle: const TextStyle(fontSize: 20, color: Colors.black),
+                      textStyle:
+                          const TextStyle(fontSize: 20, color: Colors.black),
                       colorBuilder: FixedColorBuilder(Colors.grey.shade400),
                     ),
                     onCodeChanged: (code) {
@@ -116,10 +153,6 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> with CodeAutoFill
                     builder: (controller) {
                       return controller.maxSecond != 0
                           ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: kIsWeb
-                                  ? MainAxisAlignment.center
-                                  : MainAxisAlignment.start,
                               children: [
                                 const SizedBox(width: 15),
                                 RichText(
@@ -151,7 +184,8 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> with CodeAutoFill
                                   controller.maxSecond = 60;
                                   controller.update();
                                   controller.timer();
-                                  controller.phoneController.text = widget.phoneNumber;
+                                  controller.phoneController.text =
+                                      widget.phoneNumber;
                                   global.showOnlyLoaderDialog(context);
                                   await controller.sendOtpToPhone();
                                   global.hideLoader();
@@ -170,23 +204,11 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> with CodeAutoFill
                   const SizedBox(height: 90),
                   GestureDetector(
                     onTap: () async {
-                      try {
-                        global.showOnlyLoaderDialog(context);
-                        await loginController.verifyOtp(
-                          phone: widget.phoneNumber,
-                          otp: loginController.smsCode,
-                          context: context,
-                        );
-                        global.hideLoader();
-                      } catch (e) {
-                        global.hideLoader();
-                        global.showToast(
-                          message: "OTP verification failed",
-                          textColor: Colors.white,
-                          bgColor: Colors.red,
-                        );
-                        debugPrint("OTP verification error: $e");
-                      }
+                      await FastAPIServices().verifyOtp(
+                        contactNo: widget.phoneNumber,
+                        countryCode: widget.countryCode,
+                        otp: loginController.smsCode,
+                      );
                     },
                     child: Container(
                       height: 45,
@@ -194,7 +216,8 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> with CodeAutoFill
                       margin: const EdgeInsets.only(top: 20),
                       decoration: BoxDecoration(
                         color: appYellow,
-                        borderRadius: const BorderRadius.all(Radius.circular(16)),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(16)),
                       ),
                       child: const Center(
                         child: Text(
