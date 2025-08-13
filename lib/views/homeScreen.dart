@@ -13,6 +13,7 @@ import 'package:AstrowayCustomer/controllers/homeController.dart';
 import 'package:AstrowayCustomer/controllers/kundliController.dart';
 import 'package:AstrowayCustomer/controllers/liveController.dart';
 import 'package:AstrowayCustomer/controllers/reviewController.dart';
+import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 
 import 'package:AstrowayCustomer/model/kundli_model.dart';
 import 'package:AstrowayCustomer/utils/AppColors.dart';
@@ -103,6 +104,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    FastAPIServices().fetchCustomerDetails();
+    FastAPIServices().fetchCurrentUserDetails();
   }
 
   @override

@@ -4,6 +4,7 @@ import 'package:AstrowayCustomer/controllers/bottomNavigationController.dart';
 import 'package:AstrowayCustomer/controllers/callController.dart';
 import 'package:AstrowayCustomer/controllers/homeController.dart';
 import 'package:AstrowayCustomer/controllers/reviewController.dart';
+import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/model/current_user_model.dart';
 import 'package:AstrowayCustomer/model/systemFlagModel.dart';
 import 'package:AstrowayCustomer/utils/global.dart';
@@ -24,6 +25,7 @@ import '../views/call/oneToOneVideo/onetooneVideo.dart';
 import '../views/chat/incoming_chat_request.dart';
 
 class SplashController extends GetxController {
+  final FastAPIServices _fastAPIServices = FastAPIServices();
   APIHelper apiHelper = APIHelper();
   CurrentUserModel? currentUser;
   String appName = "";
@@ -40,7 +42,9 @@ class SplashController extends GetxController {
   }
 
   _inIt() async {
-    await getSystemFlag();
+    // Check login status using saved token
+    await _fastAPIServices.checkLoginStatus();
+    // await getSystemFlag();
 
     // Commented out to prevent splash from hanging when API data is missing
     // appName = global.getSystemFlagValueForLogin(global.systemFlagNameList.appName);

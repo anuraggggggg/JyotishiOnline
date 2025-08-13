@@ -26,7 +26,7 @@ import '../views/proKerela/services.dart';
 //views
 
 class BottomNavigationController extends GetxController {
-  int bottomNavIndex = 0.obs();
+  int bottomNavIndex = 0;
   int historyIndex = 0;
   APIHelper apiHelper = APIHelper();
   var astrologerList = <AstrologerModel>[];
@@ -83,11 +83,13 @@ class BottomNavigationController extends GetxController {
         HomeScreen(userDetails: userModel),
         ChatScreen(),
         // LiveAstrologerListScreen(isFromBottom: true),
-        CallScreen(flag: 0,),
+        CallScreen(
+          flag: 0,
+        ),
         HistoryScreen(
           currentIndex: historyIndex,
         ),
-    AstrologyServicesPage(),
+        AstrologyServicesPage(),
       ];
   // final HomeController homeController = Get.find<HomeController>();
   @override
@@ -143,25 +145,82 @@ class BottomNavigationController extends GetxController {
     });
   }
 
+  // Add this to your BottomNavigationController class
+
   setIndex(int index, int histIndexx) {
-    int currentIndex = index;
+    // Remove the problematic line that sets currentIndex = 0 at the end
 
-    currentIndex = index;
-
-    if (currentIndex == 1 || currentIndex == 3) {
+    if (index == 1 || index == 3) {
       startIndex = 0;
       astrologerList.clear();
       isAllDataLoaded = false;
       print("on bottom ${astrologerList.length}");
       getAstrologerList(isLazyLoading: false);
     }
-    if (currentIndex == 0) {
+    if (index == 0) {
       getLiveAstrologerList();
     }
 
-    setBottomIndex(currentIndex, histIndexx);
-    currentIndex = 0;
+    setBottomIndex(index, histIndexx); // This should set bottomNavIndex = index
+
+    // DON'T set currentIndex = 0 here - this was causing the issue
+    update(); // Make sure to call update to refresh the UI
   }
+
+// Also fix the setBottomIndex method
+  Future setBottomIndex(int index, int histIndex) async {
+    try {
+      // Force first load to start at 0
+      if (historyIndex == null) {
+        bottomNavIndex = 0;
+      } else {
+        bottomNavIndex = index;
+      }
+
+      if (histIndex != 0) {
+        historyIndex = histIndex;
+      }
+
+      if (bottomNavIndex == 2 && liveAstrologer.isNotEmpty) {
+        anotherLiveAstrologers = liveAstrologer
+            .where((element) =>
+                element.astrologerId != liveAstrologer[0].astrologerId)
+            .toList();
+      }
+
+      update();
+    } catch (e) {
+      print(
+          "Exception - BottomNavigationController.dart - setBottomIndex(): $e");
+    }
+  }
+
+// Add this method to ensure proper initialization
+  void initializeBottomNavigation() {
+    bottomNavIndex = 0;
+    historyIndex = 0;
+    update();
+  }
+
+  // setIndex(int index, int histIndexx) {
+  //   int currentIndex = index;
+
+  //   currentIndex = index;
+
+  //   if (currentIndex == 1 || currentIndex == 3) {
+  //     startIndex = 0;
+  //     astrologerList.clear();
+  //     isAllDataLoaded = false;
+  //     print("on bottom ${astrologerList.length}");
+  //     getAstrologerList(isLazyLoading: false);
+  //   }
+  //   if (currentIndex == 0) {
+  //     getLiveAstrologerList();
+  //   }
+
+  //   setBottomIndex(currentIndex, histIndexx);
+  //   currentIndex = 0;
+  // }
 
   // Future<void> dialogForJoinInWaitListForListPageOnly(
   //     context,
@@ -332,7 +391,12 @@ class BottomNavigationController extends GetxController {
   // }
 
   Future<void> dialogForJoinInWaitList(
-      context, String astrologerName, bool forChat,String status,String astroProfile,) async {
+    context,
+    String astrologerName,
+    bool forChat,
+    String status,
+    String astroProfile,
+  ) async {
     showDialog(
         context: context,
         builder: (context) {
@@ -346,8 +410,7 @@ class BottomNavigationController extends GetxController {
                   height: 50,
                   width: 50,
                   fit: BoxFit.cover,
-                  imageUrl:
-                  "${global.imgBaseurl}${astroProfile}",
+                  imageUrl: "${global.imgBaseurl}${astroProfile}",
                   imageBuilder: (context, imageProvider) {
                     return CircleAvatar(
                       radius: 35,
@@ -356,7 +419,7 @@ class BottomNavigationController extends GetxController {
                     );
                   },
                   placeholder: (context, url) =>
-                  const Center(child: CircularProgressIndicator()),
+                      const Center(child: CircularProgressIndicator()),
                   errorWidget: (context, url, error) {
                     return Container(
                       child: CircleAvatar(
@@ -390,8 +453,11 @@ class BottomNavigationController extends GetxController {
               Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Text(
-                  status.toString()=="Offline"? 'You can not talk to astrologer because astrologer is Currently Offline':(status.toString()=="Busy"?
-                  'You can not talk to astrologer because astrologer is Currently Busy':"You can not talk to astrologer because astrologer is Currently in Break"),
+                  status.toString() == "Offline"
+                      ? 'You can not talk to astrologer because astrologer is Currently Offline'
+                      : (status.toString() == "Busy"
+                          ? 'You can not talk to astrologer because astrologer is Currently Busy'
+                          : "You can not talk to astrologer because astrologer is Currently in Break"),
                   style: TextStyle(
                     color: Colors.red,
                     fontSize: 15.sp,
@@ -581,7 +647,6 @@ class BottomNavigationController extends GetxController {
         });
   }
 
-
   Future<void> dialogForNotCreatingSession(context) async {
     showDialog(
         context: context,
@@ -726,28 +791,28 @@ class BottomNavigationController extends GetxController {
     }
   }
 
-  Future setBottomIndex(int index, int histIndex) async {
-    try {
-      bottomNavIndex = index;
-      if (histIndex != 0) {
-        historyIndex = histIndex;
-      }
-      if (index == 2) {
-        if (liveAstrologer.isNotEmpty) {
-          anotherLiveAstrologers = liveAstrologer
-              .where((element) =>
-                  element.astrologerId != liveAstrologer[index].astrologerId)
-              .toList();
-          update();
-        }
-      }
+  // Future setBottomIndex(int index, int histIndex) async {
+  //   try {
+  //     bottomNavIndex = index;
+  //     if (histIndex != 0) {
+  //       historyIndex = histIndex;
+  //     }
+  //     if (index == 2) {
+  //       if (liveAstrologer.isNotEmpty) {
+  //         anotherLiveAstrologers = liveAstrologer
+  //             .where((element) =>
+  //                 element.astrologerId != liveAstrologer[index].astrologerId)
+  //             .toList();
+  //         update();
+  //       }
+  //     }
 
-      update();
-    } catch (e) {
-      print("Exception - BottomNavigationController.dart - setBottomIndex():" +
-          e.toString());
-    }
-  }
+  //     update();
+  //   } catch (e) {
+  //     print("Exception - BottomNavigationController.dart - setBottomIndex():" +
+  //         e.toString());
+  //   }
+  // }
 
   Future<dynamic> getAstrologerList(
       {List<int>? skills,
@@ -996,7 +1061,6 @@ class BottomNavigationController extends GetxController {
       print("Exception in getAstrologerbyId :-" + e.toString());
     }
   }
-
 
   Future<dynamic> astrologerReportAndBlock(int astrologerId) async {
     try {

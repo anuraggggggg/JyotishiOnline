@@ -326,6 +326,17 @@ showSnackBar(String title, String text, {Duration? duration}) {
       snackPosition: SnackPosition.BOTTOM);
 }
 
+void showLoader() {
+  Get.dialog(
+    const Center(
+      child: CircularProgressIndicator(
+        color: Colors.black,
+      ),
+    ),
+    barrierDismissible: false,
+  );
+}
+
 void hideLoader() {
   Get.back();
 }
@@ -490,10 +501,47 @@ String getSystemFlagValue(String flag) {
       .value;
 }
 
+// String getSystemFlagValueForLogin(String flag) {
+//   String value =
+//       splashController.syatemFlag.firstWhere((e) => e.name == flag).value;
+//   return splashController.syatemFlag.firstWhere((e) => e.name == flag).value;
+// }
+
 String getSystemFlagValueForLogin(String flag) {
-  String value =
-      splashController.syatemFlag.firstWhere((e) => e.name == flag).value;
-  return splashController.syatemFlag.firstWhere((e) => e.name == flag).value;
+  try {
+    // Check if the list is not empty
+    if (splashController.syatemFlag.isNotEmpty) {
+      // Use where().isNotEmpty to check if flag exists first
+      final matchingFlags =
+          splashController.syatemFlag.where((e) => e.name == flag);
+
+      if (matchingFlags.isNotEmpty) {
+        return matchingFlags.first.value;
+      }
+    }
+
+    // Return a default value if flag not found or list is empty
+    print('Warning: System flag "$flag" not found, returning default value');
+    return getDefaultFlagValue(flag);
+  } catch (e) {
+    print('Error in getSystemFlagValueForLogin: $e');
+    return getDefaultFlagValue(flag); // Fallback to default
+  }
+}
+
+// Helper function to provide default values for different flags
+String getDefaultFlagValue(String flag) {
+  switch (flag) {
+    case 'login_required':
+      return 'false';
+    case 'maintenance_mode':
+      return 'false';
+    case 'app_version':
+      return '1.0.0';
+    // Add more cases as needed based on your app's flags
+    default:
+      return 'default_value'; // Or empty string ''
+  }
 }
 
 showToast(
