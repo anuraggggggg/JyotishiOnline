@@ -8,6 +8,7 @@ import 'package:AstrowayCustomer/controllers/loginController.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/theme/appTheme.dart';
 import 'package:AstrowayCustomer/utils/images.dart';
+import 'package:AstrowayCustomer/views/loginWithEmailScreen.dart';
 import 'package:AstrowayCustomer/views/verifyPhoneScreen.dart';
 import 'package:easy_localization/easy_localization.dart';
 
@@ -328,6 +329,86 @@ class _LoginScreenState extends State<LoginScreen> {
                                 SizedBox(height: 10),
                               ],
                               SizedBox(height: 20),
+                              // Add this code snippet within your Column widget,
+// after the 'Send OTP' button, and before the terms & conditions text.
+
+                              SizedBox(height: 20),
+// Add this new section for navigation to the Sign Up page
+                              Center(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    // Navigate to your Sign Up screen here
+                                    // Replace 'SignUpScreen()' with the name of your Sign Up page widget
+                                    // Navigator.push(
+                                    //   context,
+                                    //   MaterialPageRoute(
+                                    //     builder: (context) => SignUpScreen(),
+                                    //   ),
+                                    // );
+                                  },
+                                  child: RichText(
+                                    text: TextSpan(
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey,
+                                      ),
+                                      children: <TextSpan>[
+                                        TextSpan(
+                                            text: "Don't have an account? "),
+                                        TextSpan(
+                                          text: "Sign Up",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors
+                                                .blue, // or your desired color
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                  height:
+                                      20), // This adds some space before the next element
+                              Center(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    // Navigate to your Sign Up screen here
+                                    // Replace 'SignUpScreen()' with the name of your Sign Up page widget
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            LoginWithEmailScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: RichText(
+                                    text: TextSpan(
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey,
+                                      ),
+                                      children: <TextSpan>[
+                                        TextSpan(
+                                          text: "Login with Email & Password ",
+                                        ),
+                                        TextSpan(
+                                          text: "Click Here",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors
+                                                .blue, // or your desired color
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 20),
+
                               Text(
                                 "By Creating account, you are accepting terms & conditions",
                                 style: TextStyle(

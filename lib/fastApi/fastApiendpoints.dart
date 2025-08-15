@@ -16,14 +16,21 @@ class FastApiEndpoints {
   static const String customerDetails =
       "$fastApiBaseUrl/api/v1/customerdetails";
 
+  // ---------------- ALL WALLET DETAILS ----------------
+
+  static const String allWalletDetails =
+      "$fastApiBaseUrl/api/v1/userwallets"; // Fetch all wallet details
+
+  static const String walletDetailsById =
+      "$fastApiBaseUrl/api/v1/userwallets/"; // Append wallet ID to
+
   // ---------------- CURRENT USER DETAILS ----------------
 
-static String currentUserDetails(String userId) =>
-    "$fastApiBaseUrl/api/v1/customerdetails/$userId";
-
-
+  static String currentUserDetails(String userId) =>
+      "$fastApiBaseUrl/api/v1/customerdetails/$userId";
 
   static const String signupStep1 = "$fastApiBaseUrl/api/v1/users/signup/step1";
+
   static const String signupStep2 = "$fastApiBaseUrl/api/v1/users/signup/step2";
   static const String resendOtp =
       "$fastApiBaseUrl/api/v1/users/signup/resend-otp";

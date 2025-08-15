@@ -22,6 +22,7 @@ class LoginController extends GetxController {
   SplashController splashController = Get.find<SplashController>();
   APIHelper apiHelper = APIHelper();
   HomeController homeController = Get.find<HomeController>();
+  RxBool isLoading = false.obs;
 
   // CHANGE 1: Make countryCode an RxString
   RxString countryCode = "+91".obs; // Initialize as observable
@@ -103,7 +104,10 @@ class LoginController extends GetxController {
           body[0]['status'] == 'success') {
         timer();
         await Future.delayed(Duration(milliseconds: 100));
-        Get.to(() => VerifyPhoneScreen(phoneNumber: onlyDigits, countryCode: '',));
+        Get.to(() => VerifyPhoneScreen(
+              phoneNumber: onlyDigits,
+              countryCode: '',
+            ));
       } else {
         _sentOtp = null;
         update();
@@ -124,6 +128,102 @@ class LoginController extends GetxController {
       );
       developer.log("SMS OTP Error: $e");
     }
+  }
+
+  Future<void> loginUser(int? phoneNumber, String email) async {
+    try {
+      isLoading.value = true;
+      await global.getDeviceData();
+
+      final loginModel = LoginModel()
+        ..countryCode = countryCode.value
+        ..deviceInfo = DeviceInfoLoginModel(
+          appId: global.appId,
+          appVersion: global.appVersion,
+          deviceId: global.deviceId,
+          deviceLocation: global.deviceLocation ?? "",
+          deviceManufacturer: global.deviceManufacturer,
+          deviceModel: global.deviceModel,
+          fcmToken: global.fcmToken,
+        );
+
+      if (email.isEmpty) {
+        loginModel.contactNo = phoneNumber.toString();
+      } else {
+        loginModel.email = email;
+      }
+
+      // 🔍 Log input model
+      developer.log("🧾 Attempting Login:");
+      developer.log("📧 Email: ${loginModel.email}");
+      developer.log("📞 Contact No: ${loginModel.contactNo}");
+      developer.log("🌐 Country Code: ${loginModel.countryCode}");
+      developer.log("📱 Device Info:");
+      developer.log("  • App ID: ${loginModel.deviceInfo?.appId}");
+      developer.log("  • App Version: ${loginModel.deviceInfo?.appVersion}");
+      developer.log("  • Device ID: ${loginModel.deviceInfo?.deviceId}");
+      developer.log("  • Location: ${loginModel.deviceInfo?.deviceLocation}");
+      developer.log(
+          "  • Manufacturer: ${loginModel.deviceInfo?.deviceManufacturer}");
+      developer.log("  • Model: ${loginModel.deviceInfo?.deviceModel}");
+      developer.log("  • FCM Token: ${loginModel.deviceInfo?.fcmToken}");
+
+      final result = await apiHelper.loginSignUp(loginModel);
+
+      developer.log("📩 Server Response:");
+      developer.log("  ✅ Status: ${result.status}");
+      developer.log("  📝 Message: ${result.message}");
+      developer.log("  📦 Record: ${result.recordList}");
+
+      if (result.status == "200") {
+        final recordId = result.recordList["recordList"];
+        final token = result.recordList["token"];
+        final tokenType = result.recordList["token_type"];
+
+        developer.log("🎉 Login successful!");
+        developer.log("  🆔 User ID: ${recordId["id"]}");
+        developer.log("  🔐 Token: $token");
+        developer.log("  🔒 Token Type: $tokenType");
+
+        await global.saveCurrentUser(recordId["id"], token, tokenType);
+        await splashController.getCurrentUserData();
+        await global.getCurrentUser();
+
+        homeController.myOrders.clear();
+        time?.cancel();
+        update();
+
+        if (!Get.isRegistered<BottomController>()) {
+          Get.put(BottomController());
+        }
+
+        Get.offAll(() => BottomNavigationBarScreen(index: 0));
+      } else {
+        global.showToast(
+          message: result.message ?? 'Failed to sign in',
+          textColor: global.textColor,
+          bgColor: global.toastBackGoundColor,
+        );
+      }
+    } catch (e, st) {
+      developer.log("❌ Login Error: $e", stackTrace: st);
+      global.showToast(
+        message: "Login failed. Please try again.",
+        textColor: Colors.white,
+        bgColor: Colors.red,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  @override
+  void onClose() {
+    // REMOVED phoneController.dispose();
+    developer.log(
+        'LoginController onClose: phoneController NOT disposed (permanent)'); // Add log
+    time?.cancel();
+    super.onClose();
   }
 
   Future<void> sendOtpViaWhatsApp({required String phoneNumber}) async {
@@ -171,7 +271,10 @@ class LoginController extends GetxController {
             .log("✅ WhatsApp OTP sent successfully to $formattedPhoneNumber");
         timer();
         await Future.delayed(Duration(milliseconds: 100));
-        Get.to(() => VerifyPhoneScreen(phoneNumber: onlyDigits, countryCode: '',));
+        Get.to(() => VerifyPhoneScreen(
+              phoneNumber: onlyDigits,
+              countryCode: '',
+            ));
       } else {
         _sentOtp = null;
         update();
@@ -223,7 +326,8 @@ class LoginController extends GetxController {
     );
     timer();
     Get.to(() => VerifyPhoneScreen(
-          phoneNumber: email, countryCode: '+91',
+          phoneNumber: email,
+          countryCode: '+91',
         ));
   }
 
@@ -248,16 +352,16 @@ class LoginController extends GetxController {
       } else {
         await loginAndSignupUser(int.tryParse(phone), "");
       }
-  } else {
-    developer.log("OTP mismatch! Entered: '$otp', Expected: '$_sentOtp'");
-    developer.log("❌ OTP Mismatch! Verification failed.");
-    global.showToast(
-      message: "Invalid OTP",
-      textColor: Colors.white,
-      bgColor: Colors.red,
-    );
+    } else {
+      developer.log("OTP mismatch! Entered: '$otp', Expected: '$_sentOtp'");
+      developer.log("❌ OTP Mismatch! Verification failed.");
+      global.showToast(
+        message: "Invalid OTP",
+        textColor: Colors.white,
+        bgColor: Colors.red,
+      );
+    }
   }
-}
 
   void timer() {
     maxSecond = 60;
@@ -336,12 +440,5 @@ class LoginController extends GetxController {
         bgColor: Colors.red,
       );
     }
-  }
-
-  @override
-  void onClose() {
-    phoneController.dispose();
-    time?.cancel();
-    super.onClose();
   }
 }

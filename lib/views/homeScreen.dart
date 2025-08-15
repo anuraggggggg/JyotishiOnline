@@ -14,6 +14,7 @@ import 'package:AstrowayCustomer/controllers/kundliController.dart';
 import 'package:AstrowayCustomer/controllers/liveController.dart';
 import 'package:AstrowayCustomer/controllers/reviewController.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
+import 'package:AstrowayCustomer/model/fastApiModel/UserModel.dart';
 
 import 'package:AstrowayCustomer/model/kundli_model.dart';
 import 'package:AstrowayCustomer/utils/AppColors.dart';
@@ -77,7 +78,7 @@ import 'customer_support/customer_support_chat_screen.dart';
 import 'daily_horoscope/dailyHoroscopeScreen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final KundliModel? userDetails;
+  final UserModel? userDetails;
   HomeScreen({a, o, this.userDetails}) : super();
 
   @override
@@ -106,6 +107,25 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     FastAPIServices().fetchCustomerDetails();
     FastAPIServices().fetchCurrentUserDetails();
+    FastAPIServices().getAllWalletDetails();
+    _fetchAllData();
+  }
+
+  void _fetchAllData() async {
+    final apiService = FastAPIServices();
+
+    // Fetch wallets
+    try {
+      final wallets =
+          await apiService.getAllWalletDetails(); // now properly awaited
+      for (var wallet in wallets) {
+        print(wallet); // prints each wallet
+      }
+    } catch (e) {
+      print("❌ Error fetching wallets: $e");
+    }
+
+    // You can also fetch customers and current user here similarly
   }
 
   @override
@@ -128,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
           elevation: 0,
           // backgroundColor: Colors.grey,
           title: Text(
-            "Hi ${(splashController.currentUser == null || splashController.currentUser!.name == "") ? "User" : splashController.currentUser!.name}",
+            "Hi ${widget.userDetails?.name ?? "User"}",
             style: Get.theme.primaryTextTheme.titleLarge!.copyWith(
               fontSize: kIsWeb
                   ? MediaQuery.of(context).size.width * 0.027

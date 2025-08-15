@@ -5,6 +5,7 @@ import 'dart:developer';
 import 'package:AstrowayCustomer/controllers/liveController.dart';
 import 'package:AstrowayCustomer/controllers/splashController.dart';
 import 'package:AstrowayCustomer/model/astrologer_model.dart';
+import 'package:AstrowayCustomer/model/fastApiModel/UserModel.dart';
 import 'package:AstrowayCustomer/model/kundli_model.dart';
 import 'package:AstrowayCustomer/model/live_asrtrologer_model.dart';
 import 'package:AstrowayCustomer/utils/services/api_helper.dart';
@@ -73,7 +74,7 @@ class BottomNavigationController extends GetxController {
   List<int>? languageFilter;
   List<String>? genderFilterList;
   int? categoryId;
-  KundliModel? userModel;
+  UserModel? userModel;
   String? sortBy;
   String? sortingFilter = ''.obs();
   int? selectedCatId;
