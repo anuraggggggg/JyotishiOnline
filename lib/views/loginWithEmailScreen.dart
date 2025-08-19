@@ -65,8 +65,28 @@ class LoginWithEmailScreen extends StatelessWidget {
                       decoration: InputDecoration(
                         labelText: 'Email',
                         prefixIcon: Icon(Icons.email, color: buttonColor1),
-                        border: OutlineInputBorder(
+                        enabledBorder: OutlineInputBorder(
+                          // Border when not focused
                           borderRadius: BorderRadius.circular(10.0),
+                          borderSide:
+                              const BorderSide(color: Colors.grey, width: 1.0),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          // Border when focused
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide: BorderSide(color: appYellow, width: 2.0),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          // Border when error
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide:
+                              const BorderSide(color: Colors.red, width: 1.5),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          // Border when focused & error
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide:
+                              const BorderSide(color: Colors.red, width: 2.0),
                         ),
                       ),
                       keyboardType: TextInputType.emailAddress,
@@ -80,6 +100,7 @@ class LoginWithEmailScreen extends StatelessWidget {
                         return null;
                       },
                     ),
+
                     const SizedBox(height: 16.0),
 
                     // Password Field
@@ -88,8 +109,24 @@ class LoginWithEmailScreen extends StatelessWidget {
                       decoration: InputDecoration(
                         labelText: 'Password',
                         prefixIcon: Icon(Icons.lock, color: buttonColor1),
-                        border: OutlineInputBorder(
+                        enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10.0),
+                          borderSide:
+                              const BorderSide(color: Colors.grey, width: 1.0),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide: BorderSide(color: appYellow, width: 2.0),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide:
+                              const BorderSide(color: Colors.red, width: 1.5),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide:
+                              const BorderSide(color: Colors.red, width: 2.0),
                         ),
                       ),
                       obscureText: true,

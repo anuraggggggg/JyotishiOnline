@@ -15,6 +15,7 @@ import 'package:AstrowayCustomer/controllers/liveController.dart';
 import 'package:AstrowayCustomer/controllers/reviewController.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/UserModel.dart';
+import 'package:AstrowayCustomer/model/fastApiModel/currentUserWalletModel.dart';
 
 import 'package:AstrowayCustomer/model/kundli_model.dart';
 import 'package:AstrowayCustomer/utils/AppColors.dart';
@@ -78,8 +79,7 @@ import 'customer_support/customer_support_chat_screen.dart';
 import 'daily_horoscope/dailyHoroscopeScreen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final UserModel? userDetails;
-  HomeScreen({a, o, this.userDetails}) : super();
+  HomeScreen() : super();
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -101,6 +101,10 @@ class _HomeScreenState extends State<HomeScreen> {
   int _pageIndex = 0;
   final bottomNavigationController = Get.find<BottomNavigationController>();
   final chatController = Get.find<ChatController>();
+  CurrentUserWalletModel? _wallet;
+  UserModel? userDetails;
+  String? userName;
+
   // AppEventsLogger logger = AppEventsLogger.newLogger(this);
   @override
   void initState() {
@@ -108,10 +112,25 @@ class _HomeScreenState extends State<HomeScreen> {
     FastAPIServices().fetchCustomerDetails();
     FastAPIServices().fetchCurrentUserDetails();
     FastAPIServices().getAllWalletDetails();
+    FastAPIServices().fetchCurrentWallet();
+    _loadUserName();
+
     _fetchAllData();
   }
 
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userName = prefs.getString("user_name"); // read the saved name
+    });
+  }
+
   void _fetchAllData() async {
+    final wallet = await FastAPIServices().fetchCurrentWallet();
+    setState(() {
+      _wallet = wallet;
+    });
+
     final apiService = FastAPIServices();
 
     // Fetch wallets
@@ -127,6 +146,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // You can also fetch customers and current user here similarly
   }
+
+  final wallet = FastAPIServices().fetchCurrentWallet();
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
           elevation: 0,
           // backgroundColor: Colors.grey,
           title: Text(
-            "Hi ${widget.userDetails?.name ?? "User"}",
+            userName == null ? "Loading..." : "Hi $userName",
             style: Get.theme.primaryTextTheme.titleLarge!.copyWith(
               fontSize: kIsWeb
                   ? MediaQuery.of(context).size.width * 0.027
@@ -730,16 +751,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             // Icon(Icons.wallet_outlined, color: Colors.black,),
                             SizedBox(width: 8),
-                            Text(
-                                '${global.getSystemFlagValueForLogin(global.systemFlagNameList.currency)} ',
+                            Text('',
                                 style: TextStyle(
                                     fontSize: 16.sp,
                                     color: Colors.black,
                                     fontWeight: FontWeight.w600)),
                             Text(
-                              splashController.currentUser == null
-                                  ? "00"
-                                  : "${splashController.currentUser!.walletAmount ?? "00"}",
+                              _wallet != null
+                                  ? "₹${_wallet!.amount}"
+                                  : "Loading...",
+
+                              //  "${splashController.currentUser!.walletAmount ?? "00"}",
                               style: TextStyle(
                                   fontSize: 16.sp,
                                   color: Colors.black,

@@ -24,6 +24,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:AstrowayCustomer/utils/global.dart' as global;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:store_redirect/store_redirect.dart';
 
 import '../controllers/astrologer_assistant_controller.dart';
@@ -33,12 +34,36 @@ import '../utils/images.dart';
 import '../views/counsellor/counsellorScreen.dart';
 import '../views/customer_support/customerSupportChatScreen.dart';
 
-class DrawerWidget extends StatelessWidget {
+class DrawerWidget extends StatefulWidget {
   DrawerWidget({Key? key}) : super(key: key);
+
+  @override
+  State<DrawerWidget> createState() => _DrawerWidgetState();
+}
+
+class _DrawerWidgetState extends State<DrawerWidget> {
   final SplashController splashController = Get.find<SplashController>();
+
   CallController callController = Get.put(CallController());
+
   PanchangController panchangController = Get.find<PanchangController>();
+
   HistoryController historyController = Get.find<HistoryController>();
+  String? userName;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userName = prefs.getString("user_name"); // read the saved name
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,10 +143,9 @@ class DrawerWidget extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            splashController.currentUser == null ||
-                                    splashController.currentUser!.name == ""
+                            userName == null || userName == ""
                                 ? "Guest User"
-                                : "${splashController.currentUser!.name}",
+                                : "${userName}",
                             style: Get.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
@@ -276,27 +300,27 @@ class DrawerWidget extends StatelessWidget {
                       },
                     ),
 
-                    if (global.currentUserId != null)
-                      _buildMenuItem(
-                        icon: Icons.settings_outlined,
-                        title: 'Settings',
-                        onTap: () async {
-                          final settingsController =
-                              Get.find<SettingsController>();
-                          global.showOnlyLoaderDialog(context);
-                          await settingsController.getBlockAstrologerList();
-                          global.hideLoader();
-                          Get.to(() => SettingListScreen());
-                        },
-                      )
-                    else
-                      _buildMenuItem(
-                        icon: Icons.login_outlined,
-                        title: 'Login',
-                        onTap: () {
-                          Get.off(() => LoginScreen());
-                        },
-                      ),
+                    // if (global.currentUserId != null)
+                    //   _buildMenuItem(
+                    //     icon: Icons.settings_outlined,
+                    //     title: 'Settings',
+                    //     onTap: () async {
+                    //       final settingsController =
+                    //           Get.find<SettingsController>();
+                    //       global.showOnlyLoaderDialog(context);
+                    //       await settingsController.getBlockAstrologerList();
+                    //       global.hideLoader();
+                    //       Get.to(() => SettingListScreen());
+                    //     },
+                    //   )
+                    // else
+                    //   _buildMenuItem(
+                    //     icon: Icons.login_outlined,
+                    //     title: 'Login',
+                    //     onTap: () {
+                    //       Get.off(() => LoginScreen());
+                    //     },
+                    //   ),
 
                     _buildMenuItem(
                       icon: Icons.support_agent_outlined,

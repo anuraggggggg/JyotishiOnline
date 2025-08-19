@@ -5,6 +5,7 @@ import 'package:AstrowayCustomer/fastApi/fastApiendpoints.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/CustomerDetailModel.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/UserModel.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/allWalletDeatilsModel.dart';
+import 'package:AstrowayCustomer/model/fastApiModel/currentUserWalletModel.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/loginResponseModel.dart';
 import 'package:AstrowayCustomer/views/bottomNavigationBarScreen.dart';
 import 'package:AstrowayCustomer/views/loginScreen.dart';
@@ -64,6 +65,7 @@ class FastAPIServices {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString("access_token", accessToken);
         await prefs.setString("user_id", user.id);
+        await prefs.setString("user_name", user.name);  
 
         // Print full user details
         print("===== 👤 USER DETAILS =====");
@@ -120,6 +122,13 @@ class FastAPIServices {
       );
     }
   }
+
+  Future<String?> getUserName() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString("user_name");
+}
+
+
 
   // ---------------- LOGOUT ----------------
   Future<void> logout() async {
@@ -462,6 +471,55 @@ class FastAPIServices {
       print("⚠️ Failed to fetch wallets: ${response.statusCode}");
       print("Response Body: ${response.body}");
       throw Exception("Failed to fetch wallets");
+    }
+  }
+
+  // -------------------- Fetch Current User Wallet --------------------
+
+  Future<CurrentUserWalletModel?> fetchCurrentWallet() async {
+    await _loadCredentials();
+
+    if (_userId == null || _accessToken == null) {
+      debugPrint("❌ Cannot fetch wallet → userId or accessToken is NULL");
+      return null;
+    }
+
+    final url = "${FastApiEndpoints.userWalletDetails}$_userId";
+    debugPrint("📡 API Request → $url");
+    debugPrint("🆔 User ID being used → $_userId");
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          "accept": "application/json",
+          "Authorization": "Bearer $_accessToken",
+        },
+      );
+
+      debugPrint("🔹 Status Code: ${response.statusCode}");
+      debugPrint("🔹 Response Body: ${response.body}");
+
+      final decoded = jsonDecode(response.body);
+
+      // Handle error response from server
+      if (decoded is List &&
+          decoded.isNotEmpty &&
+          decoded[0]['detail'] != null) {
+        debugPrint("❌ API Error: ${decoded[0]['detail']}");
+        return null;
+      }
+
+      // Handle successful wallet response
+      if (decoded is Map<String, dynamic>) {
+        return CurrentUserWalletModel.fromJson(decoded);
+      } else {
+        debugPrint("⚠️ Unexpected response format: $decoded");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("❌ Exception while fetching wallet: $e");
+      return null;
     }
   }
 }

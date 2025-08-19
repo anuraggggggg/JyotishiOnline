@@ -21,7 +21,7 @@ class FastApiEndpoints {
   static const String allWalletDetails =
       "$fastApiBaseUrl/api/v1/userwallets"; // Fetch all wallet details
 
-  static const String walletDetailsById =
+  static const String userWalletDetails =
       "$fastApiBaseUrl/api/v1/userwallets/"; // Append wallet ID to
 
   // ---------------- CURRENT USER DETAILS ----------------
