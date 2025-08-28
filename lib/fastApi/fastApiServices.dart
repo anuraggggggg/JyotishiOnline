@@ -19,6 +19,7 @@ class FastAPIServices {
   String? _accessToken;
   String? _userId;
 
+  // ---------------- CHECK LOGIN STATUS ----------------
   Future<void> checkLoginStatus() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("access_token");
@@ -26,7 +27,6 @@ class FastAPIServices {
 
     if (token != null && token.isNotEmpty && userId != null) {
       print("🔐 User already logged in: $userId");
-      // Navigate directly to dashboard
       final bottomNavController = Get.find<BottomNavigationController>();
       bottomNavController.setBottomIndex(0, 0);
       Get.offAll(() => BottomNavigationBarScreen(index: 0));
@@ -58,16 +58,13 @@ class FastAPIServices {
         final accessToken = responseData['access_token'];
         final userJson = responseData['user'];
 
-        // Parse user into UserModel
         final user = UserModel.fromJson(userJson);
 
-        // Save token and user ID
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString("access_token", accessToken);
         await prefs.setString("user_id", user.id);
-        await prefs.setString("user_name", user.name);  
+        await prefs.setString("user_name", user.name);
 
-        // Print full user details
         print("===== 👤 USER DETAILS =====");
         print("🆔 ID         : ${user.id}");
         print("📛 Name       : ${user.name}");
@@ -124,29 +121,24 @@ class FastAPIServices {
   }
 
   Future<String?> getUserName() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString("user_name");
-}
-
-
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("user_name");
+  }
 
   // ---------------- LOGOUT ----------------
   Future<void> logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // Remove all login-related keys
       await prefs.remove("access_token");
       await prefs.remove("user_id");
       await prefs.remove("customer_details");
       await prefs.remove("isLoggedIn");
 
-      // Clear local variables
       _accessToken = null;
       _userId = null;
 
       print("✅ User logged out successfully. SharedPreferences cleared.");
 
-      // Navigate to the login screen and clear the navigation stack
       Get.offAll(() => LoginScreen());
     } catch (e) {
       print("❌ Failed to log out: $e");
@@ -176,7 +168,6 @@ class FastAPIServices {
       final data = jsonDecode(response.body);
       _accessToken = data["access_token"];
 
-      // Save token
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString("access_token", _accessToken!);
 
@@ -252,19 +243,15 @@ class FastAPIServices {
 
     if (response.statusCode == 200) {
       final jsonData = jsonDecode(response.body);
-
-      // Parse with model
       final loginResponse = LoginResponse.fromJson(jsonData);
 
       final prefs = await SharedPreferences.getInstance();
 
-      // Save token
       _accessToken = loginResponse.accessToken;
       if (_accessToken != null && _accessToken!.isNotEmpty) {
         await prefs.setString("access_token", _accessToken!);
       }
 
-      // Save user ID
       _userId = loginResponse.user?.id;
       if (_userId != null && _userId!.isNotEmpty) {
         await prefs.setString("user_id", _userId!);
@@ -272,7 +259,6 @@ class FastAPIServices {
         print("⚠️ Warning: User ID is null or empty after parsing model.");
       }
 
-      // Save full user details
       await prefs.setString(
         "customer_details",
         jsonEncode({
@@ -282,17 +268,14 @@ class FastAPIServices {
         }),
       );
 
-      // Mark as logged in
       await prefs.setBool("isLoggedIn", true);
 
       print("💾 Saved: isLoggedIn=true, user_id=$_userId, token=$_accessToken");
 
-      // Navigate to dashboard
       final bottomNavController = Get.find<BottomNavigationController>();
       bottomNavController.setBottomIndex(0, 0);
       Get.offAll(() => BottomNavigationBarScreen(index: 0));
     } else {
-      // Handle failure
       final errorMessage = jsonDecode(response.body)['detail'] ?? 'Invalid OTP';
       global.showToast(
         message: errorMessage,
@@ -331,31 +314,7 @@ class FastAPIServices {
       print("✅ 🎯 Successfully fetched customer details");
       final List<dynamic> data = jsonDecode(res.body);
       final customers =
-          data.map((json) => CustomerDetail.fromJson(json)).toList();
-
-      // Print all customer details
-      print("📋 All Customers:");
-      for (var i = 0; i < customers.length; i++) {
-        final c = customers[i];
-        print("🔹 Customer ${i + 1}:");
-        print(" 🐛 Birth Date     : ${c.birthDate}");
-        print("  🐛 Birth Time     : ${c.birthTime}");
-        print("  🐛 Profile        : ${c.profile}");
-        print("  🐛 Birth Place    : ${c.birthPlace}");
-        print("  🐛 Address 1      : ${c.addressLine1}");
-        print("  🐛 Address 2      : ${c.addressLine2}");
-        print("  🐛 Location       : ${c.location}");
-        print("  🐛 Pincode        : ${c.pincode}");
-        print("  🐛 Gender         : ${c.gender}");
-        // print("  Token            : ${c.token}");
-        print("  🐛 Country Code   : ${c.countryCode}");
-        print("  🐛 Created At     : ${c.createdAt}");
-        print("  🐛 Updated At     : ${c.updatedAt}");
-        print("  🐛 Active         : ${c.isActive}");
-        print("  🐛 Deleted        : ${c.isDelete}");
-        print("─────────────────────────────");
-      }
-
+      data.map((json) => CustomerDetail.fromJson(json)).toList();
       return customers;
     } else {
       throw Exception("❌ Failed to fetch customer details: ${res.body}");
@@ -381,10 +340,7 @@ class FastAPIServices {
       },
     );
 
-    print("📡 Status Code: ${res.statusCode}");
-
     if (res.statusCode == 200) {
-      print("✅ 🎯 Successfully fetched current user details");
       final data = jsonDecode(res.body);
       return CustomerDetail.fromJson(data);
     } else {
@@ -399,26 +355,19 @@ class FastAPIServices {
     _accessToken = prefs.getString("access_token");
     _userId = prefs.getString("user_id");
 
-    print("🔑 Loaded token: $_accessToken");
-    print("👤 Loaded userId: $_userId");
-
     bool needsLogin = false;
 
     if (_accessToken == null) {
-      print("⚠️ No token found.");
       needsLogin = true;
     } else if (_isTokenExpired(_accessToken!)) {
-      print("⚠️ Token expired.");
       needsLogin = true;
     }
 
     if (_userId == null) {
-      print("⚠️ No user ID found.");
       needsLogin = true;
     }
 
     if (needsLogin) {
-      print("🔄 Logging in to refresh credentials...");
       await loginAndGetToken();
     }
   }
@@ -434,23 +383,19 @@ class FastAPIServices {
 
       final exp = payload['exp'] as int;
       final expiryDate =
-          DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
+      DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
       final now = DateTime.now().toUtc();
-
-      print("⏳ Token expiry date (UTC): $expiryDate");
       return expiryDate.isBefore(now);
     } catch (e) {
-      print("❌ Token parse error: $e");
-      return true; // treat as expired if invalid format
+      return true;
     }
   }
 
-  // -------------------- Fetch All Wallets --------------------
+  // ---------------- Fetch All Wallets ----------------
   Future<List<WalletModel>> getAllWalletDetails() async {
     await _loadCredentials();
 
     final url = Uri.parse(FastApiEndpoints.allWalletDetails);
-    print("💰 [API CALL] Fetching All Wallet Details from $url");
 
     final headers = {
       'accept': 'application/json',
@@ -462,31 +407,21 @@ class FastAPIServices {
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       final wallets = data.map((json) => WalletModel.fromJson(json)).toList();
-      print("💰 Successfully fetched ${wallets.length} wallets");
       return wallets;
-    } else if (response.statusCode == 401) {
-      print("⚠️ Token invalid or expired. Please login again.");
-      throw Exception("Unauthorized: Invalid token");
     } else {
-      print("⚠️ Failed to fetch wallets: ${response.statusCode}");
-      print("Response Body: ${response.body}");
-      throw Exception("Failed to fetch wallets");
+      throw Exception("Failed to fetch wallets: ${response.body}");
     }
   }
 
-  // -------------------- Fetch Current User Wallet --------------------
-
+  // ---------------- Fetch Current User Wallet ----------------
   Future<CurrentUserWalletModel?> fetchCurrentWallet() async {
     await _loadCredentials();
 
     if (_userId == null || _accessToken == null) {
-      debugPrint("❌ Cannot fetch wallet → userId or accessToken is NULL");
       return null;
     }
 
     final url = "${FastApiEndpoints.userWalletDetails}$_userId";
-    debugPrint("📡 API Request → $url");
-    debugPrint("🆔 User ID being used → $_userId");
 
     try {
       final response = await http.get(
@@ -497,28 +432,60 @@ class FastAPIServices {
         },
       );
 
-      debugPrint("🔹 Status Code: ${response.statusCode}");
-      debugPrint("🔹 Response Body: ${response.body}");
-
       final decoded = jsonDecode(response.body);
 
-      // Handle error response from server
-      if (decoded is List &&
-          decoded.isNotEmpty &&
-          decoded[0]['detail'] != null) {
-        debugPrint("❌ API Error: ${decoded[0]['detail']}");
-        return null;
-      }
-
-      // Handle successful wallet response
       if (decoded is Map<String, dynamic>) {
         return CurrentUserWalletModel.fromJson(decoded);
       } else {
-        debugPrint("⚠️ Unexpected response format: $decoded");
         return null;
       }
     } catch (e) {
-      debugPrint("❌ Exception while fetching wallet: $e");
+      return null;
+    }
+  }
+
+  // ---------------- Credit Wallet ----------------
+  Future<CurrentUserWalletModel?> creditWallet(int amount) async {
+    return _updateWallet(amount, "credit");
+  }
+
+  // ---------------- Debit Wallet ----------------
+  Future<CurrentUserWalletModel?> debitWallet(int amount) async {
+    return _updateWallet(amount, "debit");
+  }
+
+  // ---------------- Private Helper for Wallet Update ----------------
+  Future<CurrentUserWalletModel?> _updateWallet(
+      int amount, String transactionType) async {
+    await _loadCredentials();
+
+    if (_userId == null || _accessToken == null) {
+      return null;
+    }
+
+    final url = Uri.parse(FastApiEndpoints.updateWallet(_userId!));
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {
+          "accept": "application/json",
+          "Authorization": "Bearer $_accessToken",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "amount": amount,
+          "transactionType": transactionType,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return CurrentUserWalletModel.fromJson(decoded);
+      } else {
+        return null;
+      }
+    } catch (e) {
       return null;
     }
   }

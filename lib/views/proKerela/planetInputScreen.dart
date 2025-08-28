@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../controllers/proKerela/planet_controller.dart';
 import 'package:AstrowayCustomer/views/proKerela/planet_result_screen.dart';
+import '../../fastApi/fastApiServices.dart';
+import '../../model/fastApiModel/currentUserWalletModel.dart';
 import '../../utils/services/location_service.dart';
 import '../../utils/global.dart'
     as global; // Add this import if 'global' is defined here
@@ -34,6 +36,7 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
 
   Timer? _debounce;
   List<LocationSuggestion> _suggestions = [];
+  CurrentUserWalletModel? _wallet;
 
   static const Color cosmicBlue = Color(0xFF1A2B42);
   static const Color celestialGold = Color(0xFFD4AF37);
@@ -249,116 +252,140 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-    const double planetPositionPrice = 599.0;
+    const int planetPositionPrice = 599;
 
     if (_formKey.currentState!.validate() && selectedDateTime != null) {
-      // --- Wallet Balance Check ---
-      if (global.user.walletAmount == null ||
-          global.user.walletAmount! < planetPositionPrice) {
-        final shortfall = planetPositionPrice - (global.user.walletAmount ?? 0);
-        _showSnackbar(
-          'Insufficient Balance',
-          'You need ₹${shortfall.toStringAsFixed(2)} more to access Planet Positions. Please recharge your wallet.',
-          warningRed,
-        );
-        return;
-      }
+      controller.isLoading(true);
 
-      // --- Geocode if Lat/Lng are missing ---
-      if (_latitude == null || _longitude == null) {
-        if (_placeController.text.trim().isEmpty) {
+      try {
+        // 1️⃣ Fetch wallet balance
+        final wallet = await FastAPIServices().fetchCurrentWallet();
+        if (wallet == null) {
           _showSnackbar(
-              'Location Error', 'City/Place name is required.', warningRed);
+            'Wallet Error',
+            'Unable to fetch wallet balance. Please try again.',
+            warningRed,
+          );
+          controller.isLoading(false);
           return;
         }
 
-        controller.isLoading(true);
-        try {
-          final locations =
-              await locationFromAddress(_placeController.text.trim());
-          if (locations.isNotEmpty) {
-            _latitude = locations.first.latitude;
-            _longitude = locations.first.longitude;
-            _showSnackbar(
-              'Location Found',
-              'Successfully found coordinates for ${_placeController.text.trim()}',
-              celestialGold,
-            );
-          } else {
+        // 2️⃣ Check balance
+        if (wallet.amount < planetPositionPrice) {
+          final shortfall = planetPositionPrice - wallet.amount;
+          _showSnackbar(
+            'Insufficient Balance',
+            'You need ₹${shortfall.toStringAsFixed(2)} more to access Planet Positions. Please recharge your wallet.',
+            warningRed,
+          );
+          controller.isLoading(false);
+          return;
+        }
+
+        // 3️⃣ Geocode if Lat/Lng are missing
+        if (_latitude == null || _longitude == null) {
+          if (_placeController.text.trim().isEmpty) {
+            _showSnackbar('Location Error', 'City/Place name is required.', warningRed);
+            controller.isLoading(false);
+            return;
+          }
+
+          try {
+            final locations = await locationFromAddress(_placeController.text.trim());
+            if (locations.isNotEmpty) {
+              _latitude = locations.first.latitude;
+              _longitude = locations.first.longitude;
+              _showSnackbar(
+                'Location Found',
+                'Successfully found coordinates for ${_placeController.text.trim()}',
+                celestialGold,
+              );
+            } else {
+              _showSnackbar(
+                'Location Error',
+                'No precise coordinates found. Enter a valid city/town.',
+                warningRed,
+              );
+              controller.isLoading(false);
+              return;
+            }
+          } catch (e) {
             _showSnackbar(
               'Location Error',
-              'No precise coordinates found for the given place. Please enter a valid city/town or select from suggestions.',
+              'Failed to geocode: $e',
               warningRed,
             );
             controller.isLoading(false);
             return;
           }
-        } catch (e) {
+        }
+
+        // 4️⃣ Deduct using debit API
+        final updatedWallet = await FastAPIServices().debitWallet(planetPositionPrice);
+
+        if (updatedWallet == null) {
           _showSnackbar(
-            'Location Error',
-            'Failed to geocode place: ${e.toString()}. Please ensure it\'s a valid city name.',
+            'Payment Failed',
+            'Could not deduct from wallet. Try again.',
             warningRed,
           );
           controller.isLoading(false);
           return;
-        } finally {
-          if (controller.isLoading.value) controller.isLoading(false);
         }
-      }
 
-      if (_latitude == null || _longitude == null) {
+        // 5️⃣ Success
         _showSnackbar(
-          'Input Error',
-          'Could not determine precise location coordinates. Please try again.',
-          warningRed,
-        );
-        return;
-      }
-
-      // --- Deduct from wallet ---
-      global.user.walletAmount =
-          global.user.walletAmount! - planetPositionPrice;
-      _showSnackbar(
-        'Payment Successful',
-        '₹${planetPositionPrice.toStringAsFixed(2)} deducted from your wallet for Planet Position.',
-        celestialGold,
-      );
-
-      controller.isLoading(true);
-      await controller.getPlanetPositions(
-        ayanamsa: int.parse(_ayanamsaController.text),
-        latitude: _latitude!,
-        longitude: _longitude!,
-        datetime: selectedDateTime!,
-      );
-
-      final planetData = controller.planetResponse.value;
-      if (planetData != null && planetData.planetPositions.isNotEmpty) {
-        Get.to(() => PlanetResultScreen(planetData: planetData));
-      } else {
-        _showSnackbar(
-          'No Data',
-          controller.errorMessage.value.isNotEmpty
-              ? controller.errorMessage.value
-              : 'No planet positions found for the provided details. Please check your inputs.',
+          'Payment Successful',
+          '₹${planetPositionPrice.toStringAsFixed(2)} deducted from your wallet for Planet Position.',
           celestialGold,
         );
-      }
 
-      controller.isLoading(false);
+        setState(() {
+          _wallet = updatedWallet;
+        });
+
+        // 6️⃣ Fetch Planet Positions
+        await controller.getPlanetPositions(
+          ayanamsa: int.parse(_ayanamsaController.text),
+          latitude: _latitude!,
+          longitude: _longitude!,
+          datetime: selectedDateTime!,
+        );
+
+        final planetData = controller.planetResponse.value;
+        if (planetData != null && planetData.planetPositions.isNotEmpty) {
+          Get.to(() => PlanetResultScreen(planetData: planetData));
+        } else {
+          _showSnackbar(
+            'No Data',
+            controller.errorMessage.value.isNotEmpty
+                ? controller.errorMessage.value
+                : 'No planet positions found. Please check your inputs.',
+            warningRed,
+          );
+        }
+      } catch (e) {
+        _showSnackbar('Unexpected Error', 'Please try again.', warningRed);
+      } finally {
+        controller.isLoading(false);
+      }
     } else {
       if (selectedDateTime == null) {
         _showSnackbar(
           'Required',
           'Please select date & time to proceed.',
-          celestialGold,
+          warningRed,
         );
       } else {
-        _showSnackbar('Input Error',
-            'Please fill all required fields correctly.', warningRed);
+        _showSnackbar(
+          'Input Error',
+          'Please fill all required fields correctly.',
+          warningRed,
+        );
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

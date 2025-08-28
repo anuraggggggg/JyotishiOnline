@@ -28,7 +28,7 @@ class BottomNavigationBarScreen extends StatelessWidget {
     Icons.home,
     Icons.chat,
     Icons.call,
-    Icons.history_sharp,
+    // Icons.history_sharp,
     Icons.star, // New tab icon (you can change to any icon)
   ];
 
@@ -103,24 +103,26 @@ class BottomNavigationBarScreen extends StatelessWidget {
                           }
                         }),
                         onTap: (index) async {
-                          if (index == 3) {
-                            bool isLogin = await global.isLogin();
-                            if (isLogin) {
-                              global.showOnlyLoaderDialog(context);
-                              await global.splashController
-                                  .getCurrentUserData();
-                              await historyController.getPaymentLogs(
-                                  global.currentUserId!, false);
-                              historyController.walletTransactionList.clear();
-                              historyController.walletAllDataLoaded = false;
-                              await historyController.getWalletTransaction(
-                                  global.currentUserId!, false);
-                              global.hideLoader();
-                            }
-                          }
+                          bottomNavigationController.setBottomIndex(index, 0);
+                          // if (index == 3) {
 
-                          bottomNavigationController.setBottomIndex(
-                              index, bottomNavigationController.historyIndex);
+                          //   bool isLogin = await global.isLogin();
+                          //   if (isLogin) {
+                          //     global.showOnlyLoaderDialog(context);
+                          //     await global.splashController
+                          //         .getCurrentUserData();
+                          //     await historyController.getPaymentLogs(
+                          //         global.currentUserId!, false);
+                          //     historyController.walletTransactionList.clear();
+                          //     historyController.walletAllDataLoaded = false;
+                          //     await historyController.getWalletTransaction(
+                          //         global.currentUserId!, false);
+                          //     global.hideLoader();
+                          //   }
+                          // }
+
+                          // bottomNavigationController.setBottomIndex(
+                          //     index, bottomNavigationController.historyIndex);
                         },
                       ),
                     );

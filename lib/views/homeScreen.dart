@@ -49,6 +49,7 @@ import 'package:AstrowayCustomer/views/proKerela/services.dart';
 import 'package:AstrowayCustomer/views/searchAstrologerScreen.dart';
 import 'package:AstrowayCustomer/views/settings/notificationScreen.dart';
 import 'package:AstrowayCustomer/views/stories/viewStories.dart';
+import 'package:AstrowayCustomer/views/wallet/walletRechargeScreen.dart';
 import 'package:AstrowayCustomer/widget/drawerWidget.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -169,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
           elevation: 0,
           // backgroundColor: Colors.grey,
           title: Text(
-            userName == null ? "Loading..." : "Hi $userName",
+            userName == null ? "User..." : "Hi $userName",
             style: Get.theme.primaryTextTheme.titleLarge!.copyWith(
               fontSize: kIsWeb
                   ? MediaQuery.of(context).size.width * 0.027
@@ -725,13 +726,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 5),
                   InkWell(
                     onTap: () async {
-                      bool isLogin = await global.isLogin();
-                      global.showOnlyLoaderDialog(context);
-                      await walletController.getAmount();
-                      global.hideLoader();
-                      if (isLogin) {
-                        Get.to(() => AddmoneyToWallet());
-                      }
+                      // bool isLogin = await global.isLogin();
+                      // global.showOnlyLoaderDialog(context);
+                      // await walletController.getAmount();
+                      // global.hideLoader();
+                      // if (isLogin) {
+                      //   // Get.to(() => AddmoneyToWallet());
+
+                      // }
+
+                      Get.to(() => RechargeWalletScreen());
                     },
                     child: Container(
                       decoration: BoxDecoration(

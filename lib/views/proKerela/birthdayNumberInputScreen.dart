@@ -1,3 +1,4 @@
+import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/views/proKerela/birthdayNumberResultScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -6,16 +7,11 @@ import 'package:intl/intl.dart';
 
 import '../../apiManager/apiServices.dart';
 import '../../controllers/proKerela/birthdayNumberController.dart';
+import '../../model/fastApiModel/currentUserWalletModel.dart';
 import '../../utils/global.dart' as global;
 
-class BirthdayNumberInputScreen extends StatelessWidget {
+class BirthdayNumberInputScreen extends StatefulWidget {
   BirthdayNumberInputScreen({Key? key}) : super(key: key);
-
-  final BirthdayNumberController controller = Get.put(
-    BirthdayNumberController(apiService: ApiService()),
-  );
-
-  final Rx<DateTime> selectedDate = DateTime.now().obs;
 
   static const Color cosmicBlue = Color(0xFF1A2B42);
   static const Color celestialGold = Color(0xFFD4AF37);
@@ -27,6 +23,18 @@ class BirthdayNumberInputScreen extends StatelessWidget {
 
   static const double birthdayNumberPrice = 100.0;
 
+  @override
+  State<BirthdayNumberInputScreen> createState() => _BirthdayNumberInputScreenState();
+}
+
+class _BirthdayNumberInputScreenState extends State<BirthdayNumberInputScreen> {
+  final BirthdayNumberController controller = Get.put(
+    BirthdayNumberController(apiService: ApiService()),
+  );
+
+  final Rx<DateTime> selectedDate = DateTime.now().obs;
+  CurrentUserWalletModel? _wallet;
+
   Future<void> _pickDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
@@ -37,20 +45,20 @@ class BirthdayNumberInputScreen extends StatelessWidget {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: celestialGold,
-              onPrimary: cosmicBlue,
-              surface: stardustWhite,
-              onSurface: cosmicBlue,
+              primary: BirthdayNumberInputScreen.celestialGold,
+              onPrimary: BirthdayNumberInputScreen.cosmicBlue,
+              surface: BirthdayNumberInputScreen.stardustWhite,
+              onSurface: BirthdayNumberInputScreen.cosmicBlue,
             ),
             textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(foregroundColor: cosmicBlue),
+              style: TextButton.styleFrom(foregroundColor: BirthdayNumberInputScreen.cosmicBlue),
             ),
             dialogTheme: DialogTheme(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
-                side: const BorderSide(color: celestialGold, width: 1.5),
+                side: const BorderSide(color: BirthdayNumberInputScreen.celestialGold, width: 1.5),
               ),
-              backgroundColor: stardustWhite,
+              backgroundColor: BirthdayNumberInputScreen.stardustWhite,
             ),
           ),
           child: child!,
@@ -69,14 +77,14 @@ class BirthdayNumberInputScreen extends StatelessWidget {
       message,
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: backgroundColor.withOpacity(0.9),
-      colorText: stardustWhite,
+      colorText: BirthdayNumberInputScreen.stardustWhite,
       margin: const EdgeInsets.all(15),
       borderRadius: 12,
       icon: Icon(
-        backgroundColor == warningRed
+        backgroundColor == BirthdayNumberInputScreen.warningRed
             ? Icons.error_outline
             : Icons.check_circle_outline,
-        color: stardustWhite,
+        color: BirthdayNumberInputScreen.stardustWhite,
         size: 28,
       ),
       snackStyle: SnackStyle.FLOATING,
@@ -85,44 +93,77 @@ class BirthdayNumberInputScreen extends StatelessWidget {
   }
 
   void _submit() async {
-    // --- Wallet Balance Check ---
-    if (global.user.walletAmount == null ||
-        global.user.walletAmount! < birthdayNumberPrice) {
-      final shortfall = birthdayNumberPrice - (global.user.walletAmount ?? 0);
+    const int birthdayNumberPrice = 599;
+
+    try {
+      // 1️⃣ Fetch wallet balance
+      final wallet = await FastAPIServices().fetchCurrentWallet();
+      if (wallet == null) {
+        _showSnackbar(
+          'Wallet Error',
+          'Unable to fetch wallet balance. Please try again.',
+          BirthdayNumberInputScreen.warningRed,
+        );
+        return;
+      }
+
+      // 2️⃣ Check balance
+      if (wallet.amount < birthdayNumberPrice) {
+        final shortfall = birthdayNumberPrice - wallet.amount;
+        _showSnackbar(
+          'Insufficient Balance',
+          'You need ₹${shortfall.toStringAsFixed(2)} more to access Birthday Number. Please recharge your wallet.',
+          BirthdayNumberInputScreen.warningRed,
+        );
+        return;
+      }
+
+      // 3️⃣ Deduct using debit API
+      final updatedWallet =
+      await FastAPIServices().debitWallet(birthdayNumberPrice);
+
+      if (updatedWallet == null) {
+        _showSnackbar(
+          'Payment Failed',
+          'Could not deduct wallet. Try again.',
+          BirthdayNumberInputScreen.warningRed,
+        );
+        return;
+      }
+
+      // 4️⃣ Payment success
       _showSnackbar(
-        'Insufficient Balance',
-        'You need ₹${shortfall.toStringAsFixed(2)} more to access Birthday Number. Please recharge your wallet.',
-        warningRed,
+        'Payment Successful',
+        '₹${birthdayNumberPrice.toStringAsFixed(2)} deducted from your wallet for Birthday Number.',
+        BirthdayNumberInputScreen.celestialGold,
       );
-      return;
-    }
 
-    // --- Deduct Amount ---
-    global.user.walletAmount = global.user.walletAmount! - birthdayNumberPrice;
-    _showSnackbar(
-      'Payment Successful',
-      '₹${birthdayNumberPrice.toStringAsFixed(2)} deducted from your wallet for Birthday Number.',
-      celestialGold,
-    );
+      setState(() {
+        _wallet = updatedWallet;
+      });
 
-    final result = await controller.fetchBirthdayNumber(
-      dateTime: selectedDate.value,
-    );
-
-    if (result != null) {
-      Get.to(() => BirthdayNumberResultScreen(
-            name: result.name ?? 'Birthday Number',
-            number: result.number?.toString() ?? '0',
-            description: result.description ?? 'No description available',
-          ));
-    } else {
-      _showSnackbar(
-        'Error',
-        controller.errorMessage.value.isNotEmpty
-            ? controller.errorMessage.value
-            : 'Failed to calculate birthday number',
-        warningRed,
+      // 5️⃣ API Call → Birthday Number
+      final result = await controller.fetchBirthdayNumber(
+        dateTime: selectedDate.value,
       );
+
+      if (result != null) {
+        Get.to(() => BirthdayNumberResultScreen(
+          name: result.name ?? 'Birthday Number',
+          number: result.number?.toString() ?? '0',
+          description: result.description ?? 'No description available',
+        ));
+      } else {
+        _showSnackbar(
+          'Error',
+          controller.errorMessage.value.isNotEmpty
+              ? controller.errorMessage.value
+              : 'Failed to calculate birthday number',
+          BirthdayNumberInputScreen.warningRed,
+        );
+      }
+    } catch (e) {
+      _showSnackbar('Unexpected Error', 'Please try again.', BirthdayNumberInputScreen.warningRed);
     }
   }
 
@@ -139,14 +180,14 @@ class BirthdayNumberInputScreen extends StatelessWidget {
           style: GoogleFonts.poppins(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: stardustWhite,
+            color: BirthdayNumberInputScreen.stardustWhite,
             letterSpacing: 1.2,
           ),
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: stardustWhite, size: 28),
+        iconTheme: const IconThemeData(color: BirthdayNumberInputScreen.stardustWhite, size: 28),
       ),
       body: Container(
         width: double.infinity,
@@ -155,7 +196,7 @@ class BirthdayNumberInputScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [cosmicBlue, darkAccent, mediumAccent],
+            colors: [BirthdayNumberInputScreen.cosmicBlue, BirthdayNumberInputScreen.darkAccent, BirthdayNumberInputScreen.mediumAccent],
             stops: [0.1, 0.5, 0.9],
           ),
         ),
@@ -173,9 +214,9 @@ class BirthdayNumberInputScreen extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                   side: BorderSide(
-                      color: celestialGold.withOpacity(0.8), width: 2),
+                      color: BirthdayNumberInputScreen.celestialGold.withOpacity(0.8), width: 2),
                 ),
-                color: cosmicBlue.withOpacity(0.85),
+                color: BirthdayNumberInputScreen.cosmicBlue.withOpacity(0.85),
                 child: Padding(
                   padding: const EdgeInsets.all(25),
                   child: Column(
@@ -187,7 +228,7 @@ class BirthdayNumberInputScreen extends StatelessWidget {
                         style: GoogleFonts.poppins(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: celestialGold,
+                          color: BirthdayNumberInputScreen.celestialGold,
                           letterSpacing: 1.2,
                           shadows: [
                             Shadow(
@@ -203,19 +244,19 @@ class BirthdayNumberInputScreen extends StatelessWidget {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                  color: celestialGold.withOpacity(0.6),
+                                  color: BirthdayNumberInputScreen.celestialGold.withOpacity(0.6),
                                   width: 1.2),
-                              color: cosmicBlue.withOpacity(0.7),
+                              color: BirthdayNumberInputScreen.cosmicBlue.withOpacity(0.7),
                             ),
                             child: ListTile(
                               title: Text(
                                 'Birth Date: ${DateFormat("MMM dd, yyyy").format(selectedDate.value)}',
                                 style:
-                                    GoogleFonts.poppins(color: stardustWhite),
+                                    GoogleFonts.poppins(color: BirthdayNumberInputScreen.stardustWhite),
                               ),
                               leading: Icon(Icons.calendar_today,
-                                  color: celestialGold),
-                              trailing: Icon(Icons.edit, color: lunarSilver),
+                                  color: BirthdayNumberInputScreen.celestialGold),
+                              trailing: Icon(Icons.edit, color: BirthdayNumberInputScreen.lunarSilver),
                               onTap: () => _pickDate(context),
                             ),
                           )),
@@ -226,15 +267,15 @@ class BirthdayNumberInputScreen extends StatelessWidget {
                               onPressed:
                                   controller.isLoading.value ? null : _submit,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: celestialGold,
-                                foregroundColor: cosmicBlue,
+                                backgroundColor: BirthdayNumberInputScreen.celestialGold,
+                                foregroundColor: BirthdayNumberInputScreen.cosmicBlue,
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 18),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 elevation: 8,
-                                shadowColor: celestialGold.withOpacity(0.5),
+                                shadowColor: BirthdayNumberInputScreen.celestialGold.withOpacity(0.5),
                               ),
                               child: controller.isLoading.value
                                   ? Row(
@@ -246,14 +287,14 @@ class BirthdayNumberInputScreen extends StatelessWidget {
                                           height: 24,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 3,
-                                            color: cosmicBlue,
+                                            color: BirthdayNumberInputScreen.cosmicBlue,
                                           ),
                                         ),
                                         const SizedBox(width: 15),
                                         Text(
                                           "Calculating...",
                                           style: GoogleFonts.poppins(
-                                              fontSize: 18, color: cosmicBlue),
+                                              fontSize: 18, color: BirthdayNumberInputScreen.cosmicBlue),
                                         ),
                                       ],
                                     )
@@ -262,7 +303,7 @@ class BirthdayNumberInputScreen extends StatelessWidget {
                                       style: GoogleFonts.poppins(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
-                                          color: cosmicBlue),
+                                          color: BirthdayNumberInputScreen.cosmicBlue),
                                     ),
                             ),
                           )),
@@ -272,7 +313,7 @@ class BirthdayNumberInputScreen extends StatelessWidget {
                               controller.errorMessage.value,
                               textAlign: TextAlign.center,
                               style: GoogleFonts.poppins(
-                                  color: warningRed, fontSize: 16),
+                                  color: BirthdayNumberInputScreen.warningRed, fontSize: 16),
                             )
                           : const SizedBox()),
                     ],
@@ -284,7 +325,7 @@ class BirthdayNumberInputScreen extends StatelessWidget {
                 "Discover the insights your birth date reveals.",
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
-                  color: lunarSilver,
+                  color: BirthdayNumberInputScreen.lunarSilver,
                   fontStyle: FontStyle.italic,
                   fontSize: 14,
                 ),

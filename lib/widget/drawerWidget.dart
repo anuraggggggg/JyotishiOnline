@@ -19,6 +19,7 @@ import 'package:AstrowayCustomer/views/myFollowingScreen.dart';
 import 'package:AstrowayCustomer/views/profile/editUserProfileScreen.dart';
 import 'package:AstrowayCustomer/views/settings/colorPicker.dart';
 import 'package:AstrowayCustomer/views/settings/settingsScreen.dart';
+import 'package:AstrowayCustomer/views/wallet/paymentLogScreen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -230,19 +231,44 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                     ),
 
                     _buildMenuItem(
-                      icon: Icons.people_alt_outlined,
-                      title: 'Chat With Counsellors',
+                      icon: Icons
+                          .payment, // you can choose any payment-related icon
+                      title: 'Payment Logs',
                       onTap: () async {
-                        global.showOnlyLoaderDialog(context);
-                        final counsellorController =
-                            Get.find<CounsellorController>();
-                        counsellorController.counsellorList = [];
-                        counsellorController.update();
-                        await counsellorController.getCounsellorsData(false);
-                        global.hideLoader();
-                        Get.to(() => CounsellorScreen());
+                        Get.to(() => PaymentLogScreen());
+                        // global.showOnlyLoaderDialog(context);
+
+                        // // final navController = Get.find<BottomNavigationController>();
+                        // // // 🟢 Clear old data if you keep it in controller
+                        // // navController.paymentLogsList = [];
+                        // // navController.paymentLogsList.clear();
+                        // // navController.isAllPaymentLogsLoaded = false;
+                        // // navController.update();
+
+                        // // 🟢 Fetch Payment Logs (replace with your actual API call)
+                        // await navController.getPaymentLogs(isLazyLoading: false);
+
+                        // global.hideLoader();
+
+                        // Switch to Payment Logs tab/screen
+                        // navController.setBottomIndex(3, 0);
                       },
                     ),
+
+                    // _buildMenuItem(
+                    //   icon: Icons.people_alt_outlined,
+                    //   title: 'Chat With Counsellors',
+                    //   onTap: () async {
+                    //     global.showOnlyLoaderDialog(context);
+                    //     final counsellorController =
+                    //         Get.find<CounsellorController>();
+                    //     counsellorController.counsellorList = [];
+                    //     counsellorController.update();
+                    //     await counsellorController.getCounsellorsData(false);
+                    //     global.hideLoader();
+                    //     Get.to(() => CounsellorScreen());
+                    //   },
+                    // ),
 
                     _buildMenuItem(
                       icon: Icons.verified_user_outlined,
