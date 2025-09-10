@@ -14,9 +14,11 @@ class VerifyPhoneScreen extends StatefulWidget {
   final String phoneNumber;
   final String countryCode;
 
-  VerifyPhoneScreen(
-      {Key? key, required this.phoneNumber, required this.countryCode})
-      : super(key: key);
+  VerifyPhoneScreen({
+    Key? key,
+    required this.phoneNumber,
+    required this.countryCode,
+  }) : super(key: key);
 
   @override
   State<VerifyPhoneScreen> createState() => _VerifyPhoneScreenState();
@@ -26,13 +28,18 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
     with CodeAutoFill {
   final LoginController loginController = Get.find<LoginController>();
   final TextEditingController pinEditingControllerlogin =
-      TextEditingController();
+  TextEditingController();
 
   @override
   void initState() {
     super.initState();
     requestSmsPermission();
     listenForCode();
+
+    // ✅ Reset and start timer every time screen opens
+    loginController.maxSecond = 60;
+    loginController.timer();
+
     SmsAutoFill().getAppSignature.then((signature) {
       debugPrint("App Signature: $signature");
     });
@@ -60,6 +67,7 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
   void dispose() {
     cancel();
     pinEditingControllerlogin.dispose();
+    loginController.time?.cancel(); // ✅ Cancel timer when leaving screen
     super.dispose();
   }
 
@@ -101,136 +109,213 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        loginController.maxSecond = 61;
-        loginController.time?.cancel();
+        loginController.time?.cancel(); // ✅ Cancel timer on back press
+        loginController.maxSecond = 60; // reset value
         loginController.update();
         return true;
       },
       child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios, color: Colors.black),
+            onPressed: () {
+              loginController.time?.cancel();
+              loginController.maxSecond = 60;
+              loginController.update();
+              Navigator.pop(context);
+            },
+          ),
+        ),
         body: SingleChildScrollView(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Image.asset(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 20),
+                Center(
+                  child: Image.asset(
                     "assets/images/newLogo.png",
-                    height: MediaQuery.of(context).size.height * 0.20,
+                    height: MediaQuery.of(context).size.height * 0.15,
+                    fit: BoxFit.contain,
                   ),
-                  const SizedBox(height: 30),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Verify Mobile Number",
-                      style: TextStyle(
-                        fontSize: 25,
-                        fontWeight: FontWeight.w500,
-                        color: buttonColor1,
-                      ),
+                ),
+                SizedBox(height: 30),
+                Text(
+                  "Verify Your Number",
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+                SizedBox(height: 10),
+                RichText(
+                  text: TextSpan(
+                    text: "We've sent a 6-digit code to ",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      height: 1.5,
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  PinFieldAutoFill(
-                    codeLength: 6,
-                    controller: pinEditingControllerlogin,
-                    currentCode: pinEditingControllerlogin.text,
-                    decoration: UnderlineDecoration(
-                      textStyle:
-                          const TextStyle(fontSize: 20, color: Colors.black),
-                      colorBuilder: FixedColorBuilder(Colors.grey.shade400),
-                    ),
-                    onCodeChanged: (code) {
-                      loginController.smsCode = code ?? '';
-                      loginController.update();
-                    },
-                    onCodeSubmitted: (code) {
-                      loginController.smsCode = code;
-                      loginController.update();
-                    },
-                  ),
-                  const SizedBox(height: 15),
-                  GetBuilder<LoginController>(
-                    builder: (controller) {
-                      return controller.maxSecond != 0
-                          ? Row(
-                              children: [
-                                const SizedBox(width: 15),
-                                RichText(
-                                  text: TextSpan(
-                                    children: [
-                                      const TextSpan(
-                                        text: 'Resend OTP in ',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      TextSpan(
-                                        text: '${controller.maxSecond} s',
-                                        style: const TextStyle(
-                                          color: Colors.green,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Align(
-                              alignment: Alignment.centerRight,
-                              child: GestureDetector(
-                                onTap: () async {
-                                  controller.maxSecond = 60;
-                                  controller.update();
-                                  controller.timer();
-                                  controller.phoneController.text =
-                                      widget.phoneNumber;
-                                  global.showOnlyLoaderDialog(context);
-                                  await controller.sendOtpToPhone();
-                                  global.hideLoader();
-                                },
-                                child: Text(
-                                  'Resend OTP',
-                                  style: TextStyle(
-                                    color: textColor,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            );
-                    },
-                  ),
-                  const SizedBox(height: 90),
-                  GestureDetector(
-                    onTap: () async {
-                      await FastAPIServices().verifyOtp(
-                        contactNo: widget.phoneNumber,
-                        countryCode: widget.countryCode,
-                        otp: loginController.smsCode,
-                      );
-                    },
-                    child: Container(
-                      height: 45,
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(top: 20),
-                      decoration: BoxDecoration(
-                        color: appYellow,
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(16)),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'NEXT',
-                          style: TextStyle(color: Colors.black),
-                          textAlign: TextAlign.center,
+                    children: [
+                      TextSpan(
+                        text: "${widget.countryCode} ${widget.phoneNumber}",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: buttonColor1,
                         ),
                       ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 40),
+                PinFieldAutoFill(
+                  codeLength: 6,
+                  controller: pinEditingControllerlogin,
+                  currentCode: pinEditingControllerlogin.text,
+                  decoration: BoxLooseDecoration(
+                    textStyle: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                    strokeColorBuilder: FixedColorBuilder(Colors.grey.shade300),
+                    bgColorBuilder: FixedColorBuilder(Colors.grey.shade50),
+                    gapSpace: 12,
+                    strokeWidth: 2,
+                  ),
+                  onCodeChanged: (code) {
+                    loginController.smsCode = code ?? '';
+                    loginController.update();
+                    if ((code?.length ?? 0) == 6) {
+                      _verifyOtp();
+                    }
+                  },
+                  onCodeSubmitted: (code) {
+                    loginController.smsCode = code;
+                    loginController.update();
+                    _verifyOtp();
+                  },
+                ),
+                SizedBox(height: 24),
+                GetBuilder<LoginController>(
+                  builder: (controller) {
+                    return controller.maxSecond != 0
+                        ? Center(
+                      child: RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Resend code in ',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            TextSpan(
+                              text: '${controller.maxSecond} ',
+                              style: TextStyle(
+                                color: buttonColor1,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'seconds',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                        : Center(
+                      child: GestureDetector(
+                        onTap: () async {
+                          controller.maxSecond = 60;
+                          controller.timer(); // ✅ restart timer
+                          controller.phoneController.text =
+                              widget.phoneNumber;
+                          global.showOnlyLoaderDialog(context);
+                          await controller.sendOtpToPhone();
+                          global.hideLoader();
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Resend OTP',
+                            style: TextStyle(
+                              color: buttonColor1,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                SizedBox(height: 40),
+                Container(
+                  height: 56,
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (loginController.smsCode.length == 6) {
+                        await _verifyOtp();
+                      } else {
+                        global.showToast(
+                          message: "Please enter a valid 6-digit OTP",
+                          textColor: Colors.white,
+                          bgColor: Colors.orange,
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: appYellow,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: Text(
+                      'VERIFY & CONTINUE',
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 15),
-                ],
-              ),
+                ),
+                SizedBox(height: 20),
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      // Option to edit phone number
+                      Navigator.pop(context);
+                    },
+                    child: Text(
+                      'Edit Phone Number',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

@@ -479,19 +479,45 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: _submit,
-                            icon: const Icon(Icons.auto_awesome,
-                                color: cosmicBlue),
-                            label: const Text(
-                              'Calculate Panchang',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: cosmicBlue,
+                            icon: const Icon(Icons.auto_awesome, color: cosmicBlue, size: 24),
+                            label: Flexible( // Added Flexible to prevent overflow
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible( // Added Flexible for text
+                                    child: Text(
+                                      'Calculate Panchang',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: cosmicBlue,
+                                      ),
+                                      overflow: TextOverflow.ellipsis, // Handle long text
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8), // Reduced spacing
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Reduced padding
+                                    decoration: BoxDecoration(
+                                      color: cosmicBlue.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '₹100 +GST',
+                                      style: TextStyle(
+                                        fontSize: 12, // Smaller font for price
+                                        fontWeight: FontWeight.w600,
+                                        color: cosmicBlue,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: celestialGold,
-                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16), // Reduced horizontal padding
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),

@@ -290,30 +290,64 @@ class _DailyPredictionInputScreenState
                 Obx(() => ElevatedButton.icon(
                   onPressed: _handlePrediction,
                   icon: controller.isLoading.value
-                      ? const SizedBox(
-                    width: 24,
-                    height: 24,
+                      ? SizedBox(
+                    width: 22,
+                    height: 22,
                     child: CircularProgressIndicator(
                       color: cosmicBlue,
                       strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(cosmicBlue),
                     ),
                   )
-                      : const Icon(Icons.stars, color: cosmicBlue, size: 28),
+                      : Icon(Icons.stars_rounded, color: cosmicBlue, size: 26),
                   label: controller.isLoading.value
-                      ? const Text('Conjuring Insight...',
-                      style: TextStyle(color: cosmicBlue, fontSize: 18))
-                      : const Text('Get Daily Prediction',
-                      style: TextStyle(
-                          fontSize: 18,
+                      ? Text(
+                    'Conjuring Insight...',
+                    style: TextStyle(
+                      color: cosmicBlue,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                      : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Get Daily Prediction',
+                        style: TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: cosmicBlue)),
+                          color: cosmicBlue,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: cosmicBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '₹100 + GST',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: cosmicBlue,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: celestialGold,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    foregroundColor: cosmicBlue,
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: cosmicBlue.withOpacity(0.2), width: 1),
                     ),
-                    elevation: 8,
+                    elevation: 2,
+                    shadowColor: cosmicBlue.withOpacity(0.2),
                   ),
                 )),
 
