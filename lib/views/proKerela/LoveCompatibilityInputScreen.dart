@@ -5,14 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../fastApi/fastApiServices.dart';
+import '../../model/fastApiModel/currentUserWalletModel.dart';
 import '../../utils/global.dart' as global;
 
-class LoveCompatibilityInputScreen extends StatelessWidget {
-  final LoveCompatibilityController controller = Get.put(
-    LoveCompatibilityController(apiService: ApiService()),
-  );
-
-  // Cosmic color palette
+class LoveCompatibilityInputScreen extends StatefulWidget {
   static const Color cosmicBlue = Color(0xFF1A2B42);
   static const Color celestialGold = Color(0xFFD4AF37);
   static const Color stardustWhite = Color(0xFFF0F0F0);
@@ -20,6 +17,19 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
   static const Color darkAccent = Color(0xFF2C3E50);
   static const Color mediumAccent = Color(0xFF34495E);
   static const Color warningRed = Color(0xFFE57373);
+
+  LoveCompatibilityInputScreen({Key? key}) : super(key: key);
+
+  @override
+  State<LoveCompatibilityInputScreen> createState() => _LoveCompatibilityInputScreenState();
+}
+
+class _LoveCompatibilityInputScreenState extends State<LoveCompatibilityInputScreen> {
+  final LoveCompatibilityController controller = Get.put(
+    LoveCompatibilityController(apiService: ApiService()),
+  );
+
+  CurrentUserWalletModel? _wallet;
 
   final List<String> zodiacSigns = [
     'Aries',
@@ -35,11 +45,12 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
     'Aquarius',
     'Pisces',
   ];
-  final Rx<String?> selectedSignOne = Rx<String?>(null);
-  final Rx<String?> selectedSignTwo = Rx<String?>(null);
-  final Rx<DateTime> selectedDate = DateTime.now().obs;
 
-  LoveCompatibilityInputScreen({Key? key}) : super(key: key);
+  final Rx<String?> selectedSignOne = Rx<String?>(null);
+
+  final Rx<String?> selectedSignTwo = Rx<String?>(null);
+
+  final Rx<DateTime> selectedDate = DateTime.now().obs;
 
   Future<void> _selectDate(BuildContext context) async {
     final pickedDate = await showDatePicker(
@@ -51,22 +62,22 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: celestialGold,
-              onPrimary: cosmicBlue,
-              surface: stardustWhite,
-              onSurface: cosmicBlue,
+              primary: LoveCompatibilityInputScreen.celestialGold,
+              onPrimary: LoveCompatibilityInputScreen.cosmicBlue,
+              surface: LoveCompatibilityInputScreen.stardustWhite,
+              onSurface: LoveCompatibilityInputScreen.cosmicBlue,
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: cosmicBlue,
+                foregroundColor: LoveCompatibilityInputScreen.cosmicBlue,
               ),
             ),
             dialogTheme: DialogTheme(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
-                side: const BorderSide(color: celestialGold, width: 1.5),
+                side: const BorderSide(color: LoveCompatibilityInputScreen.celestialGold, width: 1.5),
               ),
-              backgroundColor: stardustWhite,
+              backgroundColor: LoveCompatibilityInputScreen.stardustWhite,
             ),
           ),
           child: child!,
@@ -89,28 +100,28 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: cosmicBlue.withOpacity(0.7),
+            color: LoveCompatibilityInputScreen.cosmicBlue.withOpacity(0.7),
             border:
-                Border.all(color: celestialGold.withOpacity(0.6), width: 1.2),
+                Border.all(color: LoveCompatibilityInputScreen.celestialGold.withOpacity(0.6), width: 1.2),
           ),
           child: DropdownButtonFormField<String>(
-            dropdownColor: cosmicBlue,
+            dropdownColor: LoveCompatibilityInputScreen.cosmicBlue,
             decoration: InputDecoration(
-              prefixIcon: Icon(icon, color: celestialGold),
+              prefixIcon: Icon(icon, color: LoveCompatibilityInputScreen.celestialGold),
               labelText: hintText,
-              labelStyle: GoogleFonts.poppins(color: lunarSilver),
+              labelStyle: GoogleFonts.poppins(color: LoveCompatibilityInputScreen.lunarSilver),
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(vertical: 15),
             ),
-            style: GoogleFonts.poppins(color: stardustWhite, fontSize: 16),
+            style: GoogleFonts.poppins(color: LoveCompatibilityInputScreen.stardustWhite, fontSize: 16),
             value: selectedValue.value,
             items: items.map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
                 child: Text(value,
-                    style: GoogleFonts.poppins(color: stardustWhite)),
+                    style: GoogleFonts.poppins(color: LoveCompatibilityInputScreen.stardustWhite)),
               );
             }).toList(),
             onChanged: (String? newValue) {
@@ -126,14 +137,14 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
       message,
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: backgroundColor.withOpacity(0.9),
-      colorText: stardustWhite,
+      colorText: LoveCompatibilityInputScreen.stardustWhite,
       margin: const EdgeInsets.all(15),
       borderRadius: 12,
       icon: Icon(
-          backgroundColor == warningRed
+          backgroundColor == LoveCompatibilityInputScreen.warningRed
               ? Icons.error_outline
               : Icons.check_circle_outline,
-          color: stardustWhite,
+          color: LoveCompatibilityInputScreen.stardustWhite,
           size: 28),
       snackStyle: SnackStyle.FLOATING,
       duration: const Duration(seconds: 3),
@@ -141,50 +152,79 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
   }
 
   void _submit() async {
-    const double compatibilityPrice = 599.0;
+    const int compatibilityPrice = 599;
 
     final signOne = selectedSignOne.value;
     final signTwo = selectedSignTwo.value;
 
     if (signOne == null || signTwo == null) {
-      _showSnackbar('Error', 'Please select both zodiac signs', warningRed);
+      _showSnackbar('Error', 'Please select both zodiac signs', LoveCompatibilityInputScreen.warningRed);
       return;
     }
 
-    // --- Wallet Balance Check ---
-    if (global.user.walletAmount == null ||
-        global.user.walletAmount! < compatibilityPrice) {
-      final shortfall = compatibilityPrice - (global.user.walletAmount ?? 0);
+    try {
+      // 1️⃣ Fetch wallet balance
+      final wallet = await FastAPIServices().fetchCurrentWallet();
+      if (wallet == null) {
+        _showSnackbar(
+          'Wallet Error',
+          'Unable to fetch wallet balance. Please try again.',
+          LoveCompatibilityInputScreen.warningRed,
+        );
+        return;
+      }
+
+      // 2️⃣ Check balance
+      if (wallet.amount < compatibilityPrice) {
+        final shortfall = compatibilityPrice - wallet.amount;
+        _showSnackbar(
+          'Insufficient Balance',
+          'You need ₹${shortfall.toStringAsFixed(2)} more to access Love Compatibility. Please recharge your wallet.',
+          LoveCompatibilityInputScreen.warningRed,
+        );
+        return;
+      }
+
+      // 3️⃣ Deduct using debit API
+      final updatedWallet =
+      await FastAPIServices().debitWallet(compatibilityPrice);
+      if (updatedWallet == null) {
+        _showSnackbar(
+          'Payment Failed',
+          'Could not deduct wallet. Try again.',
+          LoveCompatibilityInputScreen.warningRed,
+        );
+        return;
+      }
+
+      // 4️⃣ Payment success
       _showSnackbar(
-        'Insufficient Balance',
-        'You need ₹${shortfall.toStringAsFixed(2)} more to access Love Compatibility. Please recharge your wallet.',
-        warningRed,
+        'Payment Successful',
+        '₹${compatibilityPrice.toStringAsFixed(2)} deducted from your wallet for Love Compatibility.',
+        LoveCompatibilityInputScreen.celestialGold,
       );
-      return;
-    }
 
-    // --- Deduct Amount ---
-    global.user.walletAmount = global.user.walletAmount! - compatibilityPrice;
-    _showSnackbar(
-      'Payment Successful',
-      '₹${compatibilityPrice.toStringAsFixed(2)} deducted from your wallet for Love Compatibility.',
-      celestialGold,
-    );
+      setState(() {
+        _wallet = updatedWallet;
+      });
 
-    // --- API Call ---
-    final result = await controller.fetchCompatibility(
-      signOne: signOne,
-      signTwo: signTwo,
-      dateTime: selectedDate.value,
-    );
+      // 5️⃣ Call API
+      final result = await controller.fetchCompatibility(
+        signOne: signOne,
+        signTwo: signTwo,
+        dateTime: selectedDate.value,
+      );
 
-    if (result != null) {
-      Get.to(() => LoveCompatibilityResultScreen(
-            compatibility: result.compatibility ?? 'N/A',
-            report: result.report ?? 'No report available',
-          ));
-    } else {
-      _showSnackbar('Error', 'Failed to fetch compatibility', warningRed);
+      if (result != null) {
+        Get.to(() => LoveCompatibilityResultScreen(
+          compatibility: result.compatibility ?? 'N/A',
+          report: result.report ?? 'No report available',
+        ));
+      } else {
+        _showSnackbar('Error', 'Failed to fetch compatibility', LoveCompatibilityInputScreen.warningRed);
+      }
+    } catch (e) {
+      _showSnackbar('Unexpected Error', 'Please try again.', LoveCompatibilityInputScreen.warningRed);
     }
   }
 
@@ -200,7 +240,7 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
           'Love Compatibility',
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w700,
-            color: stardustWhite,
+            color: LoveCompatibilityInputScreen.stardustWhite,
             fontSize: 22,
             letterSpacing: 1.2,
           ),
@@ -208,7 +248,7 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: stardustWhite, size: 28),
+        iconTheme: const IconThemeData(color: LoveCompatibilityInputScreen.stardustWhite, size: 28),
       ),
       body: Container(
         width: double.infinity,
@@ -217,7 +257,7 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [cosmicBlue, darkAccent, mediumAccent],
+            colors: [LoveCompatibilityInputScreen.cosmicBlue, LoveCompatibilityInputScreen.darkAccent, LoveCompatibilityInputScreen.mediumAccent],
             stops: [0.1, 0.5, 0.9],
           ),
         ),
@@ -235,9 +275,9 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                   side: BorderSide(
-                      color: celestialGold.withOpacity(0.8), width: 2),
+                      color: LoveCompatibilityInputScreen.celestialGold.withOpacity(0.8), width: 2),
                 ),
-                color: cosmicBlue.withOpacity(0.85),
+                color: LoveCompatibilityInputScreen.cosmicBlue.withOpacity(0.85),
                 child: Padding(
                   padding: const EdgeInsets.all(25),
                   child: Column(
@@ -249,7 +289,7 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
                         style: GoogleFonts.poppins(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: celestialGold,
+                          color: LoveCompatibilityInputScreen.celestialGold,
                           letterSpacing: 1.2,
                           shadows: [
                             Shadow(
@@ -279,19 +319,19 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                  color: celestialGold.withOpacity(0.6),
+                                  color: LoveCompatibilityInputScreen.celestialGold.withOpacity(0.6),
                                   width: 1.2),
-                              color: cosmicBlue.withOpacity(0.7),
+                              color: LoveCompatibilityInputScreen.cosmicBlue.withOpacity(0.7),
                             ),
                             child: ListTile(
                               title: Text(
                                 'Date: ${DateFormat("MMM dd, yyyy").format(selectedDate.value)}',
                                 style:
-                                    GoogleFonts.poppins(color: stardustWhite),
+                                    GoogleFonts.poppins(color: LoveCompatibilityInputScreen.stardustWhite),
                               ),
                               leading: Icon(Icons.calendar_today,
-                                  color: celestialGold),
-                              trailing: Icon(Icons.edit, color: lunarSilver),
+                                  color: LoveCompatibilityInputScreen.celestialGold),
+                              trailing: Icon(Icons.edit, color: LoveCompatibilityInputScreen.lunarSilver),
                               onTap: () => _selectDate(context),
                             ),
                           )),
@@ -302,15 +342,15 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
                               onPressed:
                                   controller.isLoading.value ? null : _submit,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: celestialGold,
-                                foregroundColor: cosmicBlue,
+                                backgroundColor: LoveCompatibilityInputScreen.celestialGold,
+                                foregroundColor: LoveCompatibilityInputScreen.cosmicBlue,
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 18),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 elevation: 8,
-                                shadowColor: celestialGold.withOpacity(0.5),
+                                shadowColor: LoveCompatibilityInputScreen.celestialGold.withOpacity(0.5),
                               ),
                               child: controller.isLoading.value
                                   ? Row(
@@ -322,14 +362,14 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
                                           height: 24,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 3,
-                                            color: cosmicBlue,
+                                            color: LoveCompatibilityInputScreen.cosmicBlue,
                                           ),
                                         ),
                                         const SizedBox(width: 15),
                                         Text(
                                           "Calculating...",
                                           style: GoogleFonts.poppins(
-                                              fontSize: 18, color: cosmicBlue),
+                                              fontSize: 18, color: LoveCompatibilityInputScreen.cosmicBlue),
                                         ),
                                       ],
                                     )
@@ -338,7 +378,7 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
                                       style: GoogleFonts.poppins(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
-                                          color: cosmicBlue),
+                                          color: LoveCompatibilityInputScreen.cosmicBlue),
                                     ),
                             ),
                           )),
@@ -348,7 +388,7 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
                               controller.errorMessage.value,
                               textAlign: TextAlign.center,
                               style: GoogleFonts.poppins(
-                                  color: warningRed, fontSize: 16),
+                                  color: LoveCompatibilityInputScreen.warningRed, fontSize: 16),
                             )
                           : const SizedBox()),
                     ],
@@ -360,7 +400,7 @@ class LoveCompatibilityInputScreen extends StatelessWidget {
                 "Discover how the stars align for your relationship",
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
-                  color: lunarSilver,
+                  color: LoveCompatibilityInputScreen.lunarSilver,
                   fontStyle: FontStyle.italic,
                   fontSize: 14,
                 ),

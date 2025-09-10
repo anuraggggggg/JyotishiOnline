@@ -8,6 +8,8 @@ import 'package:intl/intl.dart'; // For date formatting
 
 import 'package:AstrowayCustomer/views/proKerela/kundlioOutputpage.dart';
 import '../../controllers/proKerela/detailed_kundli_controller.dart';
+import '../../fastApi/fastApiServices.dart';
+import '../../model/fastApiModel/currentUserWalletModel.dart';
 import '../../utils/services/location_service.dart';
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 // import 'package:AstrowayCustomer/utils/global.dart' as global; // Removed: Not needed if no wallet access
@@ -36,6 +38,8 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
 
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
+  CurrentUserWalletModel? _wallet;
+// or int, or String, depending on your API response
 
   Timer? _debounce;
   List<LocationSuggestion> _suggestions = [];
@@ -324,10 +328,10 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
   }
 
   Future<void> _submit() async {
-    // Hide the keyboard
+    // Hide keyboard
     FocusScope.of(context).unfocus();
 
-    const double kundliServicePrice = 599.0;
+    const int kundliServicePrice = 599;
 
     if (_formKey.currentState!.validate()) {
       if (selectedDate == null || selectedTime == null) {
@@ -341,34 +345,56 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
         return;
       }
 
-      // Wallet balance check
-      if (global.user.walletAmount == null ||
-          global.user.walletAmount! < kundliServicePrice) {
-        final shortfall = kundliServicePrice - (global.user.walletAmount ?? 0);
-        _showSnackbar(
-          'Insufficient Balance',
-          'You need ₹${shortfall.toStringAsFixed(2)} more to access Kundli service. Please recharge your wallet.',
-          warningRed,
-        );
-        return;
-      }
-
-      controller.isLoading.value = true; // Show loading indicator
+      controller.isLoading.value = true;
 
       try {
-        // Deduct ₹599 from wallet (client-side)
-        global.user.walletAmount =
-            global.user.walletAmount! - kundliServicePrice;
+        // 1️⃣ Fetch wallet balance from backend
+        final wallet = await FastAPIServices().fetchCurrentWallet();
+        if (wallet == null) {
+          _showSnackbar('Wallet Error',
+              'Unable to fetch wallet balance. Please try again.', warningRed);
+          controller.isLoading.value = false;
+          return;
+        }
 
+        // 2️⃣ Check balance
+        if (wallet.amount < kundliServicePrice) {
+          final shortfall = kundliServicePrice - wallet.amount;
+          _showSnackbar(
+            'Insufficient Balance',
+            'You need ₹${shortfall.toStringAsFixed(2)} more to access Kundli service. Please recharge your wallet.',
+            warningRed,
+          );
+          controller.isLoading.value = false;
+          return;
+        }
+
+        // 3️⃣ Deduct using debit API
+        final updatedWallet =
+        await FastAPIServices().debitWallet(kundliServicePrice);
+
+        if (updatedWallet == null) {
+          _showSnackbar(
+              'Payment Failed', 'Could not deduct wallet. Try again.', warningRed);
+          controller.isLoading.value = false;
+          return;
+        }
+
+        // 4️⃣ Success → show snackbar
         _showSnackbar(
           'Payment Successful',
           '₹${kundliServicePrice.toStringAsFixed(2)} deducted from your wallet for Kundli service.',
           celestialGold,
         );
 
+        // 5️⃣ Update local wallet state for UI
+        setState(() {
+          _wallet = updatedWallet;
+        });
+
         await Future.delayed(const Duration(milliseconds: 400));
 
-        // Fetch Kundli data
+        // 6️⃣ Fetch Kundli data
         await controller.fetchFromInputFields(
           cityName: _cityController.text.trim(),
           date: _dateController.text.trim(),
@@ -395,13 +421,15 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
         print('Kundli generation error: $e');
         _showSnackbar('Unexpected Error', 'Please try again.', warningRed);
       } finally {
-        controller.isLoading.value = false; // Hide loading indicator
+        controller.isLoading.value = false;
       }
     } else {
-      _showSnackbar('Input Error', 'Please fill all required fields correctly.',
-          warningRed);
+      _showSnackbar(
+          'Input Error', 'Please fill all required fields correctly.', warningRed);
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {

@@ -39,6 +39,7 @@ import '../../utils/images.dart';
 import '../astrologerProfile/astrologerProfile.dart';
 import '../bottomNavigationBarScreen.dart';
 import '../customDialog.dart';
+import '../wallet/walletRechargeScreen.dart';
 
 class AcceptChatScreen extends StatefulWidget {
   final int flagId;
@@ -1965,67 +1966,69 @@ class _AcceptChatScreenState extends State<AcceptChatScreen> {
             CupertinoDialogAction(
               child: Text("Top Up"),
               onPressed: () async {
-                {
-                  global.showOnlyLoaderDialog(context);
+                Get.to(() =>  RechargeWalletScreen());
 
-                  chatController.sendMessage(
-                      '${global.user.name == '' ? 'user' : global.user.name} -> ended chat',
-                      widget.fireBasechatId,
-                      widget.astrologerId,
-                      true);
-                  chatController.showBottomAcceptChat = false;
-                  global.sp = await SharedPreferences.getInstance();
-                  chatController.isEndChat = true;
-                  chatController.chatBottom = false;
-                  chatController.isInchat = false;
-                  chatController.isAstrologerEndedChat = false;
-                  global.callOnFcmApiSendPushNotifications(
-                      fcmTokem: [widget.fcmToken],
-                      title: 'End chat from customer');
-                  chatController.update();
-                  await timerController.endChatTime(
-                      timerController.totalSeconds, widget.chatId);
-                  timerController.secTimer!.cancel();
-                  await global.splashController.getCurrentUserData();
-                  // await historyController.getChatHistory(
-                  //     global.currentUserId!, false);
-                  timerController.endChat = true;
-                  timerController.update();
-                  bottomNavigationController.astrologerList.clear();
-                  bottomNavigationController.isAllDataLoaded = false;
-                  if (bottomNavigationController.genderFilterList != null) {
-                    bottomNavigationController.genderFilterList!.clear();
-                  }
-                  if (bottomNavigationController.languageFilter != null) {
-                    bottomNavigationController.languageFilter!.clear();
-                  }
-                  if (bottomNavigationController.skillFilterList != null) {
-                    bottomNavigationController.skillFilterList!.clear();
-                  }
-                  bottomNavigationController.applyFilter = false;
-                  bottomNavigationController.update();
-                  await bottomNavigationController.getAstrologerList(
-                      isLazyLoading: false);
-                  global.hideLoader();
-                  bottomNavigationController.setIndex(0, 0);
-                  Get.back();
-                  Get.back();
-                  Get.to(() => BottomNavigationBarScreen(
-                    index: 0,
-                  ));
-                  openBottomSheetRechrage(
-                    context,
-                    (int.parse(bottomNavigationController
-                        .astrologerbyId[0].charge
-                        .toString()) *
-                        5)
-                        .toString(),
-                    "Chat",
-                    '${bottomNavigationController.astrologerbyId[0].name}',
-                    bottomNavigationController.astrologerbyId[0].charge
-                        .toString(),
-                  );
-                }
+                // {
+                //   global.showOnlyLoaderDialog(context);
+                //
+                //   chatController.sendMessage(
+                //       '${global.user.name == '' ? 'user' : global.user.name} -> ended chat',
+                //       widget.fireBasechatId,
+                //       widget.astrologerId,
+                //       true);
+                //   chatController.showBottomAcceptChat = false;
+                //   global.sp = await SharedPreferences.getInstance();
+                //   chatController.isEndChat = true;
+                //   chatController.chatBottom = false;
+                //   chatController.isInchat = false;
+                //   chatController.isAstrologerEndedChat = false;
+                //   global.callOnFcmApiSendPushNotifications(
+                //       fcmTokem: [widget.fcmToken],
+                //       title: 'End chat from customer');
+                //   chatController.update();
+                //   await timerController.endChatTime(
+                //       timerController.totalSeconds, widget.chatId);
+                //   timerController.secTimer!.cancel();
+                //   await global.splashController.getCurrentUserData();
+                //   // await historyController.getChatHistory(
+                //   //     global.currentUserId!, false);
+                //   timerController.endChat = true;
+                //   timerController.update();
+                //   bottomNavigationController.astrologerList.clear();
+                //   bottomNavigationController.isAllDataLoaded = false;
+                //   if (bottomNavigationController.genderFilterList != null) {
+                //     bottomNavigationController.genderFilterList!.clear();
+                //   }
+                //   if (bottomNavigationController.languageFilter != null) {
+                //     bottomNavigationController.languageFilter!.clear();
+                //   }
+                //   if (bottomNavigationController.skillFilterList != null) {
+                //     bottomNavigationController.skillFilterList!.clear();
+                //   }
+                //   bottomNavigationController.applyFilter = false;
+                //   bottomNavigationController.update();
+                //   await bottomNavigationController.getAstrologerList(
+                //       isLazyLoading: false);
+                //   global.hideLoader();
+                //   bottomNavigationController.setIndex(0, 0);
+                //   Get.back();
+                //   Get.back();
+                //   Get.to(() => BottomNavigationBarScreen(
+                //     index: 0,
+                //   ));
+                //   openBottomSheetRechrage(
+                //     context,
+                //     (int.parse(bottomNavigationController
+                //         .astrologerbyId[0].charge
+                //         .toString()) *
+                //         5)
+                //         .toString(),
+                //     "Chat",
+                //     '${bottomNavigationController.astrologerbyId[0].name}',
+                //     bottomNavigationController.astrologerbyId[0].charge
+                //         .toString(),
+                //   );
+                // }
               },
             ),
             CupertinoDialogAction(

@@ -5,6 +5,7 @@ import 'dart:developer';
 import 'package:AstrowayCustomer/controllers/liveController.dart';
 import 'package:AstrowayCustomer/controllers/splashController.dart';
 import 'package:AstrowayCustomer/model/astrologer_model.dart';
+import 'package:AstrowayCustomer/model/fastApiModel/UserModel.dart';
 import 'package:AstrowayCustomer/model/kundli_model.dart';
 import 'package:AstrowayCustomer/model/live_asrtrologer_model.dart';
 import 'package:AstrowayCustomer/utils/services/api_helper.dart';
@@ -26,8 +27,8 @@ import '../views/proKerela/services.dart';
 //views
 
 class BottomNavigationController extends GetxController {
-  int bottomNavIndex = 0.obs();
-  int historyIndex = 0;
+  int bottomNavIndex = 0;
+  int historyIndex = 3;
   APIHelper apiHelper = APIHelper();
   var astrologerList = <AstrologerModel>[];
   var astrologerbyId = <AstrologerModel>[];
@@ -73,21 +74,23 @@ class BottomNavigationController extends GetxController {
   List<int>? languageFilter;
   List<String>? genderFilterList;
   int? categoryId;
-  KundliModel? userModel;
+  UserModel? userModel;
   String? sortBy;
   String? sortingFilter = ''.obs();
   int? selectedCatId;
   bool isCallAstroDataLoadedOnce = false;
   bool isChatAstroDataLoadedOnce = false;
   List<Widget> screens() => [
-        HomeScreen(userDetails: userModel),
+        HomeScreen(),
         ChatScreen(),
         // LiveAstrologerListScreen(isFromBottom: true),
-        CallScreen(flag: 0,),
-        HistoryScreen(
-          currentIndex: historyIndex,
+        CallScreen(
+          flag: 0,
         ),
-    AstrologyServicesPage(),
+        // HistoryScreen(
+        //     currentIndex: historyIndex,
+        //     ),
+        AstrologyServicesPage(),
       ];
   // final HomeController homeController = Get.find<HomeController>();
   @override
@@ -143,196 +146,70 @@ class BottomNavigationController extends GetxController {
     });
   }
 
+  // Add this to your BottomNavigationController class
+
   setIndex(int index, int histIndexx) {
-    int currentIndex = index;
+    // Remove the problematic line that sets currentIndex = 0 at the end
 
-    currentIndex = index;
-
-    if (currentIndex == 1 || currentIndex == 3) {
+    if (index == 1 || index == 3) {
       startIndex = 0;
       astrologerList.clear();
       isAllDataLoaded = false;
       print("on bottom ${astrologerList.length}");
       getAstrologerList(isLazyLoading: false);
     }
-    if (currentIndex == 0) {
+    if (index == 0) {
       getLiveAstrologerList();
     }
 
-    setBottomIndex(currentIndex, histIndexx);
-    currentIndex = 0;
+    setBottomIndex(index, histIndexx); // This should set bottomNavIndex = index
+
+    // DON'T set currentIndex = 0 here - this was causing the issue
+    update(); // Make sure to call update to refresh the UI
   }
 
-  // Future<void> dialogForJoinInWaitListForListPageOnly(
-  //     context,
-  //     String astrologerName,
-  //     bool forChat,
-  //     int astrologerId,
-  //     String astroProfile,
-  //     int charge,
-  //     bool isFree) async {
-  //   showDialog(
-  //       context: context,
-  //       builder: (context) {
-  //         return SimpleDialog(
-  //           backgroundColor: Colors.white,
-  //           children: [
-  //             CircleAvatar(
-  //               radius: 36,
-  //               backgroundColor: Get.theme.primaryColor,
-  //               child: CachedNetworkImage(
-  //                 imageUrl: "${global.imgBaseurl}$astroProfile",
-  //                 imageBuilder: (context, imageProvider) {
-  //                   return CircleAvatar(
-  //                     radius: 35,
-  //                     backgroundColor: Colors.white,
-  //                     backgroundImage: imageProvider,
-  //                   );
-  //                 },
-  //                 placeholder: (context, url) =>
-  //                     const Center(child: CircularProgressIndicator()),
-  //                 errorWidget: (context, url, error) {
-  //                   return Container(
-  //                     child: CircleAvatar(
-  //                         radius: 35,
-  //                         backgroundColor: Colors.white,
-  //                         child: Image.asset(
-  //                           Images.deafultUser,
-  //                           fit: BoxFit.fill,
-  //                           height: 50,
-  //                         )),
-  //                   );
-  //                 },
-  //               ),
-  //             ),
-  //             Container(
-  //               width: Get.width,
-  //               child: Column(
-  //                 crossAxisAlignment: CrossAxisAlignment.center,
-  //                 children: [
-  //                   Padding(
-  //                     padding: EdgeInsets.only(top: 5),
-  //                     child: Text(
-  //                       "$astrologerName",
-  //                       style: TextStyle(
-  //                           fontSize: 16, fontWeight: FontWeight.bold),
-  //                     ).tr(),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //             Padding(
-  //               padding: const EdgeInsets.all(20.0),
-  //               child: Text(
-  //                 '{tr("If you join the waitlist,we will notify")} $astrologerName ${tr("to take the session, if possible")}',
-  //                 style: TextStyle(
-  //                   color: Colors.red,
-  //                   fontSize: 12,
-  //                 ),
-  //                 textAlign: TextAlign.center,
-  //               ).tr(),
-  //             ),
-  //             Container(
-  //               width: Get.width,
-  //               child: Row(
-  //                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-  //                 children: [
-  //                   GestureDetector(
-  //                     onTap: () {
-  //                       Get.back();
-  //                     },
-  //                     child: Container(
-  //                       padding: EdgeInsets.only(
-  //                         left: 20,
-  //                         bottom: 10,
-  //                         top: 10,
-  //                         right: 20,
-  //                       ),
-  //                       decoration: BoxDecoration(
-  //                           color: Colors.grey[300],
-  //                           borderRadius:
-  //                               BorderRadius.all(Radius.circular(10))),
-  //                       child: Text(
-  //                         "CANCEL",
-  //                         style: TextStyle(color: Colors.black),
-  //                       ).tr(),
-  //                     ),
-  //                   ),
-  //                   GestureDetector(
-  //                     onTap: () async {
-  //                       Get.back();
-  //                       if (forChat == true) {
-  //                         global.showOnlyLoaderDialog(Get.context);
-  //                         bool isLogin = await global.isLogin();
-  //                         if (isLogin) {
-  //                           if (charge * 5 <=
-  //                                   global.splashController.currentUser!
-  //                                       .walletAmount! ||
-  //                               isFree == true) {
-  //                             await Get.to(() => CallIntakeFormScreen(
-  //                                   type: "Chat",
-  //                                   astrologerId: astrologerId,
-  //                                   astrologerName: astrologerName,
-  //                                   astrologerProfile: astrologerProfile,
-  //                                   isFreeAvailable: isFree,
-  //                                 ));
-  //                           } else {
-  //                             global.showToast(
-  //                                 message:
-  //                                     'Minimum balance of 5 minutes(${global.getSystemFlagValueForLogin(global.systemFlagNameList.currency)} ${charge * 5}) is required to start chat with $astrologerName',
-  //                                 textColor: global.textColor,
-  //                                 bgColor: global.toastBackGoundColor);
-  //                           }
-  //                         }
-  //                         global.hideLoader();
-  //                       } else {
-  //                         global.showOnlyLoaderDialog(context);
-  //                         bool isLogin = await global.isLogin();
-  //                         if (isLogin) {
-  //                           if (charge * 5 <=
-  //                                   global.splashController.currentUser!
-  //                                       .walletAmount! ||
-  //                               isFree == true) {
-  //                             await Get.to(() => CallIntakeFormScreen(
-  //                                   astrologerProfile: astrologerProfile,
-  //                                   type: "Call",
-  //                                   astrologerId: astrologerId,
-  //                                   astrologerName: astrologerName,
-  //                                   isFreeAvailable: isFree,
-  //                                 ));
-  //                           } else {
-  //                             global.showToast(
-  //                                 message:
-  //                                     'Minimum balance of 5 minutes(${global.getSystemFlagValueForLogin(global.systemFlagNameList.currency)} ${charge * 5}) is required to start call with $astrologerName',
-  //                                 textColor: global.textColor,
-  //                                 bgColor: global.toastBackGoundColor);
-  //                           }
-  //                         }
-  //                         global.hideLoader();
-  //                       }
-  //                     },
-  //                     child: Container(
-  //                       padding: EdgeInsets.all(10),
-  //                       decoration: BoxDecoration(
-  //                           color: Get.theme.primaryColor,
-  //                           borderRadius:
-  //                               BorderRadius.all(Radius.circular(10))),
-  //                       child: Text(
-  //                         "Join Waitlist",
-  //                         style: TextStyle(color: Colors.black),
-  //                       ).tr(),
-  //                     ),
-  //                   )
-  //                 ],
-  //               ),
-  //             )
-  //           ],
-  //         );
-  //       });
-  // }
+// Also fix the setBottomIndex method
+  Future setBottomIndex(int index, int histIndex) async {
+    try {
+      // Force first load to start at 0
+      if (historyIndex == null) {
+        bottomNavIndex = 0;
+      } else {
+        bottomNavIndex = index;
+      }
+
+      if (histIndex != 0) {
+        historyIndex = histIndex;
+      }
+
+      if (bottomNavIndex == 2 && liveAstrologer.isNotEmpty) {
+        anotherLiveAstrologers = liveAstrologer
+            .where((element) =>
+                element.astrologerId != liveAstrologer[0].astrologerId)
+            .toList();
+      }
+
+      update();
+    } catch (e) {
+      print(
+          "Exception - BottomNavigationController.dart - setBottomIndex(): $e");
+    }
+  }
+
+// Add this method to ensure proper initialization
+  void initializeBottomNavigation() {
+    bottomNavIndex = 0;
+    historyIndex = 0;
+    update();
+  }
 
   Future<void> dialogForJoinInWaitList(
-      context, String astrologerName, bool forChat,String status,String astroProfile,) async {
+    context,
+    String astrologerName,
+    bool forChat,
+    String status,
+    String astroProfile,
+  ) async {
     showDialog(
         context: context,
         builder: (context) {
@@ -346,8 +223,7 @@ class BottomNavigationController extends GetxController {
                   height: 50,
                   width: 50,
                   fit: BoxFit.cover,
-                  imageUrl:
-                  "${global.imgBaseurl}${astroProfile}",
+                  imageUrl: "${global.imgBaseurl}${astroProfile}",
                   imageBuilder: (context, imageProvider) {
                     return CircleAvatar(
                       radius: 35,
@@ -356,7 +232,7 @@ class BottomNavigationController extends GetxController {
                     );
                   },
                   placeholder: (context, url) =>
-                  const Center(child: CircularProgressIndicator()),
+                      const Center(child: CircularProgressIndicator()),
                   errorWidget: (context, url, error) {
                     return Container(
                       child: CircleAvatar(
@@ -390,8 +266,11 @@ class BottomNavigationController extends GetxController {
               Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Text(
-                  status.toString()=="Offline"? 'You can not talk to astrologer because astrologer is Currently Offline':(status.toString()=="Busy"?
-                  'You can not talk to astrologer because astrologer is Currently Busy':"You can not talk to astrologer because astrologer is Currently in Break"),
+                  status.toString() == "Offline"
+                      ? 'You can not talk to astrologer because astrologer is Currently Offline'
+                      : (status.toString() == "Busy"
+                          ? 'You can not talk to astrologer because astrologer is Currently Busy'
+                          : "You can not talk to astrologer because astrologer is Currently in Break"),
                   style: TextStyle(
                     color: Colors.red,
                     fontSize: 15.sp,
@@ -431,148 +310,6 @@ class BottomNavigationController extends GetxController {
                         ),
                       ),
                     ),
-
-                    // GestureDetector(
-                    //   onTap: () {
-                    //     Get.back();
-                    //   },
-                    //   child: Container(
-                    //     padding: EdgeInsets.only(
-                    //       left: 20,
-                    //       bottom: 10,
-                    //       top: 10,
-                    //       right: 20,
-                    //     ),
-                    //     decoration: BoxDecoration(
-                    //         color: Colors.grey[300],
-                    //         borderRadius:
-                    //             BorderRadius.all(Radius.circular(10))),
-                    //     child: Text(
-                    //       "Cancel",
-                    //       style: TextStyle(color: Colors.black),
-                    //     ).tr(),
-                    //   ),
-                    // ),
-                    // GestureDetector(
-                    //   onTap: () async {
-                    //     Get.back();
-                    //     if (forChat == true) {
-                    //       await bottomNavigationController.checkAlreadyInReq(
-                    //           bottomNavigationController.astrologerbyId[0].id!);
-                    //       if (bottomNavigationController
-                    //               .isUserAlreadyInChatReq ==
-                    //           false) {
-                    //         global.showOnlyLoaderDialog(Get.context);
-                    //         if (bottomNavigationController
-                    //                 .astrologerbyId[0].chatWaitTime !=
-                    //             null) {
-                    //           if (bottomNavigationController
-                    //                   .astrologerbyId[0].chatWaitTime!
-                    //                   .difference(DateTime.now())
-                    //                   .inMinutes <
-                    //               0) {
-                    //             await bottomNavigationController
-                    //                 .changeOfflineStatus(
-                    //                     bottomNavigationController
-                    //                         .astrologerbyId[0].id!,
-                    //                     "Online");
-                    //           }
-                    //         }
-                    //         double charge = double.parse(
-                    //             bottomNavigationController
-                    //                 .astrologerbyId[0].charge!
-                    //                 .toString());
-                    //         if (charge * 5 <=
-                    //                 global.splashController.currentUser!
-                    //                     .walletAmount! ||
-                    //             bottomNavigationController
-                    //                     .astrologerbyId[0].isFreeAvailable ==
-                    //                 true) {
-                    //           await Get.to(() => CallIntakeFormScreen(
-                    //                 type: "Chat",
-                    //                 astrologerId: bottomNavigationController
-                    //                     .astrologerbyId[0].id!,
-                    //                 astrologerName: bottomNavigationController
-                    //                     .astrologerbyId[0].name!,
-                    //                 astrologerProfile:
-                    //                     bottomNavigationController
-                    //                         .astrologerbyId[0].profileImage!,
-                    //                 isFreeAvailable: bottomNavigationController
-                    //                     .astrologerbyId[0].isFreeAvailable!,
-                    //               ));
-                    //         }
-                    //         global.hideLoader();
-                    //       } else {
-                    //         bottomNavigationController
-                    //             .dialogForNotCreatingSession(Get.context);
-                    //       }
-                    //     } else {
-                    //       await bottomNavigationController
-                    //           .checkAlreadyInReqForCall(
-                    //               bottomNavigationController
-                    //                   .astrologerbyId[0].id!);
-                    //       if (bottomNavigationController
-                    //               .isUserAlreadyInCallReq ==
-                    //           false) {
-                    //         global.showOnlyLoaderDialog(context);
-                    //         //need to check for already in req list
-                    //         if (bottomNavigationController
-                    //                 .astrologerbyId[0].callWaitTime !=
-                    //             null) {
-                    //           if (bottomNavigationController
-                    //                   .astrologerbyId[0].callWaitTime!
-                    //                   .difference(DateTime.now())
-                    //                   .inMinutes <
-                    //               0) {
-                    //             await bottomNavigationController
-                    //                 .changeOfflineCallStatus(
-                    //                     bottomNavigationController
-                    //                         .astrologerbyId[0].id!,
-                    //                     "Online");
-                    //           }
-                    //         }
-                    //         double charge = double.parse(
-                    //             bottomNavigationController
-                    //                 .astrologerbyId[0].charge!
-                    //                 .toString());
-                    //         if (charge * 5 <=
-                    //                 global.splashController.currentUser!
-                    //                     .walletAmount! ||
-                    //             bottomNavigationController
-                    //                     .astrologerbyId[0].isFreeAvailable! ==
-                    //                 true) {
-                    //           await Get.to(() => CallIntakeFormScreen(
-                    //                 astrologerProfile:
-                    //                     bottomNavigationController
-                    //                         .astrologerbyId[0].profileImage!,
-                    //                 type: "Call",
-                    //                 astrologerId: bottomNavigationController
-                    //                     .astrologerbyId[0].id!,
-                    //                 astrologerName: bottomNavigationController
-                    //                     .astrologerbyId[0].name!,
-                    //                 isFreeAvailable: bottomNavigationController
-                    //                     .astrologerbyId[0].isFreeAvailable!,
-                    //               ));
-                    //         }
-                    //         global.hideLoader();
-                    //       } else {
-                    //         bottomNavigationController
-                    //             .dialogForNotCreatingSession(Get.context);
-                    //       }
-                    //     }
-                    //   },
-                    //   child: Container(
-                    //     padding: EdgeInsets.all(10),
-                    //     decoration: BoxDecoration(
-                    //         color: Get.theme.primaryColor,
-                    //         borderRadius:
-                    //             BorderRadius.all(Radius.circular(10))),
-                    //     child: Text(
-                    //       "Join Waitlist",
-                    //       style: TextStyle(color: Colors.white),
-                    //     ).tr(),
-                    //   ),
-                    // ),
                   ],
                 ),
               )
@@ -580,7 +317,6 @@ class BottomNavigationController extends GetxController {
           );
         });
   }
-
 
   Future<void> dialogForNotCreatingSession(context) async {
     showDialog(
@@ -726,28 +462,28 @@ class BottomNavigationController extends GetxController {
     }
   }
 
-  Future setBottomIndex(int index, int histIndex) async {
-    try {
-      bottomNavIndex = index;
-      if (histIndex != 0) {
-        historyIndex = histIndex;
-      }
-      if (index == 2) {
-        if (liveAstrologer.isNotEmpty) {
-          anotherLiveAstrologers = liveAstrologer
-              .where((element) =>
-                  element.astrologerId != liveAstrologer[index].astrologerId)
-              .toList();
-          update();
-        }
-      }
+  // Future setBottomIndex(int index, int histIndex) async {
+  //   try {
+  //     bottomNavIndex = index;
+  //     if (histIndex != 0) {
+  //       historyIndex = histIndex;
+  //     }
+  //     if (index == 2) {
+  //       if (liveAstrologer.isNotEmpty) {
+  //         anotherLiveAstrologers = liveAstrologer
+  //             .where((element) =>
+  //                 element.astrologerId != liveAstrologer[index].astrologerId)
+  //             .toList();
+  //         update();
+  //       }
+  //     }
 
-      update();
-    } catch (e) {
-      print("Exception - BottomNavigationController.dart - setBottomIndex():" +
-          e.toString());
-    }
-  }
+  //     update();
+  //   } catch (e) {
+  //     print("Exception - BottomNavigationController.dart - setBottomIndex():" +
+  //         e.toString());
+  //   }
+  // }
 
   Future<dynamic> getAstrologerList(
       {List<int>? skills,
@@ -996,7 +732,6 @@ class BottomNavigationController extends GetxController {
       print("Exception in getAstrologerbyId :-" + e.toString());
     }
   }
-
 
   Future<dynamic> astrologerReportAndBlock(int astrologerId) async {
     try {

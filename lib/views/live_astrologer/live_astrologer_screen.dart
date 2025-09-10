@@ -4030,9 +4030,37 @@ class _LiveAstrologerScreenState extends State<LiveAstrologerScreen> {
 //MOBILE SUPPORT
   void sendChannelMessage(String channelMessage, String? gift) async {
     try {
-      await channel.sendMessage2(RtmMessage.fromText(
-          '$currentUserName&&$channelMessage&&$currentUserProfile&&$gift'));
-      log('channelId -------->$channelId');
+      if (channel == null) {
+        print("❌ RTM channel is not initialized.");
+        return;
+      }
+
+      final members = await channel!.getMembers();
+      if (members.isEmpty) {
+        print("🚫 RTM channel has no members — joining again...");
+        await channel!.join(); // Retry join
+        final retryMembers = await channel!.getMembers();
+        if (retryMembers.isEmpty) {
+          print("🛑 Still no members — aborting send.");
+          return;
+        }
+      }
+
+      final safeGift = gift ?? "";
+      final composedMessage =
+          '$currentUserName&&$channelMessage&&$currentUserProfile&&$safeGift';
+      print("📡 Sending composed RTM message: $composedMessage");
+
+      try {
+        await channel!.sendMessage(RtmMessage.fromText(composedMessage));
+        print("✅ Message sent successfully to channelId: $channelId");
+      } catch (sendError) {
+        print("❌ Failed to send, retrying in 500ms...");
+        await Future.delayed(Duration(milliseconds: 500));
+        await channel!.sendMessage(RtmMessage.fromText(composedMessage));
+        print("✅ Message sent on retry.");
+      }
+
       setState(() {
         messageList.add(MessageModel(
           message: channelMessage,

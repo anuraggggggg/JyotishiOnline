@@ -11,6 +11,7 @@ import 'package:AstrowayCustomer/controllers/history_controller.dart';
 import 'package:AstrowayCustomer/controllers/homeController.dart';
 import 'package:AstrowayCustomer/controllers/splashController.dart';
 import 'package:AstrowayCustomer/controllers/themeController.dart';
+import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/views/freeServicesScreen.dart';
 import 'package:AstrowayCustomer/views/getReportScreen.dart';
 import 'package:AstrowayCustomer/views/loginScreen.dart';
@@ -18,11 +19,13 @@ import 'package:AstrowayCustomer/views/myFollowingScreen.dart';
 import 'package:AstrowayCustomer/views/profile/editUserProfileScreen.dart';
 import 'package:AstrowayCustomer/views/settings/colorPicker.dart';
 import 'package:AstrowayCustomer/views/settings/settingsScreen.dart';
+import 'package:AstrowayCustomer/views/wallet/paymentLogScreen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:AstrowayCustomer/utils/global.dart' as global;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:store_redirect/store_redirect.dart';
 
 import '../controllers/astrologer_assistant_controller.dart';
@@ -32,12 +35,36 @@ import '../utils/images.dart';
 import '../views/counsellor/counsellorScreen.dart';
 import '../views/customer_support/customerSupportChatScreen.dart';
 
-class DrawerWidget extends StatelessWidget {
+class DrawerWidget extends StatefulWidget {
   DrawerWidget({Key? key}) : super(key: key);
+
+  @override
+  State<DrawerWidget> createState() => _DrawerWidgetState();
+}
+
+class _DrawerWidgetState extends State<DrawerWidget> {
   final SplashController splashController = Get.find<SplashController>();
+
   CallController callController = Get.put(CallController());
+
   PanchangController panchangController = Get.find<PanchangController>();
+
   HistoryController historyController = Get.find<HistoryController>();
+  String? userName;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userName = prefs.getString("user_name"); // read the saved name
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,38 +99,44 @@ class DrawerWidget extends StatelessWidget {
                           Get.to(() => EditUserProfile());
                         }
                       },
-                      child: splashController.currentUser?.profile == "" || splashController.currentUser?.profile == null
+                      child: splashController.currentUser?.profile == "" ||
+                              splashController.currentUser?.profile == null
                           ? CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Get.theme.primaryColor.withOpacity(0.2),
-                        child: Icon(
-                          Icons.person,
-                          size: 30,
-                          color: Get.theme.primaryColor,
-                        ),
-                      )
+                              radius: 30,
+                              backgroundColor:
+                                  Get.theme.primaryColor.withOpacity(0.2),
+                              child: Icon(
+                                Icons.person,
+                                size: 30,
+                                color: Get.theme.primaryColor,
+                              ),
+                            )
                           : CachedNetworkImage(
-                        imageUrl: "${global.imgBaseurl}${splashController.currentUser?.profile}",
-                        imageBuilder: (context, imageProvider) {
-                          return CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Colors.white,
-                            backgroundImage: NetworkImage("${global.imgBaseurl}${splashController.currentUser?.profile}"),
-                          );
-                        },
-                        placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                        errorWidget: (context, url, error) {
-                          return CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Get.theme.primaryColor.withOpacity(0.2),
-                            child: Icon(
-                              Icons.person,
-                              size: 30,
-                              color: Get.theme.primaryColor,
+                              imageUrl:
+                                  "${global.imgBaseurl}${splashController.currentUser?.profile}",
+                              imageBuilder: (context, imageProvider) {
+                                return CircleAvatar(
+                                  radius: 30,
+                                  backgroundColor: Colors.white,
+                                  backgroundImage: NetworkImage(
+                                      "${global.imgBaseurl}${splashController.currentUser?.profile}"),
+                                );
+                              },
+                              placeholder: (context, url) => const Center(
+                                  child: CircularProgressIndicator()),
+                              errorWidget: (context, url, error) {
+                                return CircleAvatar(
+                                  radius: 30,
+                                  backgroundColor:
+                                      Get.theme.primaryColor.withOpacity(0.2),
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 30,
+                                    color: Get.theme.primaryColor,
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
                     ),
                     SizedBox(width: 15),
                     Expanded(
@@ -111,9 +144,9 @@ class DrawerWidget extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            splashController.currentUser == null || splashController.currentUser!.name == ""
+                            userName == null || userName == ""
                                 ? "Guest User"
-                                : "${splashController.currentUser!.name}",
+                                : "${userName}",
                             style: Get.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
@@ -137,7 +170,8 @@ class DrawerWidget extends StatelessWidget {
                             ),
                           if (splashController.currentUser != null &&
                               splashController.currentUser!.contactNo != null &&
-                              splashController.currentUser!.contactNo!.isNotEmpty)
+                              splashController
+                                  .currentUser!.contactNo!.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 2.0),
                               child: Text(
@@ -163,13 +197,16 @@ class DrawerWidget extends StatelessWidget {
                       icon: Icons.note_alt_outlined,
                       title: 'Get Report',
                       onTap: () async {
-                        final BottomNavigationController bottomNavigationController = Get.find<BottomNavigationController>();
+                        final BottomNavigationController
+                            bottomNavigationController =
+                            Get.find<BottomNavigationController>();
                         bottomNavigationController.astrologerList = [];
                         bottomNavigationController.astrologerList.clear();
                         bottomNavigationController.isAllDataLoaded = false;
                         bottomNavigationController.update();
                         global.showOnlyLoaderDialog(context);
-                        await bottomNavigationController.getAstrologerList(isLazyLoading: false);
+                        await bottomNavigationController.getAstrologerList(
+                            isLazyLoading: false);
                         global.hideLoader();
                         Get.to(() => GetReportScreen());
                       },
@@ -180,30 +217,58 @@ class DrawerWidget extends StatelessWidget {
                       title: 'Chat with Astrologer',
                       onTap: () async {
                         global.showOnlyLoaderDialog(context);
-                        final navController = Get.find<BottomNavigationController>();
+                        final navController =
+                            Get.find<BottomNavigationController>();
                         navController.astrologerList = [];
                         navController.astrologerList.clear();
                         navController.isAllDataLoaded = false;
                         navController.update();
-                        await navController.getAstrologerList(isLazyLoading: false);
+                        await navController.getAstrologerList(
+                            isLazyLoading: false);
                         global.hideLoader();
                         navController.setBottomIndex(1, 0);
                       },
                     ),
 
                     _buildMenuItem(
-                      icon: Icons.people_alt_outlined,
-                      title: 'Chat With Counsellors',
+                      icon: Icons
+                          .payment, // you can choose any payment-related icon
+                      title: 'Payment Logs',
                       onTap: () async {
-                        global.showOnlyLoaderDialog(context);
-                        final counsellorController = Get.find<CounsellorController>();
-                        counsellorController.counsellorList = [];
-                        counsellorController.update();
-                        await counsellorController.getCounsellorsData(false);
-                        global.hideLoader();
-                        Get.to(() => CounsellorScreen());
+                        Get.to(() => PaymentLogScreen());
+                        // global.showOnlyLoaderDialog(context);
+
+                        // // final navController = Get.find<BottomNavigationController>();
+                        // // // 🟢 Clear old data if you keep it in controller
+                        // // navController.paymentLogsList = [];
+                        // // navController.paymentLogsList.clear();
+                        // // navController.isAllPaymentLogsLoaded = false;
+                        // // navController.update();
+
+                        // // 🟢 Fetch Payment Logs (replace with your actual API call)
+                        // await navController.getPaymentLogs(isLazyLoading: false);
+
+                        // global.hideLoader();
+
+                        // Switch to Payment Logs tab/screen
+                        // navController.setBottomIndex(3, 0);
                       },
                     ),
+
+                    // _buildMenuItem(
+                    //   icon: Icons.people_alt_outlined,
+                    //   title: 'Chat With Counsellors',
+                    //   onTap: () async {
+                    //     global.showOnlyLoaderDialog(context);
+                    //     final counsellorController =
+                    //         Get.find<CounsellorController>();
+                    //     counsellorController.counsellorList = [];
+                    //     counsellorController.update();
+                    //     await counsellorController.getCounsellorsData(false);
+                    //     global.hideLoader();
+                    //     Get.to(() => CounsellorScreen());
+                    //   },
+                    // ),
 
                     _buildMenuItem(
                       icon: Icons.verified_user_outlined,
@@ -211,11 +276,13 @@ class DrawerWidget extends StatelessWidget {
                       onTap: () async {
                         bool isLogin = await global.isLogin();
                         if (isLogin) {
-                          final followAstrologerController = Get.find<FollowAstrologerController>();
+                          final followAstrologerController =
+                              Get.find<FollowAstrologerController>();
                           followAstrologerController.followedAstrologer.clear();
                           followAstrologerController.isAllDataLoaded = false;
                           global.showOnlyLoaderDialog(context);
-                          await followAstrologerController.getFollowedAstrologerList(false);
+                          await followAstrologerController
+                              .getFollowedAstrologerList(false);
                           global.hideLoader();
                           Get.to(() => MyFollowingScreen());
                         }
@@ -259,26 +326,27 @@ class DrawerWidget extends StatelessWidget {
                       },
                     ),
 
-                    if (global.currentUserId != null)
-                      _buildMenuItem(
-                        icon: Icons.settings_outlined,
-                        title: 'Settings',
-                        onTap: () async {
-                          final settingsController = Get.find<SettingsController>();
-                          global.showOnlyLoaderDialog(context);
-                          await settingsController.getBlockAstrologerList();
-                          global.hideLoader();
-                          Get.to(() => SettingListScreen());
-                        },
-                      )
-                    else
-                      _buildMenuItem(
-                        icon: Icons.login_outlined,
-                        title: 'Login',
-                        onTap: () {
-                          Get.off(() => LoginScreen());
-                        },
-                      ),
+                    // if (global.currentUserId != null)
+                    //   _buildMenuItem(
+                    //     icon: Icons.settings_outlined,
+                    //     title: 'Settings',
+                    //     onTap: () async {
+                    //       final settingsController =
+                    //           Get.find<SettingsController>();
+                    //       global.showOnlyLoaderDialog(context);
+                    //       await settingsController.getBlockAstrologerList();
+                    //       global.hideLoader();
+                    //       Get.to(() => SettingListScreen());
+                    //     },
+                    //   )
+                    // else
+                    //   _buildMenuItem(
+                    //     icon: Icons.login_outlined,
+                    //     title: 'Login',
+                    //     onTap: () {
+                    //       Get.off(() => LoginScreen());
+                    //     },
+                    //   ),
 
                     _buildMenuItem(
                       icon: Icons.support_agent_outlined,
@@ -286,11 +354,14 @@ class DrawerWidget extends StatelessWidget {
                       onTap: () async {
                         bool isLogin = await global.isLogin();
                         if (isLogin) {
-                          final customerSupportController = Get.find<CustomerSupportController>();
-                          final astrologerAssistantController = Get.find<AstrologerAssistantController>();
+                          final customerSupportController =
+                              Get.find<CustomerSupportController>();
+                          final astrologerAssistantController =
+                              Get.find<AstrologerAssistantController>();
                           global.showOnlyLoaderDialog(context);
                           await customerSupportController.getCustomerTickets();
-                          await astrologerAssistantController.getChatWithAstrologerAssisteant();
+                          await astrologerAssistantController
+                              .getChatWithAstrologerAssisteant();
                           global.hideLoader();
                           Get.to(() => CustomerSupportChat());
                         }
@@ -302,15 +373,23 @@ class DrawerWidget extends StatelessWidget {
                       title: 'Logout my account',
                       onTap: () async {
                         bool isLogin = await global.isLogin();
-                        if (isLogin) {
-                          final customerSupportController = Get.find<CustomerSupportController>();
-                          final astrologerAssistantController = Get.find<AstrologerAssistantController>();
-                          global.showOnlyLoaderDialog(context);
-                          await customerSupportController.getCustomerTickets();
-                          await astrologerAssistantController.getChatWithAstrologerAssisteant();
-                          global.hideLoader();
-                          Get.to(() => CustomerSupportChat());
-                        }
+                        if (isLogin)
+
+                          // Changed to an async function
+                          // Close the dialog
+
+                          // Clear all local data on the history controller
+                          historyController.chatHistoryList.clear();
+                        historyController.astroMallHistoryList.clear();
+                        historyController.reportHistoryList.clear();
+                        historyController.callHistoryList.clear();
+                        historyController.paymentLogsList.clear();
+                        historyController.walletTransactionList.clear();
+
+                        // Call the new logout function from FastAPIServices
+                        await FastAPIServices().logout();
+
+                        Get.back();
                       },
                     ),
                   ],
@@ -325,7 +404,8 @@ class DrawerWidget extends StatelessWidget {
 
               // Social Media Section
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -352,7 +432,8 @@ class DrawerWidget extends StatelessWidget {
 
               // App Version
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Text(
                   "App Version: 1.0.0",
                   style: Get.textTheme.bodySmall?.copyWith(

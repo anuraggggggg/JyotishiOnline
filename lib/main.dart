@@ -114,7 +114,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
             ? double.parse(message.data['videoCallCharge'].toString())
             : 0;
         String astrologerFcmToken =
-        message.data['fcmToken'] != null ? message.data['fcmToken'] : "";
+            message.data['fcmToken'] != null ? message.data['fcmToken'] : "";
         await bottomController.getAstrologerbyId(astroId);
         bool isFollow = bottomController.astrologerbyId[0].isFollow!;
         // not show notification just show dialog for accept/reject for live stream
@@ -199,7 +199,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
             ? "Astrologer"
             : messageData["astrologerName"],
         astroProfile:
-        messageData["profile"] == null ? "" : messageData["profile"],
+            messageData["profile"] == null ? "" : messageData["profile"],
         firebaseChatId: messageData["firebaseChatId"],
         fcmToken: messageData["fcmToken"],
         duration: messageData['call_duration'],
@@ -238,11 +238,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Initialize Shared Preferences first
-  global.sp = await SharedPreferences.getInstance(); // Ensure global.sp is initialized
+  global.sp =
+      await SharedPreferences.getInstance(); // Ensure global.sp is initialized
   await EasyLocalization.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.white,
-    statusBarIconBrightness: Brightness.dark, // kyunki white background hai, dark icons better lagenge
+    statusBarIconBrightness: Brightness
+        .dark, // kyunki white background hai, dark icons better lagenge
   ));
 
   if (kIsWeb) {
@@ -269,8 +271,6 @@ void main() async {
     provisional: false,
     sound: true,
   );
-
-
 
   // Determine the initial locale based on stored preference
   final String? storedLangCode = global.sp!.getString('currentLanguage');
@@ -349,7 +349,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               ? double.parse(message.data['videoCallCharge'].toString())
               : 0;
           String astrologerFcmToken =
-          message.data['fcmToken'] != null ? message.data['fcmToken'] : "";
+              message.data['fcmToken'] != null ? message.data['fcmToken'] : "";
           await bottomController.getAstrologerbyId(astroId);
           bool isFollow = bottomController.astrologerbyId[0].isFollow!;
           liveController.accpetDeclineContfirmationDialogForLiveStreaming(
@@ -424,13 +424,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 showDialog(
                     context: Get.context!,
                     barrierDismissible:
-                    false, // user must tap button for close dialog!
+                        false, // user must tap button for close dialog!
                     builder: (BuildContext context) {
                       return AlertDialog(
                         backgroundColor: Colors.white,
                         shape: const RoundedRectangleBorder(
                             borderRadius:
-                            BorderRadius.all(Radius.circular(10))),
+                                BorderRadius.all(Radius.circular(10))),
                         content: Container(
                           height: 170,
                           child: Column(
@@ -440,31 +440,31 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                                 radius: 30,
                                 child: messageData["profile"] == ""
                                     ? Image.asset(
-                                  Images.deafultUser,
-                                  fit: BoxFit.fill,
-                                  height: 50,
-                                  width: 40,
-                                )
-                                    : CachedNetworkImage(
-                                  imageUrl:
-                                  '${global.imgBaseurl}${messageData["profile"]}',
-                                  imageBuilder: (context,
-                                      imageProvider) =>
-                                      CircleAvatar(
-                                          radius: 48,
-                                          backgroundImage: imageProvider),
-                                  placeholder: (context, url) =>
-                                  const Center(
-                                      child:
-                                      CircularProgressIndicator()),
-                                  errorWidget: (context, url, error) =>
-                                      Image.asset(
                                         Images.deafultUser,
                                         fit: BoxFit.fill,
                                         height: 50,
                                         width: 40,
+                                      )
+                                    : CachedNetworkImage(
+                                        imageUrl:
+                                            '${global.imgBaseurl}${messageData["profile"]}',
+                                        imageBuilder: (context,
+                                                imageProvider) =>
+                                            CircleAvatar(
+                                                radius: 48,
+                                                backgroundImage: imageProvider),
+                                        placeholder: (context, url) =>
+                                            const Center(
+                                                child:
+                                                    CircularProgressIndicator()),
+                                        errorWidget: (context, url, error) =>
+                                            Image.asset(
+                                          Images.deafultUser,
+                                          fit: BoxFit.fill,
+                                          height: 50,
+                                          width: 40,
+                                        ),
                                       ),
-                                ),
                               ),
                               Padding(
                                 padding: EdgeInsets.only(top: 10),
@@ -479,7 +479,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                                 padding: EdgeInsets.only(top: 10),
                                 child: Row(
                                   mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     GestureDetector(
                                       onTap: () async {
@@ -489,21 +489,21 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                                         global.hideLoader();
                                         global
                                             .callOnFcmApiSendPushNotifications(
-                                            fcmTokem: [
+                                                fcmTokem: [
                                               messageData["fcmToken"]
                                             ],
-                                            title:
-                                            'End chat from customer');
+                                                title:
+                                                    'End chat from customer');
                                         BottomNavigationController
-                                        bottomNavigationController =
-                                        Get.find<
-                                            BottomNavigationController>();
+                                            bottomNavigationController =
+                                            Get.find<
+                                                BottomNavigationController>();
                                         bottomNavigationController.setIndex(
                                             0, 0);
                                         Get.back();
                                         Get.to(() => BottomNavigationBarScreen(
-                                          index: 0,
-                                        ));
+                                              index: 0,
+                                            ));
                                       },
                                       child: Container(
                                         height: 40,
@@ -511,7 +511,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                                         decoration: BoxDecoration(
                                             color: Colors.grey,
                                             borderRadius:
-                                            BorderRadius.circular(50)),
+                                                BorderRadius.circular(50)),
                                         child: Center(
                                           child: Text(
                                             "Reject",
@@ -532,45 +532,45 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
                                         global
                                             .callOnFcmApiSendPushNotifications(
-                                            fcmTokem: [
+                                                fcmTokem: [
                                               messageData["fcmToken"]
                                             ],
-                                            title:
-                                            'Start simple chat timer');
+                                                title:
+                                                    'Start simple chat timer');
                                         global.hideLoader();
                                         chatController.isInchat = true;
                                         chatController.isEndChat = false;
                                         TimerController timerController =
-                                        Get.find<TimerController>();
+                                            Get.find<TimerController>();
                                         timerController.startTimer();
                                         chatController.update();
                                         await player.stop();
                                         Get.to(() => AcceptChatScreen(
-                                          flagId: 1,
-                                          astrologerName: messageData[
-                                          "astrologerName"] ==
-                                              null
-                                              ? "Astrologer"
-                                              : messageData[
-                                          "astrologerName"],
-                                          profileImage: messageData[
-                                          "profile"] ==
-                                              null
-                                              ? ""
-                                              : messageData["profile"]
-                                              .toString(),
-                                          fireBasechatId: messageData[
-                                          "firebaseChatId"]
-                                              .toString(),
-                                          astrologerId:
-                                          messageData["astrologerId"],
-                                          chatId: int.parse(messageData["chatId"].toString()),
-                                          fcmToken:
-                                          messageData["fcmToken"],
-                                          duration: messageData[
-                                          'chat_duration']
-                                              .toString(),
-                                        ));
+                                              flagId: 1,
+                                              astrologerName: messageData[
+                                                          "astrologerName"] ==
+                                                      null
+                                                  ? "Astrologer"
+                                                  : messageData[
+                                                      "astrologerName"],
+                                              profileImage:
+                                                  messageData["profile"] == null
+                                                      ? ""
+                                                      : messageData["profile"]
+                                                          .toString(),
+                                              fireBasechatId:
+                                                  messageData["firebaseChatId"]
+                                                      .toString(),
+                                              astrologerId:
+                                                  messageData["astrologerId"],
+                                              chatId: int.parse(
+                                                  messageData["chatId"]
+                                                      .toString()),
+                                              fcmToken: messageData["fcmToken"],
+                                              duration:
+                                                  messageData['chat_duration']
+                                                      .toString(),
+                                            ));
                                       },
                                       child: Container(
                                         height: 40,
@@ -578,7 +578,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                                         decoration: BoxDecoration(
                                             color: Colors.red,
                                             borderRadius:
-                                            BorderRadius.circular(50)),
+                                                BorderRadius.circular(50)),
                                         child: Center(
                                           child: Text(
                                             "Accept",
@@ -616,7 +616,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 foregroundNotification(message, messageData['icon'] ?? "");
                 await FirebaseMessaging.instance
                     .setForegroundNotificationPresentationOptions(
-                    alert: true, badge: true, sound: true);
+                        alert: true, badge: true, sound: true);
                 log("check4");
               } else if (messageData['notificationType'] == 1) {
                 //! calling code
@@ -647,7 +647,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   foregroundNotification(message, messageData['icon'] ?? "");
                   await FirebaseMessaging.instance
                       .setForegroundNotificationPresentationOptions(
-                      alert: true, badge: true, sound: true);
+                          alert: true, badge: true, sound: true);
                 }
               } else if (messageData['notificationType'] == 14) {
                 await bottomController.getLiveAstrologerList();
@@ -655,7 +655,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 foregroundNotification(message, messageData['icon'] ?? "");
                 await FirebaseMessaging.instance
                     .setForegroundNotificationPresentationOptions(
-                    alert: true, badge: true, sound: true);
+                        alert: true, badge: true, sound: true);
               }
               if (messageData['notificationType'] == 4) {
               } else if (messageData['notificationType'] == 14) {
@@ -663,20 +663,20 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 foregroundNotification(message, messageData['']);
                 await FirebaseMessaging.instance
                     .setForegroundNotificationPresentationOptions(
-                    alert: true, badge: true, sound: true);
+                        alert: true, badge: true, sound: true);
               }
             } else {
               foregroundNotification(message, messageData['icon'] ?? "");
               await FirebaseMessaging.instance
                   .setForegroundNotificationPresentationOptions(
-                  alert: true, badge: true, sound: true);
+                      alert: true, badge: true, sound: true);
             }
           } else {
             foregroundNotification(
                 message, json.decode((message.data['body']))['icon'] ?? "");
             await FirebaseMessaging.instance
                 .setForegroundNotificationPresentationOptions(
-                alert: true, badge: true, sound: true);
+                    alert: true, badge: true, sound: true);
           }
         } catch (e) {
           print(e);
@@ -877,25 +877,25 @@ void callAccept(CallEvent event) async {
   if (event.body['extra']['call_type'] == 10) {
     await callController.acceptedCall(event.body['extra']["callId"]);
     Get.to(() => AcceptCallScreen(
-      astrologerId: event.body['extra']["astrologerId"],
-      astrologerName: event.body['extra']["astrologerName"] == null
-          ? "Astrologer"
-          : event.body['extra']["astrologerName"],
-      astrologerProfile: event.body['extra']["profile"] == null
-          ? ""
-          : event.body['extra']["profile"],
-      token: event.body['extra']["token"],
-      callChannel: event.body['extra']["channelName"],
-      callId: event.body['extra']["callId"],
-      duration: event.body['extra']['call_duration'].toString(),
-    ));
+          astrologerId: event.body['extra']["astrologerId"],
+          astrologerName: event.body['extra']["astrologerName"] == null
+              ? "Astrologer"
+              : event.body['extra']["astrologerName"],
+          astrologerProfile: event.body['extra']["profile"] == null
+              ? ""
+              : event.body['extra']["profile"],
+          token: event.body['extra']["token"],
+          callChannel: event.body['extra']["channelName"],
+          callId: event.body['extra']["callId"],
+          duration: event.body['extra']['call_duration'].toString(),
+        ));
   } else if (event.body['extra']['call_type'] == 11) {
     Get.to(() => OneToOneLiveScreen(
-      channelname: event.body['extra']["channelName"],
-      callId: event.body['extra']["callId"],
-      fcmToken: event.body['extra']["token"].toString(),
-      end_time: event.body['extra']['call_duration'].toString(),
-    ));
+          channelname: event.body['extra']["channelName"],
+          callId: event.body['extra']["callId"],
+          fcmToken: event.body['extra']["token"].toString(),
+          end_time: event.body['extra']['call_duration'].toString(),
+        ));
   }
 }
 
@@ -919,13 +919,12 @@ Future<void> foregroundNotificatioCustomAuddio(RemoteMessage payload) async {
       android: android, iOS: initializationSettingsDarwin);
   FlutterLocalNotificationsPlugin().initialize(initialSetting,
       onDidReceiveNotificationResponse: (_) {
-        log('foregroundNotificatioCustomAuddio tap');
+    log('foregroundNotificatioCustomAuddio tap');
 
-        onSelectNotification(json.encode(payload.data));
-      });
+    onSelectNotification(json.encode(payload.data));
+  });
   final customSound = 'app_sound.wav';
-  AndroidNotificationDetails androidDetails =
-  const AndroidNotificationDetails(
+  AndroidNotificationDetails androidDetails = const AndroidNotificationDetails(
     'channel_id_17',
     'channel.name',
     importance: Importance.max,
@@ -939,7 +938,7 @@ Future<void> foregroundNotificatioCustomAuddio(RemoteMessage payload) async {
     sound: customSound,
   );
   final platformChannelSpecifics =
-  NotificationDetails(android: androidDetails, iOS: iOSDetails);
+      NotificationDetails(android: androidDetails, iOS: iOSDetails);
   global.sp = await SharedPreferences.getInstance();
 
   if (global.sp!.getString("currentUser") != null) {
@@ -959,9 +958,9 @@ Future<void> foregroundNotification(
     RemoteMessage payload, String imageUrl) async {
   print("foreground notification:- $payload");
   final String? largeIconPath =
-  await _downloadAndSaveFile("${imgBaseurl}${imageUrl}", 'largeIcon');
+      await _downloadAndSaveFile("${imgBaseurl}${imageUrl}", 'largeIcon');
   final DarwinInitializationSettings initializationSettingsDarwin =
-  DarwinInitializationSettings(
+      DarwinInitializationSettings(
     defaultPresentBadge: true,
     requestSoundPermission: true,
     requestBadgePermission: true,
@@ -971,16 +970,16 @@ Future<void> foregroundNotification(
     },
   );
   AndroidInitializationSettings android =
-  const AndroidInitializationSettings('@mipmap/ic_launcher');
+      const AndroidInitializationSettings('@mipmap/ic_launcher');
 
   final InitializationSettings initialSetting = InitializationSettings(
       android: android, iOS: initializationSettingsDarwin);
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
   flutterLocalNotificationsPlugin.initialize(initialSetting,
       onDidReceiveNotificationResponse: (_) {
-        onSelectNotification(json.encode(payload.data));
-      });
+    onSelectNotification(json.encode(payload.data));
+  });
 
   AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       channel.id, channel.name,
@@ -989,10 +988,10 @@ Future<void> foregroundNotification(
       icon: "@mipmap/ic_launcher",
       playSound: true,
       largeIcon: FilePathAndroidBitmap(largeIconPath!)
-    // styleInformation: BigPictureStyleInformation(
-    //   FilePathAndroidBitmap("assets/images/whatsapp.png"), // Big image (Android-specific)
-    // ),
-  );
+      // styleInformation: BigPictureStyleInformation(
+      //   FilePathAndroidBitmap("assets/images/whatsapp.png"), // Big image (Android-specific)
+      // ),
+      );
   const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails();
 
   NotificationDetails platformChannelSpecifics = NotificationDetails(
@@ -1036,46 +1035,46 @@ Future<void> onSelectNotification(String payload) async {
         await player.stop();
         body['call_type'].toString() == "11"
             ? Get.to(() => OneToOneLiveScreen(
-          channelname: body["channelName"],
-          callId: body["callId"],
-          fcmToken: body["token"],
-          end_time: body['call_duration'].toString(),
-        ))
+                  channelname: body["channelName"],
+                  callId: body["callId"],
+                  fcmToken: body["token"],
+                  end_time: body['call_duration'].toString(),
+                ))
             : Get.to(() => IncomingCallRequest(
-          astrologerId: body["astrologerId"],
-          astrologerName: body["astrologerName"] == null
-              ? "Astrologer"
-              : body["astrologerName"],
-          astrologerProfile:
-          body["profile"] == null ? "" : body["profile"],
-          token: body["token"],
-          channel: body["channelName"],
-          callId: int.parse(body["callId"].toString()),
-          fcmToken: body["fcmToken"] ?? "",
-          duration: body['call_duration'].toString(),
-        ));
+                  astrologerId: body["astrologerId"],
+                  astrologerName: body["astrologerName"] == null
+                      ? "Astrologer"
+                      : body["astrologerName"],
+                  astrologerProfile:
+                      body["profile"] == null ? "" : body["profile"],
+                  token: body["token"],
+                  channel: body["channelName"],
+                  callId: int.parse(body["callId"].toString()),
+                  fcmToken: body["fcmToken"] ?? "",
+                  duration: body['call_duration'].toString(),
+                ));
       } else if (body["notificationType"] == 3) {
         await player.stop();
         Get.to(() => IncomingChatRequest(
-          astrologerName: body["astrologerName"] == null
-              ? "Astrologer"
-              : body["astrologerName"],
-          profile: body["profile"] == null ? "" : body["profile"],
-          fireBasechatId: body["firebaseChatId"],
-          chatId: int.parse(body["chatId"].toString()),
-          astrologerId: body["astrologerId"],
-          fcmToken: body["fcmToken"],
-          duration: body['chat_duration'].toString(),
-        ));
+              astrologerName: body["astrologerName"] == null
+                  ? "Astrologer"
+                  : body["astrologerName"],
+              profile: body["profile"] == null ? "" : body["profile"],
+              fireBasechatId: body["firebaseChatId"],
+              chatId: int.parse(body["chatId"].toString()),
+              astrologerId: body["astrologerId"],
+              fcmToken: body["fcmToken"],
+              duration: body['chat_duration'].toString(),
+            ));
       } else if (body["notificationType"] == 4) {
         String? token = body['token'].toString();
         String channelName = body["channelName"].toString();
         String astrologerName = body["name"].toString();
         int astrologerId = int.parse(body["astrologerId"].toString());
         double charge = double.parse(body["charge"].toString());
-        double videoCallCharge =
-        double.parse(body["videoCallRate"].toString());
-        bottomController.anotherLiveAstrologers = bottomController.liveAstrologer
+        double videoCallCharge = double.parse(body["videoCallRate"].toString());
+        bottomController.anotherLiveAstrologers = bottomController
+            .liveAstrologer
             .where((element) => element.astrologerId != astrologerId)
             .toList();
         bottomController.update();
@@ -1096,20 +1095,20 @@ Future<void> onSelectNotification(String payload) async {
         bool isFollow = bottomController.astrologerbyId[0].isFollow!;
         liveController.update();
         Get.to(() => LiveAstrologerScreen(
-          token: token,
-          channel: channelName,
-          astrologerName: astrologerName,
-          astrologerId: astrologerId,
-          isFromHome: true,
-          charge: charge,
-          isForLiveCallAcceptDecline: false,
-          videoCallCharge: videoCallCharge,
-          isFollow: isFollow,
-        ));
+              token: token,
+              channel: channelName,
+              astrologerName: astrologerName,
+              astrologerId: astrologerId,
+              isFromHome: true,
+              charge: charge,
+              isForLiveCallAcceptDecline: false,
+              videoCallCharge: videoCallCharge,
+              isFollow: isFollow,
+            ));
       } else {
         print('other notification');
         BottomNavigationController bottomNavigationController =
-        Get.find<BottomNavigationController>();
+            Get.find<BottomNavigationController>();
         bottomNavigationController.setIndex(1, 0);
         Get.off(() => BottomNavigationBarScreen(index: 1));
       }

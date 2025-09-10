@@ -5,8 +5,11 @@ import 'dart:developer' as developer;
 
 import 'package:AstrowayCustomer/controllers/homeController.dart';
 import 'package:AstrowayCustomer/controllers/loginController.dart';
+import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/theme/appTheme.dart';
 import 'package:AstrowayCustomer/utils/images.dart';
+import 'package:AstrowayCustomer/views/loginWithEmailScreen.dart';
+import 'package:AstrowayCustomer/views/verifyPhoneScreen.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import 'package:flutter/material.dart';
@@ -194,16 +197,75 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onTap: () async {
                                   FocusScope.of(context).unfocus();
                                   bool isValid = loginController.validedPhone();
-                                  if (isValid) {
-                                    await loginController.sendOtpViaWhatsApp(
-                                      phoneNumber:
-                                          loginController.phoneController.text,
-                                    );
-                                  } else {
+
+                                  if (!isValid) {
+                                    print(
+                                        "⚠️ Phone validation failed: ${loginController.errorText}");
                                     global.showToast(
-                                      message: loginController.errorText!,
+                                      message: loginController.errorText ??
+                                          "Invalid phone number",
                                       textColor: global.textColor,
                                       bgColor: global.toastBackGoundColor,
+                                    );
+                                    return;
+                                  }
+
+                                  print(
+                                      "📞 Phone validation passed. Preparing to send OTP...");
+
+                                  try {
+                                    final response =
+                                        await FastAPIServices().sendOtp(
+                                      contactNo: loginController
+                                          .phoneController.text
+                                          .trim(),
+                                      countryCode:
+                                          "+91", // TODO: Make dynamic if multi-country support needed
+                                      sendWhatsapp: true,
+                                      sendSms: false,
+                                    );
+
+                                    print(
+                                        "✅ API call completed. Status: ${response.statusCode}");
+                                    print("📩 Response body: ${response.body}");
+
+                                    if (response.statusCode == 200) {
+                                      global.showToast(
+                                        message: "OTP sent successfully!",
+                                        textColor: global.textColor,
+                                        bgColor: Colors.green,
+                                      );
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => VerifyPhoneScreen(
+                                            phoneNumber: loginController
+                                                .phoneController.text
+                                                .trim(),
+                                            countryCode: '+91',
+                                            // countryCode: "+91",
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      final errorMessage = (response
+                                              .body.isNotEmpty)
+                                          ? response.body
+                                          : "Failed to send OTP. Please try again.";
+                                      global.showToast(
+                                        message: errorMessage,
+                                        textColor: global.textColor,
+                                        bgColor: Colors.red,
+                                      );
+                                    }
+                                  } catch (e, stackTrace) {
+                                    print("❌ Error while sending OTP: $e");
+                                    print(stackTrace);
+                                    global.showToast(
+                                      message:
+                                          "Something went wrong! Please check your internet connection.",
+                                      textColor: global.textColor,
+                                      bgColor: Colors.red,
                                     );
                                   }
                                 },
@@ -218,54 +280,135 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   child: Center(
                                     child: Text(
-                                      'Send OTP on WhatsApp',
+                                      'Send OTP',
                                       style: TextStyle(color: Colors.black),
                                       textAlign: TextAlign.center,
                                     ).tr(),
                                   ),
                                 ),
                               ),
+
                               SizedBox(height: 10),
 
                               // SMS button - visible only for foreign users
                               if (loginController.countryCode.value ==
                                   "+91") ...[
-                                GestureDetector(
-                                  onTap: () async {
-                                    FocusScope.of(context).unfocus();
-                                    bool isValid =
-                                        loginController.validedPhone();
-                                    if (isValid) {
-                                      await loginController.sendOtpToPhone();
-                                    } else {
-                                      global.showToast(
-                                        message: loginController.errorText!,
-                                        textColor: global.textColor,
-                                        bgColor: global.toastBackGoundColor,
-                                      );
-                                    }
-                                  },
-                                  child: Container(
-                                    height: 45,
-                                    width: double.infinity,
-                                    margin: EdgeInsets.only(top: 10),
-                                    decoration: BoxDecoration(
-                                      color: appYellow,
-                                      borderRadius: const BorderRadius.all(
-                                          Radius.circular(16)),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        'Send OTP on SMS',
-                                        style: TextStyle(color: Colors.black),
-                                        textAlign: TextAlign.center,
-                                      ).tr(),
-                                    ),
-                                  ),
-                                ),
+                                // GestureDetector(
+                                //   onTap: () async {
+                                //     FocusScope.of(context).unfocus();
+                                //     bool isValid =
+                                //         loginController.validedPhone();
+                                //     if (isValid) {
+                                //       await loginController.sendOtpToPhone();
+                                //     } else {
+                                //       global.showToast(
+                                //         message: loginController.errorText!,
+                                //         textColor: global.textColor,
+                                //         bgColor: global.toastBackGoundColor,
+                                //       );
+                                //     }
+                                //   },
+                                //   child: Container(
+                                //     height: 45,
+                                //     width: double.infinity,
+                                //     margin: EdgeInsets.only(top: 10),
+                                //     decoration: BoxDecoration(
+                                //       color: appYellow,
+                                //       borderRadius: const BorderRadius.all(
+                                //           Radius.circular(16)),
+                                //     ),
+                                //     child: Center(
+                                //       child: Text(
+                                //         'Send OTP ',
+                                //         style: TextStyle(color: Colors.black),
+                                //         textAlign: TextAlign.center,
+                                //       ).tr(),
+                                //     ),
+                                //   ),
+                                // ),
                                 SizedBox(height: 10),
                               ],
                               SizedBox(height: 20),
+                              // Add this code snippet within your Column widget,
+// after the 'Send OTP' button, and before the terms & conditions text.
+
+                              SizedBox(height: 20),
+// Add this new section for navigation to the Sign Up page
+                              Center(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    // Navigate to your Sign Up screen here
+                                    // Replace 'SignUpScreen()' with the name of your Sign Up page widget
+                                    // Navigator.push(
+                                    //   context,
+                                    //   MaterialPageRoute(
+                                    //     builder: (context) => SignUpScreen(),
+                                    //   ),
+                                    // );
+                                  },
+                                  child: RichText(
+                                    text: TextSpan(
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey,
+                                      ),
+                                      children: <TextSpan>[
+                                        TextSpan(
+                                            text: "Don't have an account? "),
+                                        TextSpan(
+                                          text: "Sign Up",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors
+                                                .blue, // or your desired color
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                  height:
+                                      20), // This adds some space before the next element
+                              Center(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    // Navigate to your Sign Up screen here
+                                    // Replace 'SignUpScreen()' with the name of your Sign Up page widget
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            LoginWithEmailScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: RichText(
+                                    text: TextSpan(
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey,
+                                      ),
+                                      children: <TextSpan>[
+                                        TextSpan(
+                                          text: "Login with Email & Password ",
+                                        ),
+                                        TextSpan(
+                                          text: "Click Here",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors
+                                                .blue, // or your desired color
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 20),
+
                               Text(
                                 "By Creating account, you are accepting terms & conditions",
                                 style: TextStyle(

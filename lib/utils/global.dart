@@ -85,8 +85,8 @@ Map<String, dynamic> appParameters = {
     "imageBaseurl": "https://jyotishionline.com/astro/",
   },
   "DEV": {
-    "apiUrl": "http://192.168.29.223:8001/api",
-    "imageBaseurl": "http://192.168.29.223:8001/",
+    "apiUrl": "https://jyotishionline.com/api",
+    "imageBaseurl": "https://jyotishionline.com/api",
   }
 };
 
@@ -113,6 +113,20 @@ int? localUid;
 int? localLiveUid;
 int? localLiveUid2;
 bool isHost = false;
+
+// New Agora App ID - assuming you need this as a separate variable
+String agoraAppId = "c5e90abe79d14fca95457c870baaca11";
+// Agora App Certificate is typically kept on the server-side for security reasons,
+// it should NOT be hardcoded in your client-side application.
+// If you need it for server-side logic, keep it secure.
+// String agoraAppCertificate = "YOUR_APP_CERTIFICATE_HERE"; // Do not put this in client-side code
+// String lat = "21.124857";
+// String lng = "73.112610";
+// var nativeAndroidPlatform = const MethodChannel('nativeAndroid');
+// int? localUid;
+// int? localLiveUid;
+// int? localLiveUid2;
+// bool isHost = false;
 
 Future<void> callOnFcmApiSendPushNotifications({
   List<String?>? fcmTokem,
@@ -312,6 +326,17 @@ showSnackBar(String title, String text, {Duration? duration}) {
       snackPosition: SnackPosition.BOTTOM);
 }
 
+void showLoader() {
+  Get.dialog(
+    const Center(
+      child: CircularProgressIndicator(
+        color: Colors.black,
+      ),
+    ),
+    barrierDismissible: false,
+  );
+}
+
 void hideLoader() {
   Get.back();
 }
@@ -476,10 +501,47 @@ String getSystemFlagValue(String flag) {
       .value;
 }
 
+// String getSystemFlagValueForLogin(String flag) {
+//   String value =
+//       splashController.syatemFlag.firstWhere((e) => e.name == flag).value;
+//   return splashController.syatemFlag.firstWhere((e) => e.name == flag).value;
+// }
+
 String getSystemFlagValueForLogin(String flag) {
-  String value =
-      splashController.syatemFlag.firstWhere((e) => e.name == flag).value;
-  return splashController.syatemFlag.firstWhere((e) => e.name == flag).value;
+  try {
+    // Check if the list is not empty
+    if (splashController.syatemFlag.isNotEmpty) {
+      // Use where().isNotEmpty to check if flag exists first
+      final matchingFlags =
+          splashController.syatemFlag.where((e) => e.name == flag);
+
+      if (matchingFlags.isNotEmpty) {
+        return matchingFlags.first.value;
+      }
+    }
+
+    // Return a default value if flag not found or list is empty
+    print('Warning: System flag "$flag" not found, returning default value');
+    return getDefaultFlagValue(flag);
+  } catch (e) {
+    print('Error in getSystemFlagValueForLogin: $e');
+    return getDefaultFlagValue(flag); // Fallback to default
+  }
+}
+
+// Helper function to provide default values for different flags
+String getDefaultFlagValue(String flag) {
+  switch (flag) {
+    case 'login_required':
+      return 'false';
+    case 'maintenance_mode':
+      return 'false';
+    case 'app_version':
+      return '1.0.0';
+    // Add more cases as needed based on your app's flags
+    default:
+      return 'default_value'; // Or empty string ''
+  }
 }
 
 showToast(

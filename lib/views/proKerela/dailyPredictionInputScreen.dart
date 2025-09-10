@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../controllers/proKerela/daily_prediction_controller.dart';
 import 'package:intl/intl.dart';
-import 'package:AstrowayCustomer/utils/global.dart' as global;
+import '../../controllers/proKerela/daily_prediction_controller.dart';
+import '../../fastApi/fastApiServices.dart';
+import '../../model/fastApiModel/currentUserWalletModel.dart';
 
-class DailyPredictionInputScreen extends StatelessWidget {
+class DailyPredictionInputScreen extends StatefulWidget {
+  const DailyPredictionInputScreen({Key? key}) : super(key: key);
+
+  @override
+  State<DailyPredictionInputScreen> createState() =>
+      _DailyPredictionInputScreenState();
+}
+
+class _DailyPredictionInputScreenState
+    extends State<DailyPredictionInputScreen> {
   final DailyPredictionController controller =
-      Get.put(DailyPredictionController());
+  Get.put(DailyPredictionController());
+
+  CurrentUserWalletModel? _wallet;
 
   final List<Map<String, String>> zodiacSigns = const [
     {'value': 'aries', 'label': 'Aries - The Ram'},
@@ -26,7 +38,6 @@ class DailyPredictionInputScreen extends StatelessWidget {
   static const Color cosmicBlue = Color(0xFF1A2B42);
   static const Color celestialGold = Color(0xFFD4AF37);
   static const Color stardustWhite = Color(0xFFF0F0F0);
-  static const Color smokyGrey = Color(0xFF4A4A4A);
   static const Color lunarSilver = Color(0xFFC0C0C0);
   static const Color darkAccent = Color(0xFF2C3E50);
   static const Color mediumAccent = Color(0xFF34495E);
@@ -42,11 +53,12 @@ class DailyPredictionInputScreen extends StatelessWidget {
       margin: const EdgeInsets.all(15),
       borderRadius: 12,
       icon: Icon(
-          backgroundColor == warningRed
-              ? Icons.error_outline
-              : Icons.check_circle_outline,
-          color: stardustWhite,
-          size: 28),
+        backgroundColor == warningRed
+            ? Icons.error_outline
+            : Icons.check_circle_outline,
+        color: stardustWhite,
+        size: 28,
+      ),
       snackStyle: SnackStyle.FLOATING,
       duration: const Duration(seconds: 3),
       barBlur: 5,
@@ -68,37 +80,23 @@ class DailyPredictionInputScreen extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       icon: const Icon(Icons.arrow_drop_down, color: celestialGold, size: 28),
-      // Ensure the dropdown menu background is dark blue
-      dropdownColor:
-          cosmicBlue.withOpacity(0.95), // This should already be dark blue
+      dropdownColor: cosmicBlue.withOpacity(0.95),
       decoration: InputDecoration(
         labelText: labelText,
         labelStyle: const TextStyle(
-          color:
-              stardustWhite, // Changed from lunarSilver for better visibility
+          color: stardustWhite,
           fontWeight: FontWeight.w500,
           fontSize: 16,
           overflow: TextOverflow.ellipsis,
         ),
-        prefixIcon: Icon(icon, color: celestialGold.withOpacity(0.9), size: 24),
-        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
-        isDense: true,
+        prefixIcon: Icon(icon, color: celestialGold, size: 24),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: celestialGold.withOpacity(0.6), width: 1.2),
+          borderSide: BorderSide(color: celestialGold.withOpacity(0.6), width: 1.2),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: celestialGold, width: 2.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: warningRed, width: 1.2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: warningRed, width: 2.5),
         ),
         filled: true,
         fillColor: cosmicBlue.withOpacity(0.7),
@@ -106,6 +104,65 @@ class DailyPredictionInputScreen extends StatelessWidget {
       items: items,
       onChanged: onChanged,
     );
+  }
+
+  Future<void> _handlePrediction() async {
+    if (controller.selectedSign.value.isEmpty) {
+      _showSnackbar('Error', 'Please select a zodiac sign', warningRed);
+      return;
+    }
+
+    const int predictionPrice = 100;
+    controller.isLoading.value = true;
+
+    try {
+      // 1️⃣ Fetch wallet balance
+      final wallet = await FastAPIServices().fetchCurrentWallet();
+      if (wallet == null) {
+        _showSnackbar('Wallet Error', 'Unable to fetch wallet balance.', warningRed);
+        controller.isLoading.value = false;
+        return;
+      }
+
+      // 2️⃣ Check balance
+      if (wallet.amount < predictionPrice) {
+        final shortfall = predictionPrice - wallet.amount;
+        _showSnackbar(
+          'Insufficient Balance',
+          'You need ₹${shortfall.toStringAsFixed(2)} more to access Daily Prediction.',
+          warningRed,
+        );
+        controller.isLoading.value = false;
+        return;
+      }
+
+      // 3️⃣ Deduct using debit API
+      final updatedWallet = await FastAPIServices().debitWallet(predictionPrice);
+      if (updatedWallet == null) {
+        _showSnackbar('Payment Failed', 'Could not deduct wallet.', warningRed);
+        controller.isLoading.value = false;
+        return;
+      }
+
+      // 4️⃣ Success
+      _showSnackbar(
+        'Payment Successful',
+        '₹${predictionPrice.toStringAsFixed(2)} deducted for Daily Prediction.',
+        celestialGold,
+      );
+
+      setState(() => _wallet = updatedWallet);
+
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // 5️⃣ Fetch prediction
+      controller.fetchPrediction();
+    } catch (e) {
+      print('Daily prediction error: $e');
+      _showSnackbar('Unexpected Error', 'Please try again.', warningRed);
+    } finally {
+      controller.isLoading.value = false;
+    }
   }
 
   @override
@@ -131,275 +188,185 @@ class DailyPredictionInputScreen extends StatelessWidget {
         iconTheme: const IconThemeData(color: stardustWhite, size: 28),
       ),
       body: Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height,
+        width: double.infinity,
+        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              cosmicBlue,
-              darkAccent,
-              mediumAccent,
-            ],
+            colors: [cosmicBlue, darkAccent, mediumAccent],
             stops: [0.1, 0.5, 0.9],
           ),
         ),
         child: Padding(
-          padding:
-              EdgeInsets.only(left: 25, right: 25, bottom: 25, top: topPadding),
+          padding: EdgeInsets.only(left: 25, right: 25, bottom: 25, top: topPadding),
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // 🌟 Restored Horoscope Card 🌟
                 Card(
                   elevation: 12,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
-                    side: BorderSide(
-                        color: celestialGold.withOpacity(0.8), width: 2),
+                    side: BorderSide(color: celestialGold.withOpacity(0.8), width: 2),
                   ),
                   color: cosmicBlue.withOpacity(0.85),
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Align(
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Your Daily Horoscope',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              color: celestialGold,
-                              letterSpacing: 1.5,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black.withOpacity(0.4),
-                                  blurRadius: 5,
-                                  offset: const Offset(2, 2),
-                                ),
-                              ],
-                            ),
+                        const Text(
+                          'Your Daily Horoscope',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: celestialGold,
                           ),
                         ),
-                        const SizedBox(height: 30),
-                        Obx(() => _buildThemedDropdownFormField<String>(
-                              value: controller.selectedSign.value.isNotEmpty
-                                  ? controller.selectedSign.value
-                                  : null,
-                              labelText: 'Select Zodiac Sign',
-                              icon: Icons.auto_awesome,
-                              items: zodiacSigns.map((sign) {
-                                return DropdownMenuItem(
-                                  value: sign['value'],
-                                  child: Text(
-                                    sign['label']!,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color:
-                                          stardustWhite, // <--- ADDED: Explicitly set text color for menu items
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                controller.selectedSign.value = value ?? '';
-                              },
-                            )),
                         const SizedBox(height: 25),
+
+                        // Dropdown
+                        Obx(() => _buildThemedDropdownFormField<String>(
+                          value: controller.selectedSign.value.isNotEmpty
+                              ? controller.selectedSign.value
+                              : null,
+                          items: zodiacSigns.map((sign) {
+                            return DropdownMenuItem(
+                              value: sign['value'],
+                              child: Text(sign['label']!,
+                                  style: const TextStyle(color: stardustWhite)),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            controller.selectedSign.value = value ?? '';
+                          },
+                          labelText: 'Select Zodiac Sign',
+                          icon: Icons.auto_awesome,
+                        )),
+                        const SizedBox(height: 20),
+
+                        // Date picker
                         Obx(() => Row(
-                              children: [
-                                Icon(Icons.calendar_month,
-                                    color: celestialGold.withOpacity(0.9),
-                                    size: 24),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    "Date: ${DateFormat('yyyy-MM-dd').format(controller.selectedDate.value)}",
-                                    style: const TextStyle(
-                                      color: stardustWhite,
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () async {
-                                    final picked = await showDatePicker(
-                                      context: context,
-                                      initialDate:
-                                          controller.selectedDate.value,
-                                      firstDate: DateTime(2000),
-                                      lastDate: DateTime.now()
-                                          .add(const Duration(days: 7)),
-                                      builder: (context, child) {
-                                        return Theme(
-                                          data: Theme.of(context).copyWith(
-                                            colorScheme:
-                                                const ColorScheme.light(
-                                              primary: celestialGold,
-                                              onPrimary: cosmicBlue,
-                                              surface: stardustWhite,
-                                              onSurface: cosmicBlue,
-                                            ),
-                                            textButtonTheme:
-                                                TextButtonThemeData(
-                                              style: TextButton.styleFrom(
-                                                foregroundColor: cosmicBlue,
-                                              ),
-                                            ),
-                                            dialogTheme: DialogTheme(
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(15),
-                                                side: const BorderSide(
-                                                    color: celestialGold,
-                                                    width: 1.5),
-                                              ),
-                                              backgroundColor: stardustWhite,
-                                            ),
-                                          ),
-                                          child: child!,
-                                        );
-                                      },
-                                    );
-                                    if (picked != null) {
-                                      controller.selectedDate.value = picked;
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        celestialGold.withOpacity(0.9),
-                                    foregroundColor: cosmicBlue,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 8),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    elevation: 3,
-                                    minimumSize: const Size(0, 36),
-                                  ),
-                                  child: const Text(
-                                    'Pick Date',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                )
-                              ],
-                            )),
+                          children: [
+                            const Icon(Icons.calendar_today,
+                                color: celestialGold, size: 24),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                "Date: ${DateFormat('yyyy-MM-dd').format(controller.selectedDate.value)}",
+                                style: const TextStyle(
+                                    color: stardustWhite, fontSize: 16),
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: controller.selectedDate.value,
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime.now().add(const Duration(days: 7)),
+                                );
+                                if (picked != null) {
+                                  controller.selectedDate.value = picked;
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: celestialGold,
+                                foregroundColor: cosmicBlue,
+                              ),
+                              child: const Text('Pick Date'),
+                            ),
+                          ],
+                        )),
                       ],
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 30),
-                Obx(() => SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          if (controller.selectedSign.value.isEmpty) {
-                            _showSnackbar('Error',
-                                'Please select a zodiac sign', warningRed);
-                            return;
-                          }
 
-                          // --- Start: Wallet Deduction Logic ---
-                          const double predictionPrice = 100.0;
-
-                          // Replace this with your actual global user wallet reference
-                          if (global.user.walletAmount == null ||
-                              global.user.walletAmount! < predictionPrice) {
-                            final shortfall = predictionPrice -
-                                (global.user.walletAmount ?? 0);
-                            _showSnackbar(
-                              'Insufficient Balance',
-                              'You need ₹${shortfall.toStringAsFixed(2)} more to access Daily Prediction. Please recharge your wallet.',
-                              warningRed,
-                            );
-                            return;
-                          }
-
-                          // Deduct from wallet
-                          global.user.walletAmount =
-                              global.user.walletAmount! - predictionPrice;
-                          _showSnackbar(
-                            'Payment Successful',
-                            '₹$predictionPrice deducted from your wallet for Daily Prediction.',
-                            celestialGold,
-                          );
-                          await Future.delayed(
-                              const Duration(milliseconds: 300)); // brief delay
-                          // --- End: Wallet Deduction Logic ---
-
-                          controller.fetchPrediction();
-                        },
-                        icon: controller.isLoading.value
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  color: cosmicBlue,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                            : const Icon(Icons.stars,
-                                color: cosmicBlue, size: 28),
-                        label: controller.isLoading.value
-                            ? const Text('Conjuring Insight...',
-                                style:
-                                    TextStyle(color: cosmicBlue, fontSize: 18))
-                            : const Text(
-                                'Get Daily Prediction',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: cosmicBlue,
-                                ),
-                              ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: celestialGold,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 8,
-                          shadowColor: celestialGold.withOpacity(0.5),
+                // Prediction button
+                Obx(() => ElevatedButton.icon(
+                  onPressed: _handlePrediction,
+                  icon: controller.isLoading.value
+                      ? SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: cosmicBlue,
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(cosmicBlue),
+                    ),
+                  )
+                      : Icon(Icons.stars_rounded, color: cosmicBlue, size: 26),
+                  label: controller.isLoading.value
+                      ? Text(
+                    'Conjuring Insight...',
+                    style: TextStyle(
+                      color: cosmicBlue,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                      : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Get Daily Prediction',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: cosmicBlue,
                         ),
                       ),
-                    )),
-                const SizedBox(height: 20),
-                Obx(() => controller.error.value.isNotEmpty
-                    ? Card(
-                        elevation: 5,
-                        margin: const EdgeInsets.symmetric(horizontal: 0),
-                        color: warningRed.withOpacity(0.2),
-                        shape: RoundedRectangleBorder(
+                      SizedBox(width: 8),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: cosmicBlue.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
-                          side: const BorderSide(color: warningRed, width: 1),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(15.0),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.error_outline,
-                                  color: warningRed, size: 28),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  controller.error.value,
-                                  style: const TextStyle(
-                                      color: stardustWhite, fontSize: 16),
-                                ),
-                              ),
-                            ],
+                        child: Text(
+                          '₹100 + GST',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: cosmicBlue,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      )
+                      ),
+                    ],
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: celestialGold,
+                    foregroundColor: cosmicBlue,
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: cosmicBlue.withOpacity(0.2), width: 1),
+                    ),
+                    elevation: 2,
+                    shadowColor: cosmicBlue.withOpacity(0.2),
+                  ),
+                )),
+
+                const SizedBox(height: 20),
+
+                // Error card
+                Obx(() => controller.error.value.isNotEmpty
+                    ? Card(
+                  color: warningRed.withOpacity(0.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: warningRed, width: 1),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Text(controller.error.value,
+                        style: const TextStyle(color: stardustWhite)),
+                  ),
+                )
                     : const SizedBox()),
               ],
             ),

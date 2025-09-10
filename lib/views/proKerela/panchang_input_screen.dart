@@ -12,7 +12,8 @@ import 'package:intl/intl.dart'; // Make sure this is imported for DateFormat
 
 import 'package:AstrowayCustomer/utils/global.dart'
     as global; // <--- IMPORTANT: Ensure this is imported for wallet access!
-import '../../controllers/proKerela/panchang_controller.dart'; // Assuming PanchangFormController is here
+import '../../controllers/proKerela/panchang_controller.dart';
+import '../../fastApi/fastApiServices.dart'; // Assuming PanchangFormController is here
 
 class PanchangInputScreen extends StatefulWidget {
   @override
@@ -116,148 +117,87 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
   }
 
   Future<void> _submit() async {
-    // Hide the keyboard if it's open
+    // Hide keyboard if open
     FocusScope.of(context).unfocus();
 
-    // Define the price for Panchang service
-    const double panchangServicePrice = 100.0; // ₹100 for Daily Panchang
+    // Panchang service price
+    const int panchangServicePrice = 100;
 
     if (_formKey.currentState!.validate()) {
-      // --- START: Wallet Balance Check ---
-      if (global.user.walletAmount == null ||
-          global.user.walletAmount! < panchangServicePrice) {
-        final double missingAmount =
-            panchangServicePrice - (global.user.walletAmount ?? 0);
+      controller.isLoading(true);
+
+      // 1️⃣ Fetch wallet balance from API
+      final wallet = await FastAPIServices().fetchCurrentWallet();
+      if (wallet == null) {
+        controller.isLoading(false);
+        Get.snackbar(
+          'Wallet Error',
+          'Unable to fetch wallet balance. Please try again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.redAccent.withOpacity(0.8),
+          colorText: stardustWhite,
+          icon: const Icon(Icons.error_outline, color: stardustWhite),
+        );
+        return;
+      }
+
+      if (wallet.amount < panchangServicePrice) {
+        // 2️⃣ Insufficient balance → Show error
+        final int missingAmount = panchangServicePrice - wallet.amount;
+        controller.isLoading(false);
         Get.snackbar(
           'Insufficient Balance',
           'You need ₹${missingAmount.toStringAsFixed(2)} more to access Daily Panchang. Please recharge your wallet.',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.redAccent.withOpacity(0.8),
           colorText: stardustWhite,
-          margin: const EdgeInsets.all(10),
-          borderRadius: 10,
-          icon: const Icon(Icons.account_balance_wallet_outlined,
-              color: stardustWhite),
+          icon: const Icon(Icons.account_balance_wallet_outlined, color: stardustWhite),
         );
-        return; // Stop execution if balance is insufficient
-      }
-      // --- END: Wallet Balance Check ---
-
-      // If a suggestion was selected, _latitude and _longitude are already set.
-      // Otherwise, try to geocode the manually entered text.
-      if (_latitude == null ||
-          _longitude == null ||
-          _placeController.text.trim().isEmpty) {
-        try {
-          controller.isLoading(true); // show loader during geocoding
-          final locations =
-              await locationFromAddress(_placeController.text.trim());
-          if (locations.isNotEmpty) {
-            _latitude = locations.first.latitude;
-            _longitude = locations.first.longitude;
-          } else {
-            Get.snackbar(
-              'Location Error',
-              'No location found for the given place. Please enter a valid city/town.',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.redAccent.withOpacity(0.8),
-              colorText: stardustWhite,
-              margin: const EdgeInsets.all(10),
-              borderRadius: 10,
-              icon: const Icon(Icons.location_off, color: stardustWhite),
-            );
-            controller.isLoading(false);
-            return;
-          }
-        } catch (e) {
-          Get.snackbar(
-            'Location Error',
-            'Failed to fetch location: ${e.toString()}',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.redAccent.withOpacity(0.8),
-            colorText: stardustWhite,
-            margin: const EdgeInsets.all(10),
-            borderRadius: 10,
-            icon: const Icon(Icons.error_outline, color: stardustWhite),
-          );
-          controller.isLoading(false);
-          return;
-        }
-      }
-
-      // Ensure latitude and longitude are not null before proceeding
-      if (_latitude == null || _longitude == null) {
-        Get.snackbar(
-          'Location Error',
-          'Latitude and Longitude could not be determined. Please re-enter the place.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.redAccent.withOpacity(0.8),
-          colorText: stardustWhite,
-          margin: const EdgeInsets.all(10),
-          borderRadius: 10,
-          icon: const Icon(Icons.error_outline, color: stardustWhite),
-        );
-        controller.isLoading(false);
         return;
       }
 
-      // --- START: Payment Deduction Execution ---
-      controller.isLoading(
-          true); // Ensure loader is visible during deduction processing
-
-      // IMPORTANT: In a production application, you MUST make an API call to your backend here
-      // to deduct the amount from the user's *server-side* wallet and confirm the service purchase.
-      // The client-side deduction below is only for immediate UI feedback.
-      // Example Placeholder for Backend Call:
-      /*
-      bool backendDeductionSuccess = await ApiServices.deductFromUserWallet(
-          userId: global.user.id, // Assuming global.user has an ID
-          amount: panchangServicePrice,
-          serviceType: 'Panchang'
-      );
-
-      if (!backendDeductionSuccess) {
-          Get.snackbar('Payment Failed', 'Server could not process payment. Please try again.', ...);
-          controller.isLoading(false);
-          return; // Stop if backend deduction failed
+      // 3️⃣ Deduct money using debit API
+      final updatedWallet = await FastAPIServices().debitWallet(panchangServicePrice);
+      if (updatedWallet == null) {
+        controller.isLoading(false);
+        Get.snackbar(
+          'Payment Failed',
+          'Could not deduct wallet balance. Please try again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.redAccent.withOpacity(0.8),
+          colorText: stardustWhite,
+          icon: const Icon(Icons.error, color: stardustWhite),
+        );
+        return;
       }
-      */
 
-      // Client-side wallet update (only after backend confirms success in a real app)
-      global.user.walletAmount =
-          global.user.walletAmount! - panchangServicePrice;
-      print(
-          'DEBUG: Deducted ₹$panchangServicePrice for Daily Panchang. New balance: ₹${global.user.walletAmount}');
-
+      // 4️⃣ Success → show snackbar
       Get.snackbar(
         'Payment Successful',
         '₹$panchangServicePrice deducted from your wallet for Daily Panchang.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: celestialGold.withOpacity(0.9),
         colorText: Colors.white,
-        margin: const EdgeInsets.all(10),
-        borderRadius: 10,
         icon: const Icon(Icons.check_circle_outline, color: Colors.white),
         duration: const Duration(seconds: 2),
       );
 
-      // Give a slight delay for the success snackbar to be seen before navigating
+      // 🕓 Small delay so user sees success
       await Future.delayed(const Duration(milliseconds: 500));
-      // --- END: Payment Deduction Execution ---
 
+      // 5️⃣ Proceed with Panchang API
       await controller.loadPanchang(
-        ayanamsa: _ayanamsa, // Correctly uses the int variable
+        ayanamsa: _ayanamsa,
         latitude: _latitude!,
         longitude: _longitude!,
-        datetime: _selectedDateTime, // Correctly uses the DateTime variable
+        datetime: _selectedDateTime,
         language: _language,
       );
 
-      controller.isLoading(false); // hide loader after panchang data is loaded
+      controller.isLoading(false);
 
       if (controller.panchangData.value != null) {
-        Get.to(
-            () => PanchangResultScreen(data: controller.panchangData.value!));
+        Get.to(() => PanchangResultScreen(data: controller.panchangData.value!));
       } else if (controller.errorMessage.value.isNotEmpty) {
         Get.snackbar(
           'Panchang Error',
@@ -265,37 +205,30 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.redAccent.withOpacity(0.8),
           colorText: stardustWhite,
-          margin: const EdgeInsets.all(10),
-          borderRadius: 10,
           icon: const Icon(Icons.warning_amber, color: stardustWhite),
         );
       } else {
-        // Fallback for unexpected null data without explicit error message
         Get.snackbar(
           'Panchang Error',
           'Failed to get Panchang data for unknown reasons. Please try again.',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.redAccent.withOpacity(0.8),
           colorText: stardustWhite,
-          margin: const EdgeInsets.all(10),
-          borderRadius: 10,
           icon: const Icon(Icons.warning_amber, color: stardustWhite),
         );
       }
     } else {
-      // If form validation fails
       Get.snackbar(
         'Input Error',
         'Please ensure all fields are filled correctly.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.redAccent.withOpacity(0.8),
         colorText: stardustWhite,
-        margin: const EdgeInsets.all(10),
-        borderRadius: 10,
         icon: const Icon(Icons.error, color: stardustWhite),
       );
     }
   }
+
 
   @override
   void dispose() {
@@ -546,19 +479,45 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: _submit,
-                            icon: const Icon(Icons.auto_awesome,
-                                color: cosmicBlue),
-                            label: const Text(
-                              'Calculate Panchang',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: cosmicBlue,
+                            icon: const Icon(Icons.auto_awesome, color: cosmicBlue, size: 24),
+                            label: Flexible( // Added Flexible to prevent overflow
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible( // Added Flexible for text
+                                    child: Text(
+                                      'Calculate Panchang',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: cosmicBlue,
+                                      ),
+                                      overflow: TextOverflow.ellipsis, // Handle long text
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8), // Reduced spacing
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Reduced padding
+                                    decoration: BoxDecoration(
+                                      color: cosmicBlue.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '₹100 +GST',
+                                      style: TextStyle(
+                                        fontSize: 12, // Smaller font for price
+                                        fontWeight: FontWeight.w600,
+                                        color: cosmicBlue,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: celestialGold,
-                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16), // Reduced horizontal padding
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),

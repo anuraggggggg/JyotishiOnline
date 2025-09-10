@@ -10,7 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 
-class HistoryController extends GetxController with GetSingleTickerProviderStateMixin {
+class HistoryController extends GetxController
+    with GetSingleTickerProviderStateMixin {
   TabController? tabControllerHistory;
 
   APIHelper apiHelper = APIHelper();
@@ -75,8 +76,8 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
 
   @override
   void onInit() {
-
-    tabControllerHistory = TabController(length: 2, vsync: this, initialIndex: currentIndexHistory);
+    tabControllerHistory = TabController(
+        length: 4, vsync: this, initialIndex: currentIndexHistory);
     inIt();
 
     super.onInit();
@@ -84,7 +85,9 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
 
   void paginateTask() {
     historyScrollController.addListener(() async {
-      if (historyScrollController.position.pixels == historyScrollController.position.maxScrollExtent && !isAllDataLoaded) {
+      if (historyScrollController.position.pixels ==
+              historyScrollController.position.maxScrollExtent &&
+          !isAllDataLoaded) {
         isMoreDataAvailable = true;
         update();
         await getAstroMall(global.currentUserId!, true);
@@ -92,7 +95,9 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
       update();
     });
     walletScrollController.addListener(() async {
-      if (walletScrollController.position.pixels == walletScrollController.position.maxScrollExtent && !walletAllDataLoaded) {
+      if (walletScrollController.position.pixels ==
+              walletScrollController.position.maxScrollExtent &&
+          !walletAllDataLoaded) {
         walletMoreDataAvailable = true;
         update();
         await getWalletTransaction(global.currentUserId!, true);
@@ -101,7 +106,9 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
     });
 
     paymentScrollController.addListener(() async {
-      if (paymentScrollController.position.pixels == paymentScrollController.position.maxScrollExtent && !paymentAllDataLoaded) {
+      if (paymentScrollController.position.pixels ==
+              paymentScrollController.position.maxScrollExtent &&
+          !paymentAllDataLoaded) {
         paymentMoreDataAvailable = true;
         update();
         await getPaymentLogs(global.currentUserId!, true);
@@ -110,7 +117,9 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
     });
 
     callScrollController.addListener(() async {
-      if (callScrollController.position.pixels == callScrollController.position.maxScrollExtent && !callAllDataLoaded) {
+      if (callScrollController.position.pixels ==
+              callScrollController.position.maxScrollExtent &&
+          !callAllDataLoaded) {
         callMoreDataAvailable = true;
         update();
         await getCallHistory(global.currentUserId!, true);
@@ -119,7 +128,9 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
     });
 
     chatScrollController.addListener(() async {
-      if (chatScrollController.position.pixels == chatScrollController.position.maxScrollExtent && !chatAllDataLoaded) {
+      if (chatScrollController.position.pixels ==
+              chatScrollController.position.maxScrollExtent &&
+          !chatAllDataLoaded) {
         chatMoreDataAvailable = true;
         update();
         await getChatHistory(global.currentUserId!, true);
@@ -128,7 +139,9 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
     });
 
     reportScrollController.addListener(() async {
-      if (reportScrollController.position.pixels == reportScrollController.position.maxScrollExtent && !reportAllDataLoaded) {
+      if (reportScrollController.position.pixels ==
+              reportScrollController.position.maxScrollExtent &&
+          !reportAllDataLoaded) {
         reportMoreDataAvailable = true;
         update();
         await getReportHistory(global.currentUserId!, true);
@@ -138,8 +151,8 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
   }
 
   inIt() {
-    audioPlayer=AudioPlayer();
-    audioPlayer2=AudioPlayer();
+    audioPlayer = AudioPlayer();
+    audioPlayer2 = AudioPlayer();
     paginateTask();
     audioPlayer.onDurationChanged.listen((event) {
       duration = event;
@@ -170,11 +183,16 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
       }
       await global.checkBody().then((result) async {
         if (result) {
-          await apiHelper.getHistory(userId, callStart, callFetch).then((result) {
+          await apiHelper
+              .getHistory(userId, callStart, callFetch)
+              .then((result) {
             if (result.status == "200") {
-              List<dynamic> callHistory = result.recordList[0]['callRequest']['callHistory'];
-              callHistoryList.addAll(List<CallHistoryModel>.from(callHistory.map((p) => CallHistoryModel.fromJson(p))));
-              if (result.recordList[0]['callRequest']['callHistory'].length == 0) {
+              List<dynamic> callHistory =
+                  result.recordList[0]['callRequest']['callHistory'];
+              callHistoryList.addAll(List<CallHistoryModel>.from(
+                  callHistory.map((p) => CallHistoryModel.fromJson(p))));
+              if (result.recordList[0]['callRequest']['callHistory'].length ==
+                  0) {
                 callMoreDataAvailable = false;
                 callAllDataLoaded = true;
               }
@@ -205,11 +223,16 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
       }
       await global.checkBody().then((result) async {
         if (result) {
-          await apiHelper.getHistory(userId, chatStart, fetchRecord).then((result) {
+          await apiHelper
+              .getHistory(userId, chatStart, fetchRecord)
+              .then((result) {
             if (result.status == "200") {
-              List<dynamic> chatHistory = result.recordList[0]['chatRequest']['chatHistory'];
-              chatHistoryList.addAll(List<ChatHistoryModel>.from(chatHistory.map((p) => ChatHistoryModel.fromJson(p))));
-              if (result.recordList[0]['chatRequest']['chatHistory'].length == 0) {
+              List<dynamic> chatHistory =
+                  result.recordList[0]['chatRequest']['chatHistory'];
+              chatHistoryList.addAll(List<ChatHistoryModel>.from(
+                  chatHistory.map((p) => ChatHistoryModel.fromJson(p))));
+              if (result.recordList[0]['chatRequest']['chatHistory'].length ==
+                  0) {
                 chatMoreDataAvailable = false;
                 chatAllDataLoaded = true;
               }
@@ -240,11 +263,17 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
       }
       await global.checkBody().then((result) async {
         if (result) {
-          await apiHelper.getHistory(userId, reportStart, reportFetch).then((result) {
+          await apiHelper
+              .getHistory(userId, reportStart, reportFetch)
+              .then((result) {
             if (result.status == "200") {
-              List<dynamic> reportHistory = result.recordList[0]['reportRequest']['reportHistory'];
-              reportHistoryList.addAll(List<ReportHistoryModel>.from(reportHistory.map((p) => ReportHistoryModel.fromJson(p))));
-              if (result.recordList[0]['reportRequest']['reportHistory'].length == 0) {
+              List<dynamic> reportHistory =
+                  result.recordList[0]['reportRequest']['reportHistory'];
+              reportHistoryList.addAll(List<ReportHistoryModel>.from(
+                  reportHistory.map((p) => ReportHistoryModel.fromJson(p))));
+              if (result
+                      .recordList[0]['reportRequest']['reportHistory'].length ==
+                  0) {
                 reportMoreDataAvailable = false;
                 reportAllDataLoaded = true;
               }
@@ -276,10 +305,15 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
 
       await global.checkBody().then((result) async {
         if (result) {
-          await apiHelper.getHistory(userId, paymentStart, paymentFetch).then((result) {
+          await apiHelper
+              .getHistory(userId, paymentStart, paymentFetch)
+              .then((result) {
             if (result.status == "200") {
-              List<dynamic> paymentLogsHistory = result.recordList[0]['paymentLogs']['payment'];
-              paymentLogsList.addAll(List<PaymentsLogsModel>.from(paymentLogsHistory.map((p) => PaymentsLogsModel.fromJson(p))));
+              List<dynamic> paymentLogsHistory =
+                  result.recordList[0]['paymentLogs']['payment'];
+              paymentLogsList.addAll(List<PaymentsLogsModel>.from(
+                  paymentLogsHistory
+                      .map((p) => PaymentsLogsModel.fromJson(p))));
               if (result.recordList[0]['paymentLogs']['payment'].length == 0) {
                 paymentMoreDataAvailable = false;
                 paymentAllDataLoaded = true;
@@ -312,10 +346,15 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
       }
       await global.checkBody().then((result) async {
         if (result) {
-          await apiHelper.getHistory(userId!, startIndex, fetchRecord).then((result) {
+          await apiHelper
+              .getHistory(userId!, startIndex, fetchRecord)
+              .then((result) {
             if (result.status == "200") {
-              List<dynamic> astroMallHistory = result.recordList[0]['orders']['order'];
-              astroMallHistoryList.addAll(List<AstroMallHistoryModel>.from(astroMallHistory.map((p) => AstroMallHistoryModel.fromJson(p))));
+              List<dynamic> astroMallHistory =
+                  result.recordList[0]['orders']['order'];
+              astroMallHistoryList.addAll(List<AstroMallHistoryModel>.from(
+                  astroMallHistory
+                      .map((p) => AstroMallHistoryModel.fromJson(p))));
               if (result.recordList[0]['orders']['order'].length == 0) {
                 isMoreDataAvailable = false;
                 isAllDataLoaded = true;
@@ -349,12 +388,19 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
       }
       await global.checkBody().then((result) async {
         if (result) {
-          await apiHelper.getHistory(userId, walletStart, walletFetch).then((result) {
+          await apiHelper
+              .getHistory(userId, walletStart, walletFetch)
+              .then((result) {
             if (result.status == "200") {
-              List<dynamic> walletTransaction = result.recordList[0]['walletTransaction']['wallet'];
-              walletTransactionList.addAll(List<WalletTransactionHistoryModel>.from(walletTransaction.map((p) => WalletTransactionHistoryModel.fromJson(p))));
-              print('wallet taransaction length - ${walletTransactionList.length}');
-              if (result.recordList[0]['walletTransaction']['wallet'].length == 0) {
+              List<dynamic> walletTransaction =
+                  result.recordList[0]['walletTransaction']['wallet'];
+              walletTransactionList.addAll(
+                  List<WalletTransactionHistoryModel>.from(walletTransaction
+                      .map((p) => WalletTransactionHistoryModel.fromJson(p))));
+              print(
+                  'wallet taransaction length - ${walletTransactionList.length}');
+              if (result.recordList[0]['walletTransaction']['wallet'].length ==
+                  0) {
                 walletMoreDataAvailable = false;
                 walletAllDataLoaded = true;
               }
@@ -381,7 +427,8 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
         if (result) {
           await apiHelper.getCallHistoryById(callId).then((result) {
             if (result.status == "200") {
-              callHistoryListById = List<CallHistoryModel>.from(result.recordList.map((p) => CallHistoryModel.fromJson(p)));
+              callHistoryListById = List<CallHistoryModel>.from(
+                  result.recordList.map((p) => CallHistoryModel.fromJson(p)));
               update();
             } else {
               global.showToast(
@@ -404,8 +451,11 @@ class HistoryController extends GetxController with GetSingleTickerProviderState
         if (result) {
           await apiHelper.cancelAstromallOrder(id).then((result) async {
             if (result.status == "200") {
-              double total = double.parse(result.recordList[0].totalPayable.toString());
-              global.splashController.currentUser?.walletAmount = (global.splashController.currentUser?.walletAmount ?? 0) + total;
+              double total =
+                  double.parse(result.recordList[0].totalPayable.toString());
+              global.splashController.currentUser?.walletAmount =
+                  (global.splashController.currentUser?.walletAmount ?? 0) +
+                      total;
               astroMallHistoryList.clear();
               isAllDataLoaded = false;
               update();
