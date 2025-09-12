@@ -36,6 +36,38 @@ class FastAPIServices {
     }
   }
 
+  // A method to fetch wallet transactions
+  Future<List<dynamic>> getWalletTransactions() async {
+    await _loadCredentials(); // ✅ Ensure token & userId are loaded first
+    // Ensure both the user ID and access token are available
+    if (_userId == null || _accessToken == null) {
+      throw Exception('User ID or Access Token is not set.');
+    }
+
+
+    final url = Uri.parse('${FastApiEndpoints.walletTransactions}$_userId');
+
+    // 2. Make the GET request
+    final response = await http.get(
+      url,
+      headers: {
+        'accept': 'application/json',
+        'Authorization': 'Bearer $_accessToken',
+      },
+    );
+
+    // 3. Handle the response
+    if (response.statusCode == 200) {
+      // Decode the JSON response body
+      final List<dynamic> transactions = json.decode(response.body);
+      return transactions;
+    } else {
+      // Throw an exception for a non-200 status code
+      throw Exception('Failed to load wallet transactions. Status code: ${response.statusCode}');
+    }
+  }
+
+
   // ---------------- LOGIN WITH EMAIL ----------------
   Future<void> loginWithEmail({
     required String username,

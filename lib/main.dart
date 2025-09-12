@@ -5,6 +5,7 @@ import 'package:AstrowayCustomer/controllers/bottomNavigationController.dart';
 import 'package:AstrowayCustomer/controllers/callController.dart';
 import 'package:AstrowayCustomer/controllers/chatController.dart';
 import 'package:AstrowayCustomer/controllers/customer_support_controller.dart';
+import 'package:AstrowayCustomer/controllers/fastApiProvider/WalletProvider.dart';
 import 'package:AstrowayCustomer/controllers/liveController.dart';
 import 'package:AstrowayCustomer/controllers/splashController.dart';
 import 'package:AstrowayCustomer/controllers/themeController.dart';
@@ -38,11 +39,13 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'controllers/splashController.dart';
 import 'controllers/timer_controller.dart';
+import 'fastApi/fastApiServices.dart';
 
 bool isWeb = false;
 
@@ -285,22 +288,28 @@ void main() async {
   }
 
   runApp(
-    EasyLocalization(
-      supportedLocales: const [
-        Locale('en', 'US'),
-        Locale('hi', 'IN'),
-        Locale('bn', 'IN'),
-        Locale('es', 'ES'),
-        Locale('gu', 'IN'),
-        Locale('kn', 'IN'),
-        Locale('ml', 'IN'),
-        Locale('mr', 'IN'), //marathi
-        Locale('ta', 'IN'),
+    MultiProvider(
+      
+      providers: [
+        ChangeNotifierProvider(create: (context) => WalletProvider(FastAPIServices()))
       ],
-      path: 'assets/translations',
-      fallbackLocale: const Locale('en', 'US'),
-      startLocale: startLocale, // Set dynamic startLocale here
-      child: MyApp(),
+      child: EasyLocalization(
+        supportedLocales: const [
+          Locale('en', 'US'),
+          Locale('hi', 'IN'),
+          Locale('bn', 'IN'),
+          Locale('es', 'ES'),
+          Locale('gu', 'IN'),
+          Locale('kn', 'IN'),
+          Locale('ml', 'IN'),
+          Locale('mr', 'IN'), //marathi
+          Locale('ta', 'IN'),
+        ],
+        path: 'assets/translations',
+        fallbackLocale: const Locale('en', 'US'),
+        startLocale: startLocale, // Set dynamic startLocale here
+        child: MyApp(),
+      ),
     ),
   );
 }
