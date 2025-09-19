@@ -5,6 +5,7 @@ import 'package:AstrowayCustomer/controllers/bottomNavigationController.dart';
 import 'package:AstrowayCustomer/controllers/callController.dart';
 import 'package:AstrowayCustomer/controllers/chatController.dart';
 import 'package:AstrowayCustomer/controllers/customer_support_controller.dart';
+import 'package:AstrowayCustomer/controllers/fastApiProvider/GetAllAstrologerProvider.dart';
 import 'package:AstrowayCustomer/controllers/fastApiProvider/WalletProvider.dart';
 import 'package:AstrowayCustomer/controllers/liveController.dart';
 import 'package:AstrowayCustomer/controllers/splashController.dart';
@@ -289,9 +290,10 @@ void main() async {
 
   runApp(
     MultiProvider(
-      
       providers: [
-        ChangeNotifierProvider(create: (context) => WalletProvider(FastAPIServices()))
+        ChangeNotifierProvider(
+            create: (context) => WalletProvider(FastAPIServices())),
+        ChangeNotifierProvider(create: (_) => GetAllAstrologerProvider()),
       ],
       child: EasyLocalization(
         supportedLocales: const [

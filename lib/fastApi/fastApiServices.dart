@@ -44,7 +44,6 @@ class FastAPIServices {
       throw Exception('User ID or Access Token is not set.');
     }
 
-
     final url = Uri.parse('${FastApiEndpoints.walletTransactions}$_userId');
 
     // 2. Make the GET request
@@ -63,10 +62,10 @@ class FastAPIServices {
       return transactions;
     } else {
       // Throw an exception for a non-200 status code
-      throw Exception('Failed to load wallet transactions. Status code: ${response.statusCode}');
+      throw Exception(
+          'Failed to load wallet transactions. Status code: ${response.statusCode}');
     }
   }
-
 
   // ---------------- LOGIN WITH EMAIL ----------------
   Future<void> loginWithEmail({
@@ -155,6 +154,53 @@ class FastAPIServices {
   Future<String?> getUserName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString("user_name");
+  }
+
+  // ---------------- FETCH ALL ASTROLOGERS ----------------
+  // ---------------- FETCH ALL ASTROLOGERS ----------------
+  Future<List<dynamic>> fetchAllAstrologers() async {
+    await _loadCredentials(); // Load token
+
+    final url = Uri.parse(FastApiEndpoints.allAstrologers);
+    print("🔮 [API CALL] Fetching all astrologers from $url");
+
+    final response = await http.get(
+      url,
+      headers: {
+        "accept": "application/json",
+        "Authorization": "Bearer ${_accessToken}",
+      },
+    );
+
+    print("📡 Status Code: ${response.statusCode}");
+    print("📩 Response Body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      print("🧙‍♂️ Total Astrologers Fetched: ${data.length}");
+
+      for (var astro in data) {
+        print("""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔮 ASTROLOGER DETAILS
+🆔 ID: ${astro['id']}
+👤 Name: ${astro['name']}
+🖼 Profile Image: ${astro['profileImage']}
+✨ Primary Skill: ${astro['primarySkill']}
+🗣 Languages: ${astro['languageKnown']}
+📆 Experience: ${astro['experienceInYears']} years
+💰 Charge: ₹${astro['charge']} per min
+🏙 Current City: ${astro['currentCity']}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+""");
+      }
+
+      return data;
+    } else if (response.statusCode == 401) {
+      throw Exception("🚨 Unauthorized. Please login again.");
+    } else {
+      throw Exception("❌ Failed to fetch astrologers: ${response.body}");
+    }
   }
 
   // ---------------- LOGOUT ----------------
@@ -346,7 +392,7 @@ class FastAPIServices {
       print("✅ 🎯 Successfully fetched customer details");
       final List<dynamic> data = jsonDecode(res.body);
       final customers =
-      data.map((json) => CustomerDetail.fromJson(json)).toList();
+          data.map((json) => CustomerDetail.fromJson(json)).toList();
       return customers;
     } else {
       throw Exception("❌ Failed to fetch customer details: ${res.body}");
@@ -415,7 +461,7 @@ class FastAPIServices {
 
       final exp = payload['exp'] as int;
       final expiryDate =
-      DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
+          DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
       final now = DateTime.now().toUtc();
       return expiryDate.isBefore(now);
     } catch (e) {

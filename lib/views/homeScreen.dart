@@ -8,6 +8,7 @@ import 'package:AstrowayCustomer/controllers/astrologyBlogController.dart';
 import 'package:AstrowayCustomer/controllers/astromallController.dart';
 import 'package:AstrowayCustomer/controllers/bottomNavigationController.dart';
 import 'package:AstrowayCustomer/controllers/dailyHoroscopeController.dart';
+import 'package:AstrowayCustomer/controllers/fastApiProvider/GetAllAstrologerProvider.dart';
 import 'package:AstrowayCustomer/controllers/history_controller.dart';
 import 'package:AstrowayCustomer/controllers/homeController.dart';
 import 'package:AstrowayCustomer/controllers/kundliController.dart';
@@ -15,6 +16,7 @@ import 'package:AstrowayCustomer/controllers/liveController.dart';
 import 'package:AstrowayCustomer/controllers/reviewController.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/UserModel.dart';
+import 'package:AstrowayCustomer/model/fastApiModel/allAstrologerModel.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/currentUserWalletModel.dart';
 
 import 'package:AstrowayCustomer/model/kundli_model.dart';
@@ -60,6 +62,7 @@ import 'package:flutter_image_slideshow/flutter_image_slideshow.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 
 import 'package:responsive_sizer/responsive_sizer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -114,9 +117,14 @@ class _HomeScreenState extends State<HomeScreen> {
     FastAPIServices().fetchCurrentUserDetails();
     FastAPIServices().getAllWalletDetails();
     FastAPIServices().fetchCurrentWallet();
+    FastAPIServices().fetchAllAstrologers();
     _loadUserName();
 
     _fetchAllData();
+
+    Future.microtask(() =>
+        Provider.of<GetAllAstrologerProvider>(context, listen: false)
+            .getAstrologers());
   }
 
   Future<void> _loadUserName() async {
@@ -1252,7 +1260,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     GestureDetector(
                                       onTap: () async {
                                         Get.to(DailyPredictionInputScreen());
-
                                       },
                                       child: Column(
                                         children: [
@@ -1275,7 +1282,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         clipBehavior: Clip.none,
                                                         child: Image.asset(
                                                             "assets/images/star.png"),
-
                                                       ),
                                                     ),
                                                   ),
@@ -1305,8 +1311,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 SizedBox(
                                   width: 5,
                                 ),
-
-
                                 Column(
                                   children: [
                                     GetBuilder<KundliController>(
@@ -1314,7 +1318,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                       return GestureDetector(
                                           onTap: () async {
                                             Get.to(KundliInputScreen());
-
                                           },
                                           child: Column(
                                             children: [
@@ -1332,7 +1335,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     Image.asset(
                                                       "assets/images/kundali.png",
                                                     ),
-
                                                   ],
                                                 ),
                                               ),
@@ -1388,7 +1390,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   children: [
                                                     Image.asset(
                                                         "assets/images/matching.png"),
-
                                                   ],
                                                 ),
                                               ),
@@ -1484,7 +1485,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 SizedBox(
                                   width: 5,
                                 ),
-
                                 Column(
                                   children: [
                                     GestureDetector(
@@ -1512,7 +1512,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         clipBehavior: Clip.none,
                                                         child: Icon(Icons
                                                             .calendar_month),
-
                                                       ),
                                                     ),
                                                   ),
@@ -1538,7 +1537,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                   ],
                                 ),
-
                               ],
                             ),
                           ),
@@ -2090,6 +2088,45 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             )
                           : Offstage(),
+                      Container(
+                        height: 200,
+                        width: double.infinity,
+                        child: Consumer<GetAllAstrologerProvider>(
+                          builder: (context, provider, child) {
+                            if (provider.isLoading) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+
+                            if (provider.astrologers.isEmpty) {
+                              return const Center(
+                                  child: Text("No astrologers found"));
+                            }
+
+                            return SizedBox(
+                              height:
+                                  180, // 🔑 Give a fixed height so horizontal scrolling works
+
+                              child: ListView.builder(
+                                scrollDirection:
+                                    Axis.horizontal, // 👈 Horizontal scroll
+                                padding: const EdgeInsets.all(12),
+                                itemCount: provider.astrologers.length,
+                                itemBuilder: (context, index) {
+                                  final astrologer =
+                                      provider.astrologers[index];
+                                  return SizedBox(
+                                    height: 400,
+                                    width:
+                                        350, // 🔑 Fixed width so cards align nicely
+                                    child: _buildAstroTile(astrologer),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                       //---------- Categories  ----------------------------------------
                       // Container(
                       //   margin: EdgeInsets.symmetric(horizontal: 20),
@@ -3542,8 +3579,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               );
                       }),
 
-
-
                       GestureDetector(
                         onTap: () {
                           Get.to(RechargeWalletScreen());
@@ -4846,6 +4881,283 @@ class _HomeScreenState extends State<HomeScreen> {
     Get.back();
   }
 }
+
+Widget _buildAstroTile(GetAllAstrologerModel astrologer) {
+  final imageUrl = (astrologer.profileImage ?? '').trim();
+  final hasImage =
+      imageUrl.isNotEmpty && !imageUrl.toLowerCase().contains('null');
+
+  // Calculate rating percentage for visual indicator
+  // final ratingPercent = (astrologer.rating ?? 0) / 5.0;
+  // final isOnline = astrologer.isOnline ?? false;
+
+  return Card(
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+    elevation: 3,
+    shadowColor: appColor,
+    child: InkWell(
+      onTap: () {
+        // Handle navigation to astrologer details
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Profile image with online status
+            Stack(
+              children: [
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: appColor,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: hasImage
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildPlaceholderAvatar(astrologer.name ?? 'A'),
+                          )
+                        : _buildPlaceholderAvatar(astrologer.name ?? 'A'),
+                  ),
+                ),
+                // Online status indicator
+                // if (isOnline)
+                //   Positioned(
+                //     right: 0,
+                //     bottom: 0,
+                //     child: Container(
+                //       width: 16,
+                //       height: 16,
+                //       decoration: BoxDecoration(
+                //         color: Colors.green,
+                //         borderRadius: BorderRadius.circular(8),
+                //         border: Border.all(color: Colors.white, width: 2),
+                //       ),
+                //     ),
+                //   ),
+              ],
+            ),
+
+            const SizedBox(width: 16),
+
+            // Astrologer details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          astrologer.name ?? 'Unknown Astrologer',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.black87,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.verified,
+                          color: Colors.blue.shade600, size: 18),
+                    ],
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  // Skills and languages
+                  Text(
+                    "${astrologer.primarySkill ?? 'Astrology'} • ${astrologer.languageKnown ?? 'English'}",
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Rating and experience row
+                  Row(
+                    children: [
+                      // Star rating
+                      Icon(Icons.star, color: Colors.amber.shade600, size: 16),
+                      const SizedBox(width: 4),
+                      // Text(
+                      //   // astrologer.rating?.toStringAsFixed(1) ?? '4.5',
+                      //   style: TextStyle(
+                      //     fontSize: 13,
+                      //     fontWeight: FontWeight.w600,
+                      //     color: Colors.grey.shade800,
+                      //   ),
+                      // ),
+                      const SizedBox(width: 12),
+
+                      // Experience
+                      Icon(Icons.work_outline, color: appColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        "${astrologer.experienceInYears ?? 0}+ yrs",
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // const SizedBox(height: 2),
+
+                  // Price and call to action
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "₹${astrologer.charge ?? 'N/A'}/min",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: appColor,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: appColor, width: 1.5),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          "Consult Now",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: appColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+// Helper method for placeholder avatar with initials
+Widget _buildPlaceholderAvatar(String name) {
+  final initials = name.isNotEmpty
+      ? name
+          .trim()
+          .split(' ')
+          .map((e) => e.isNotEmpty ? e[0] : '')
+          .take(2)
+          .join()
+      : 'A';
+
+  return Container(
+    decoration: BoxDecoration(
+      color: appColor,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Center(
+      child: Text(
+        initials,
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Colors.black,
+        ),
+      ),
+    ),
+  );
+}
+
+// Helper widget to build the skills and language chips
+Widget _buildSkillLanguageRow(String? skill, String? language) {
+  return Wrap(
+    spacing: 8.0,
+    runSpacing: 4.0,
+    children: [
+      _buildInfoChip(Icons.psychology_alt, skill ?? '—'),
+      _buildInfoChip(Icons.language, language ?? '—'),
+    ],
+  );
+}
+
+// Helper widget for a single info chip
+Widget _buildInfoChip(IconData icon, String text) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: Colors.deepPurple.shade50,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: Colors.deepPurple),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.deepPurple,
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Helper widget for a single info chip
+
+// Widget _buildAstroTile(GetAllAstrologerModel astrologer) {
+//   final imageUrl = (astrologer.profileImage ?? '').trim();
+//   final hasImage =
+//       imageUrl.isNotEmpty && !imageUrl.toLowerCase().contains('null');
+
+//   return Card(
+//     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+//     margin: const EdgeInsets.symmetric(vertical: 8),
+//     elevation: 3,
+//     child: ListTile(
+//       leading: CircleAvatar(
+//         radius: 30,
+//         backgroundImage: hasImage
+//             ? NetworkImage(imageUrl)
+//             : const AssetImage("assets/images/placeholder.png")
+//                 as ImageProvider,
+//       ),
+//       title: Text(astrologer.name ?? 'Unknown',
+//           style: const TextStyle(fontWeight: FontWeight.bold)),
+//       subtitle: Text(
+//         "${astrologer.primarySkill ?? '—'} • ${astrologer.languageKnown ?? '—'}\n"
+//         "Exp: ${astrologer.experienceInYears ?? 0} yrs • ₹${astrologer.charge ?? 'N/A'}/min",
+//       ),
+//       isThreeLine: true,
+//       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+//       onTap: () {/* navigate */},
+//     ),
+//   );
+// }
 
 class CustomClipPath extends CustomClipper<Path> {
   var radius = 10.0;
