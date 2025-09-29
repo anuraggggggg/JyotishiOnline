@@ -72,11 +72,13 @@ import '../controllers/chatController.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/splashController.dart';
 import '../controllers/walletController.dart';
+import '../model/fastApiModel/astrologerProfileModel.dart';
 import '../theme/appTheme.dart';
 import '../utils/fonts.dart';
 import '../utils/screenSize.dart';
 import '../widget/videoPlayerWidget.dart';
 import 'CustomText.dart';
+import 'astrologerProfile/FastApi/astroProfile.dart';
 import 'astromall/astroProductScreen.dart';
 import 'customer_support/customerSupportChatScreen.dart';
 import 'customer_support/customer_support_chat_screen.dart';
@@ -2088,6 +2090,19 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             )
                           : Offstage(),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 20, top: 15, bottom: 15),
+                        child: Text(
+                          "Top Astrologers",
+                          style: TextStyle(
+                            fontSize: 18,                // slightly bigger
+                            fontWeight: FontWeight.bold, // bold for emphasis
+                            color: Colors.black,    // fancy color
+                            letterSpacing: 1.2,          // spacing between letters
+                          ),
+                        ),
+                      ),
+
                       Container(
                         height: 200,
                         width: double.infinity,
@@ -2104,26 +2119,46 @@ class _HomeScreenState extends State<HomeScreen> {
                             }
 
                             return SizedBox(
-                              height:
-                                  180, // 🔑 Give a fixed height so horizontal scrolling works
-
+                              height: 180, // Horizontal scroll container height
                               child: ListView.builder(
-                                scrollDirection:
-                                    Axis.horizontal, // 👈 Horizontal scroll
+                                scrollDirection: Axis.horizontal,
                                 padding: const EdgeInsets.all(12),
                                 itemCount: provider.astrologers.length,
                                 itemBuilder: (context, index) {
-                                  final astrologer =
-                                      provider.astrologers[index];
-                                  return SizedBox(
-                                    height: 400,
-                                    width:
-                                        350, // 🔑 Fixed width so cards align nicely
-                                    child: _buildAstroTile(astrologer),
+                                  final astrologer = provider.astrologers[index];
+                                  return InkWell(
+                                    onTap: () {
+                                      // Navigate to detail page
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => AstrologerDetailPage(
+                                            astrologer: Astrologer(
+                                              id: astrologer.id ?? '',
+                                              name: astrologer.name ?? '',
+                                              profileImage: astrologer.profileImage ?? '',
+                                              primarySkill: astrologer.primarySkill ?? '',
+                                              languageKnown: astrologer.languageKnown ?? '',
+                                              experienceInYears: astrologer.experienceInYears ?? 0,
+                                              charge: (astrologer.charge ?? 0).toDouble(),
+                                              currentCity: astrologer.currentCity ?? '',
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(12), // optional for ripple effect
+                                    child: Container(
+                                      height: 400,
+                                      width: 350,
+                                      child: _buildAstroTile(astrologer),
+                                    ),
                                   );
+
                                 },
                               ),
                             );
+
                           },
                         ),
                       ),
@@ -4947,6 +4982,8 @@ Widget _buildAstroTile(GetAllAstrologerModel astrologer) {
             ),
 
             const SizedBox(width: 16),
+
+
 
             // Astrologer details
             Expanded(

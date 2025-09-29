@@ -183,7 +183,7 @@ class FastAPIServices {
         print("""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔮 ASTROLOGER DETAILS
-🆔 ID: ${astro['id']}
+🆔 ID: ${astro['astro_id']}
 👤 Name: ${astro['name']}
 🖼 Profile Image: ${astro['profileImage']}
 ✨ Primary Skill: ${astro['primarySkill']}
