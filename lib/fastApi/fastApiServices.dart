@@ -15,6 +15,8 @@ import 'package:http/http.dart' as http;
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../model/fastApiModel/astrologerProfileModel.dart';
+
 class FastAPIServices {
   String? _accessToken;
   String? _userId;
@@ -35,6 +37,68 @@ class FastAPIServices {
       Get.offAll(() => LoginScreen());
     }
   }
+
+  // ---------------- FETCH ASTROLOGER DETAIL BY ID ----------------
+  Future<Astrologer> fetchAstrologerDetail(String astroId) async {
+    await _loadCredentials();
+
+    if (_accessToken == null) {
+      throw Exception("🚨 Access token is missing. Please login again.");
+    }
+
+    final url = Uri.parse("${FastApiEndpoints.astrologerById}$astroId");
+
+    // 🟢 Debug prints
+    print("🔮 [API CALL] Fetching astrologer detail");
+    print("🆔 Astro ID: $astroId");
+    print("🌐 URL: $url");
+    print("🔑 Access Token: $_accessToken");
+    print("📝 Headers: ${{
+      "accept": "application/json",
+      "Authorization": "Bearer $_accessToken",
+    }}");
+
+    final response = await http.get(
+      url,
+      headers: {
+        "accept": "application/json",
+        "Authorization": "Bearer $_accessToken",
+      },
+    );
+
+    // 🟢 Debug response
+    print("📡 Status Code: ${response.statusCode}");
+    print("📩 Response Body: ${response.body}");
+
+    final decoded = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      if (decoded is Map<String, dynamic>) {
+        print("✅ Astrologer fetched successfully");
+        print("🆔 ID: ${decoded['astro_id']}");
+        print("👤 Name: ${decoded['name']}");
+        print("🖼 Profile Image: ${decoded['profileImage']}");
+        print("✨ Primary Skill: ${decoded['primarySkill']}");
+        print("🗣 Languages: ${decoded['languageKnown']}");
+        print("📆 Experience: ${decoded['experienceInYears']}");
+        print("💰 Charge: ${decoded['charge']}");
+        print("🏙 Current City: ${decoded['currentCity']}");
+        return Astrologer.fromJson(decoded);
+      } else if (decoded is List) {
+        throw Exception("Astrologer not found. Response: $decoded");
+      } else {
+        throw Exception("Unexpected response format: $decoded");
+      }
+    } else if (response.statusCode == 404) {
+      throw Exception("Astrologer not found. ID: $astroId");
+    } else {
+      throw Exception("Failed to fetch astrologer: ${response.body}");
+    }
+  }
+
+
+
+
 
   // A method to fetch wallet transactions
   Future<List<dynamic>> getWalletTransactions() async {

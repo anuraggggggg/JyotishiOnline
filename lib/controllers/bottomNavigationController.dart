@@ -82,11 +82,9 @@ class BottomNavigationController extends GetxController {
   bool isChatAstroDataLoadedOnce = false;
   List<Widget> screens() => [
         HomeScreen(),
-        ChatScreen(),
+    ChatAstrologerScreen(),
         // LiveAstrologerListScreen(isFromBottom: true),
-        CallScreen(
-          flag: 0,
-        ),
+    CallAstrologerScreen(),
         // HistoryScreen(
         //     currentIndex: historyIndex,
         //     ),

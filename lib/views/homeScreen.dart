@@ -78,6 +78,7 @@ import '../utils/fonts.dart';
 import '../utils/screenSize.dart';
 import '../widget/videoPlayerWidget.dart';
 import 'CustomText.dart';
+import 'astrologerProfile/FastApi/allAstrologer.dart';
 import 'astrologerProfile/FastApi/astroProfile.dart';
 import 'astromall/astroProductScreen.dart';
 import 'customer_support/customerSupportChatScreen.dart';
@@ -1169,58 +1170,61 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 3),
-                        child: GestureDetector(
-                          onTap: () {
-                            Get.to(() => SearchAstrologerScreen());
-                          },
-                          child: SizedBox(
-                            height: 8.h,
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  vertical: FontSizes(context).height02()),
-                              margin: EdgeInsets.symmetric(
-                                  horizontal: FontSizes(context).width2(),
-                                  vertical: FontSizes(context).height1()),
-                              decoration: BoxDecoration(
-                                color: backgroundColor,
-                                borderRadius: BorderRadius.circular(
-                                    FontSizes(context).width4()),
-                              ),
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 5),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 10),
-                                      child: Text(
-                                        'Search',
-                                        style: Get
-                                            .theme.primaryTextTheme.bodyLarge!
-                                            .copyWith(
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 15,
-                                          color: Colors.black38,
-                                        ),
-                                      ).tr(),
-                                    ),
-                                    Icon(
-                                      Icons.search,
-                                      size: 20.sp,
-                                      color: Color(0xff555555),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                      Container(
+                        height: 40,
                       ),
+                      // Padding(
+                      //   padding: const EdgeInsets.symmetric(
+                      //       horizontal: 10, vertical: 3),
+                      //   child: GestureDetector(
+                      //     onTap: () {
+                      //       Get.to(() => SearchAstrologerScreen());
+                      //     },
+                      //     child: SizedBox(
+                      //       height: 8.h,
+                      //       child: Container(
+                      //         padding: EdgeInsets.symmetric(
+                      //             vertical: FontSizes(context).height02()),
+                      //         margin: EdgeInsets.symmetric(
+                      //             horizontal: FontSizes(context).width2(),
+                      //             vertical: FontSizes(context).height1()),
+                      //         decoration: BoxDecoration(
+                      //           color: backgroundColor,
+                      //           borderRadius: BorderRadius.circular(
+                      //               FontSizes(context).width4()),
+                      //         ),
+                      //         child: Padding(
+                      //           padding:
+                      //               const EdgeInsets.symmetric(horizontal: 5),
+                      //           child: Row(
+                      //             mainAxisAlignment:
+                      //                 MainAxisAlignment.spaceBetween,
+                      //             children: [
+                      //               Padding(
+                      //                 padding: const EdgeInsets.only(left: 10),
+                      //                 child: Text(
+                      //                   'Search',
+                      //                   style: Get
+                      //                       .theme.primaryTextTheme.bodyLarge!
+                      //                       .copyWith(
+                      //                     fontWeight: FontWeight.w500,
+                      //                     fontSize: 15,
+                      //                     color: Colors.black38,
+                      //                   ),
+                      //                 ).tr(),
+                      //               ),
+                      //               Icon(
+                      //                 Icons.search,
+                      //                 size: 20.sp,
+                      //                 color: Color(0xff555555),
+                      //               ),
+                      //             ],
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
 
                       GestureDetector(
                         onTap: () {
@@ -2091,20 +2095,40 @@ class _HomeScreenState extends State<HomeScreen> {
                             )
                           : Offstage(),
                       Padding(
-                        padding: const EdgeInsets.only(left: 20, top: 15, bottom: 15),
-                        child: Text(
-                          "Top Astrologers",
-                          style: TextStyle(
-                            fontSize: 18,                // slightly bigger
-                            fontWeight: FontWeight.bold, // bold for emphasis
-                            color: Colors.black,    // fancy color
-                            letterSpacing: 1.2,          // spacing between letters
-                          ),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Top Astrologers",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: (){
+                                Navigator.push(context, MaterialPageRoute(builder: (context) =>
+                                    ViewAllAstrologersPage()));
+                              },
+                              child: Text(
+                                "View all",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.blue, // make it look like a link
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
 
+
                       Container(
-                        height: 200,
+                        height: 150,
                         width: double.infinity,
                         child: Consumer<GetAllAstrologerProvider>(
                           builder: (context, provider, child) {
@@ -2119,7 +2143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             }
 
                             return SizedBox(
-                              height: 180, // Horizontal scroll container height
+                              height: 100, // Horizontal scroll container height
                               child: ListView.builder(
                                 scrollDirection: Axis.horizontal,
                                 padding: const EdgeInsets.all(12),
@@ -2133,24 +2157,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) => AstrologerDetailPage(
-                                            astrologer: Astrologer(
-                                              id: astrologer.id ?? '',
-                                              name: astrologer.name ?? '',
-                                              profileImage: astrologer.profileImage ?? '',
-                                              primarySkill: astrologer.primarySkill ?? '',
-                                              languageKnown: astrologer.languageKnown ?? '',
-                                              experienceInYears: astrologer.experienceInYears ?? 0,
-                                              charge: (astrologer.charge ?? 0).toDouble(),
-                                              currentCity: astrologer.currentCity ?? '',
-                                            ),
+                                            astroId: astrologer.astroId , // Pass the ID only
                                           ),
                                         ),
                                       );
                                     },
                                     borderRadius: BorderRadius.circular(12), // optional for ripple effect
                                     child: Container(
-                                      height: 400,
-                                      width: 350,
+
+
+                                      height: 40,
+                                      width: 90,
                                       child: _buildAstroTile(astrologer),
                                     ),
                                   );
@@ -4918,181 +4935,64 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 Widget _buildAstroTile(GetAllAstrologerModel astrologer) {
-  final imageUrl = (astrologer.profileImage ?? '').trim();
-  final hasImage =
-      imageUrl.isNotEmpty && !imageUrl.toLowerCase().contains('null');
+  final rawImagePath = (astrologer.profileImage ?? '').trim();
+  final hasImage = rawImagePath.isNotEmpty && !rawImagePath.toLowerCase().contains('null');
 
-  // Calculate rating percentage for visual indicator
-  // final ratingPercent = (astrologer.rating ?? 0) / 5.0;
-  // final isOnline = astrologer.isOnline ?? false;
+  // Fix: prepend base URL
+  final imageUrl = hasImage
+      ? (rawImagePath.startsWith("http")
+      ? rawImagePath
+      : "https://fastapi.jyotishionline.com$rawImagePath")
+      : "";
 
-  return Card(
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-    elevation: 3,
-    shadowColor: appColor,
-    child: InkWell(
-      onTap: () {
-        // Handle navigation to astrologer details
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile image with online status
-            Stack(
-              children: [
-                Container(
-                  width: 70,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: appColor,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: hasImage
-                        ? Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _buildPlaceholderAvatar(astrologer.name ?? 'A'),
-                          )
-                        : _buildPlaceholderAvatar(astrologer.name ?? 'A'),
-                  ),
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      SizedBox(
+        width: 80,
+        height: 80,
+        child: ClipOval(
+          child: hasImage
+              ? Image.network(
+            imageUrl,
+            width: 80,
+            height: 80,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(appColor),
+                  strokeWidth: 2,
                 ),
-                // Online status indicator
-                // if (isOnline)
-                //   Positioned(
-                //     right: 0,
-                //     bottom: 0,
-                //     child: Container(
-                //       width: 16,
-                //       height: 16,
-                //       decoration: BoxDecoration(
-                //         color: Colors.green,
-                //         borderRadius: BorderRadius.circular(8),
-                //         border: Border.all(color: Colors.white, width: 2),
-                //       ),
-                //     ),
-                //   ),
-              ],
-            ),
-
-            const SizedBox(width: 16),
-
-
-
-            // Astrologer details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          astrologer.name ?? 'Unknown Astrologer',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.black87,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(Icons.verified,
-                          color: Colors.blue.shade600, size: 18),
-                    ],
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  // Skills and languages
-                  Text(
-                    "${astrologer.primarySkill ?? 'Astrology'} • ${astrologer.languageKnown ?? 'English'}",
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Rating and experience row
-                  Row(
-                    children: [
-                      // Star rating
-                      Icon(Icons.star, color: Colors.amber.shade600, size: 16),
-                      const SizedBox(width: 4),
-                      // Text(
-                      //   // astrologer.rating?.toStringAsFixed(1) ?? '4.5',
-                      //   style: TextStyle(
-                      //     fontSize: 13,
-                      //     fontWeight: FontWeight.w600,
-                      //     color: Colors.grey.shade800,
-                      //   ),
-                      // ),
-                      const SizedBox(width: 12),
-
-                      // Experience
-                      Icon(Icons.work_outline, color: appColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        "${astrologer.experienceInYears ?? 0}+ yrs",
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // const SizedBox(height: 2),
-
-                  // Price and call to action
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "₹${astrologer.charge ?? 'N/A'}/min",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: appColor,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: appColor, width: 1.5),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          "Consult Now",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: appColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
+              );
+            },
+            errorBuilder: (context, error, stackTrace) =>
+                _buildPlaceholderAvatar(astrologer.name ?? 'A'),
+          )
+              : _buildPlaceholderAvatar(astrologer.name ?? 'A'),
         ),
       ),
-    ),
+      const SizedBox(height: 8),
+      SizedBox(
+        width: 80,
+        child: Text(
+          astrologer.name ?? 'Unknown',
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+        ),
+      ),
+    ],
   );
 }
+
+
 
 // Helper method for placeholder avatar with initials
 Widget _buildPlaceholderAvatar(String name) {
@@ -5107,7 +5007,7 @@ Widget _buildPlaceholderAvatar(String name) {
 
   return Container(
     decoration: BoxDecoration(
-      color: appColor,
+      color: appYellow,
       borderRadius: BorderRadius.circular(16),
     ),
     child: Center(

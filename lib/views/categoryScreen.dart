@@ -62,7 +62,7 @@ class CategoryScreen extends StatelessWidget {
                                 id: astrologyCat.categoryList[index].id!,
                                 isLazyLoading: false);
                             global.hideLoader();
-                            Navigator.push(context, MaterialPageRoute(builder: (context)=>CallScreen(flag: 1,)));
+                            Navigator.push(context, MaterialPageRoute(builder: (context)=>CallAstrologerScreen()));
                           },
                           child: Container(
                             alignment: Alignment.center,

@@ -20,6 +20,9 @@ class FastApiEndpoints {
   static const String allAstrologers =
       "$fastApiBaseUrl/api/v1/astro/astrologers";
 
+  static const String astrologerById =
+      "$fastApiBaseUrl/api/v1/astro/astrologers/";
+
   // ---------------- ALL WALLET DETAILS ----------------
 
   static const String walletTransactions =
