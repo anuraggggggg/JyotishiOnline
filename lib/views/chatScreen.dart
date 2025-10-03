@@ -4,6 +4,8 @@
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:flutter/material.dart';
 
+import 'astrologerProfile/FastApi/astroProfile.dart';
+
 class ChatAstrologerScreen extends StatefulWidget {
   const ChatAstrologerScreen({Key? key}) : super(key: key);
 
@@ -27,127 +29,147 @@ class _ChatAstrologerScreenState extends State<ChatAstrologerScreen> {
   Widget _buildAstrologerCard(Map<String, dynamic> astro) {
     final isOnline = astro['isOnline'] ?? false;
     final charge = astro['charge'] ?? 0;
+    final astroId = astro['astro_id'] ?? astro['id'] ?? ''; // Get the astrologer ID
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            // Profile Image + Online Status
-            Stack(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(30),
-                    child: (astro['profileImage'] != null &&
-                        astro['profileImage'].toString().isNotEmpty)
-                        ? Image.network(
-                      astro['profileImage'].toString().startsWith("http")
-                          ? astro['profileImage']
-                          : "https://fastapi.jyotishionline.com${astro['profileImage']}",
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey.shade100,
-                          child: Icon(Icons.person, color: Colors.grey.shade400),
-                        );
-                      },
-                    )
-                        : Container(
-                      color: Colors.grey.shade100,
-                      child: Icon(Icons.person, color: Colors.grey.shade400),
+    return InkWell(
+      onTap: () {
+        // Navigate to AstrologerDetailPage when card is tapped
+        if (astroId.isNotEmpty) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AstrologerDetailPage(astroId: astroId),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Unable to load astrologer details"),
+            ),
+          );
+        }
+      },
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Profile Image + Online Status
+              Stack(
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
                     ),
-                  )
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: (astro['profileImage'] != null &&
+                          astro['profileImage'].toString().isNotEmpty)
+                          ? Image.network(
+                        astro['profileImage'].toString().startsWith("http")
+                            ? astro['profileImage']
+                            : "https://fastapi.jyotishionline.com${astro['profileImage']}",
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey.shade100,
+                            child: Icon(Icons.person, color: Colors.grey.shade400),
+                          );
+                        },
+                      )
+                          : Container(
+                        color: Colors.grey.shade100,
+                        child: Icon(Icons.person, color: Colors.grey.shade400),
+                      ),
+                    )
 
-                ),
-                if (isOnline)
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  if (isOnline)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 16),
-
-            // Name + Skill + Charge
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    astro['name'] ?? "Unknown",
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "${astro['primarySkill'] ?? 'Astrologer'} • ${astro['experienceInYears'] ?? 0} yrs exp",
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "₹$charge/min",
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
                 ],
               ),
-            ),
+              const SizedBox(width: 16),
 
-            // Chat Button
-            IconButton(
-              icon: const Icon(Icons.chat, color: Colors.blue, size: 28),
-              onPressed: () async {
-                // Call API to start chat
-                // try {
-                //   final response = await _apiService.chatWithAstrologer(
-                //     astro['astro_id'].toString(),
-                //     "Hello, I’d like to chat.",
-                //   );
-                //
-                //   if (!mounted) return;
-                //
-                //   ScaffoldMessenger.of(context).showSnackBar(
-                //     SnackBar(
-                //       content: Text(
-                //           "Chat started with ${astro['name']} (ID: ${response['chatId'] ?? ''})"),
-                //     ),
-                //   );
-                //
-                //   // TODO: Navigate to actual chat conversation screen
-                // } catch (e) {
-                //   ScaffoldMessenger.of(context).showSnackBar(
-                //     SnackBar(content: Text("Failed to start chat: $e")),
-                //   );
-                // }
-              },
-            ),
-          ],
+              // Name + Skill + Charge
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      astro['name'] ?? "Unknown",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "${astro['primarySkill'] ?? 'Astrologer'} • ${astro['experienceInYears'] ?? 0} yrs exp",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "₹$charge/min",
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Chat Button
+              IconButton(
+                icon: const Icon(Icons.chat, color: Colors.blue, size: 28),
+                onPressed: () async {
+                  // Call API to start chat
+                  // try {
+                  //   final response = await _apiService.chatWithAstrologer(
+                  //     astro['astro_id'].toString(),
+                  //     "Hello, I’d like to chat.",
+                  //   );
+                  //
+                  //   if (!mounted) return;
+                  //
+                  //   ScaffoldMessenger.of(context).showSnackBar(
+                  //     SnackBar(
+                  //       content: Text(
+                  //           "Chat started with ${astro['name']} (ID: ${response['chatId'] ?? ''})"),
+                  //     ),
+                  //   );
+                  //
+                  //   // TODO: Navigate to actual chat conversation screen
+                  // } catch (e) {
+                  //   ScaffoldMessenger.of(context).showSnackBar(
+                  //     SnackBar(content: Text("Failed to start chat: $e")),
+                  //   );
+                  // }
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

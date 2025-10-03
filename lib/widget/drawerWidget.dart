@@ -32,6 +32,7 @@ import '../controllers/astrologer_assistant_controller.dart';
 import '../controllers/customer_support_controller.dart';
 import '../controllers/settings_controller.dart';
 import '../utils/images.dart';
+import '../views/callScreen.dart';
 import '../views/counsellor/counsellorScreen.dart';
 import '../views/customer_support/customerSupportChatScreen.dart';
 
@@ -193,40 +194,30 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Column(
                   children: [
-                    _buildMenuItem(
-                      icon: Icons.note_alt_outlined,
-                      title: 'Get Report',
-                      onTap: () async {
-                        final BottomNavigationController
-                            bottomNavigationController =
-                            Get.find<BottomNavigationController>();
-                        bottomNavigationController.astrologerList = [];
-                        bottomNavigationController.astrologerList.clear();
-                        bottomNavigationController.isAllDataLoaded = false;
-                        bottomNavigationController.update();
-                        global.showOnlyLoaderDialog(context);
-                        await bottomNavigationController.getAstrologerList(
-                            isLazyLoading: false);
-                        global.hideLoader();
-                        Get.to(() => GetReportScreen());
-                      },
-                    ),
+                    // _buildMenuItem(
+                    //   icon: Icons.note_alt_outlined,
+                    //   title: 'Get Report',
+                    //   onTap: () async {
+                    //     final BottomNavigationController
+                    //         bottomNavigationController =
+                    //         Get.find<BottomNavigationController>();
+                    //     bottomNavigationController.astrologerList = [];
+                    //     bottomNavigationController.astrologerList.clear();
+                    //     bottomNavigationController.isAllDataLoaded = false;
+                    //     bottomNavigationController.update();
+                    //     global.showOnlyLoaderDialog(context);
+                    //     await bottomNavigationController.getAstrologerList(
+                    //         isLazyLoading: false);
+                    //     global.hideLoader();
+                    //     Get.to(() => GetReportScreen());
+                    //   },
+                    // ),
 
                     _buildMenuItem(
                       icon: Icons.chat_bubble_outline,
                       title: 'Chat with Astrologer',
                       onTap: () async {
-                        global.showOnlyLoaderDialog(context);
-                        final navController =
-                            Get.find<BottomNavigationController>();
-                        navController.astrologerList = [];
-                        navController.astrologerList.clear();
-                        navController.isAllDataLoaded = false;
-                        navController.update();
-                        await navController.getAstrologerList(
-                            isLazyLoading: false);
-                        global.hideLoader();
-                        navController.setBottomIndex(1, 0);
+                        Get.to(() => CallAstrologerScreen());
                       },
                     ),
 
@@ -270,24 +261,24 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                     //   },
                     // ),
 
-                    _buildMenuItem(
-                      icon: Icons.verified_user_outlined,
-                      title: 'My Following',
-                      onTap: () async {
-                        bool isLogin = await global.isLogin();
-                        if (isLogin) {
-                          final followAstrologerController =
-                              Get.find<FollowAstrologerController>();
-                          followAstrologerController.followedAstrologer.clear();
-                          followAstrologerController.isAllDataLoaded = false;
-                          global.showOnlyLoaderDialog(context);
-                          await followAstrologerController
-                              .getFollowedAstrologerList(false);
-                          global.hideLoader();
-                          Get.to(() => MyFollowingScreen());
-                        }
-                      },
-                    ),
+                    // _buildMenuItem(
+                    //   icon: Icons.verified_user_outlined,
+                    //   title: 'My Following',
+                    //   onTap: () async {
+                    //     // bool isLogin = await global.isLogin();
+                    //     // if (isLogin) {
+                    //     //   final followAstrologerController =
+                    //     //       Get.find<FollowAstrologerController>();
+                    //     //   followAstrologerController.followedAstrologer.clear();
+                    //     //   followAstrologerController.isAllDataLoaded = false;
+                    //     //   global.showOnlyLoaderDialog(context);
+                    //     //   await followAstrologerController
+                    //     //       .getFollowedAstrologerList(false);
+                    //     //   global.hideLoader();
+                    //     //   Get.to(() => MyFollowingScreen());
+                    //     }
+                    //   },
+                    // ),
 
                     // _buildMenuItem(
                     //   icon: Icons.workspace_premium_outlined,
@@ -348,25 +339,25 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                     //     },
                     //   ),
 
-                    _buildMenuItem(
-                      icon: Icons.support_agent_outlined,
-                      title: 'Support Chat',
-                      onTap: () async {
-                        bool isLogin = await global.isLogin();
-                        if (isLogin) {
-                          final customerSupportController =
-                              Get.find<CustomerSupportController>();
-                          final astrologerAssistantController =
-                              Get.find<AstrologerAssistantController>();
-                          global.showOnlyLoaderDialog(context);
-                          await customerSupportController.getCustomerTickets();
-                          await astrologerAssistantController
-                              .getChatWithAstrologerAssisteant();
-                          global.hideLoader();
-                          Get.to(() => CustomerSupportChat());
-                        }
-                      },
-                    ),
+                    // _buildMenuItem(
+                    //   icon: Icons.support_agent_outlined,
+                    //   title: 'Support Chat',
+                    //   onTap: () async {
+                    //     bool isLogin = await global.isLogin();
+                    //     if (isLogin) {
+                    //       final customerSupportController =
+                    //           Get.find<CustomerSupportController>();
+                    //       final astrologerAssistantController =
+                    //           Get.find<AstrologerAssistantController>();
+                    //       global.showOnlyLoaderDialog(context);
+                    //       await customerSupportController.getCustomerTickets();
+                    //       await astrologerAssistantController
+                    //           .getChatWithAstrologerAssisteant();
+                    //       global.hideLoader();
+                    //       Get.to(() => CustomerSupportChat());
+                    //     }
+                    //   },
+                    // ),
 
                     _buildMenuItem(
                       icon: Icons.logout,

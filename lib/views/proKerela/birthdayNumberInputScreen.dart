@@ -298,13 +298,24 @@ class _BirthdayNumberInputScreenState extends State<BirthdayNumberInputScreen> {
                                         ),
                                       ],
                                     )
-                                  : Text(
-                                      "Calculate Your Number",
-                                      style: GoogleFonts.poppins(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: BirthdayNumberInputScreen.cosmicBlue),
-                                    ),
+                                  : Column(
+                                    children: [
+                                      Text(
+                                          "Calculate Your Number",
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: BirthdayNumberInputScreen.cosmicBlue),
+                                        ),
+                                      Text(
+                                        "₹100 + GST",
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: BirthdayNumberInputScreen.cosmicBlue),
+                                      ),
+                                    ],
+                                  ),
                             ),
                           )),
                       const SizedBox(height: 16),

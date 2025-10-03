@@ -403,12 +403,14 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
                       final astro = _filteredAstrologers[index];
                       return InkWell(
                         onTap: () {
+                          print(astro);
+                          print("AstroId: ${astro['astroId']}");
                           // Navigate to detail page
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => AstrologerDetailPage(
-                                astroId: astro['astroId'], // Pass the astrologer ID
+                                astroId: astro['astro_id'], // Pass the astrologer ID
                               ),
                             ),
                           );

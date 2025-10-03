@@ -13,22 +13,14 @@ class AstrologerDetailPage extends StatefulWidget {
   State<AstrologerDetailPage> createState() => _AstrologerDetailPageState();
 }
 
-class _AstrologerDetailPageState extends State<AstrologerDetailPage> with SingleTickerProviderStateMixin {
+class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
   late Future<Astrologer> astrologerFuture;
-  late TabController _tabController;
-  int _selectedDuration = 10; // Default duration
+  int _selectedDuration = 10;
 
   @override
   void initState() {
     super.initState();
     astrologerFuture = FastAPIServices().fetchAstrologerDetail(widget.astroId);
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   @override
@@ -51,7 +43,6 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> with Single
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
-          // Report Button
           IconButton(
             icon: Icon(Icons.report_problem_outlined, color: Colors.grey.shade600),
             onPressed: _showReportDialog,
@@ -74,107 +65,45 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> with Single
           return _buildAstrologerUI(astrologer);
         },
       ),
+      floatingActionButton: FutureBuilder<Astrologer>(
+        future: astrologerFuture,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return _buildFloatingActionButtons(snapshot.data!);
+          }
+          return const SizedBox();
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
   Widget _buildAstrologerUI(Astrologer astrologer) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        children: [
+          // Header Section
+          _buildHeaderSection(astrologer),
+
+          // Profile Details
+          _buildProfileDetails(astrologer),
+
+          // Consultation Options
+          _buildConsultationOptions(astrologer),
+
+          const SizedBox(height: 100), // Space for FABs
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderSection(Astrologer astrologer) {
+    // Calculate image URL inside this method
     final imageUrl = (astrologer.profileImage ?? '').trim();
     final hasValidImage = _isValidImageUrl(imageUrl);
     final completeImageUrl = hasValidImage ? _getCompleteImageUrl(imageUrl) : '';
 
-    return Column(
-      children: [
-        // Header Section
-        _buildHeaderSection(astrologer, hasValidImage, completeImageUrl),
-
-        // Tabs
-        Container(
-          color: Colors.white,
-          child: TabBar(
-            controller: _tabController,
-            labelColor: appColor,
-            unselectedLabelColor: Colors.grey.shade600,
-            indicatorColor: appColor,
-            indicatorWeight: 3,
-            labelStyle: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.normal,
-              fontSize: 14,
-            ),
-            tabs: const [
-              Tab(
-                icon: Icon(Icons.audiotrack, size: 20),
-                text: 'Audio Call',
-              ),
-              Tab(
-                icon: Icon(Icons.videocam, size: 20),
-                text: 'Video Call',
-              ),
-              Tab(
-                icon: Icon(Icons.chat, size: 20),
-                text: 'Chat',
-              ),
-            ],
-          ),
-        ),
-
-        // Tab Content
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildCallTab(astrologer, 'Audio'),
-              _buildCallTab(astrologer, 'Video'),
-              _buildChatTab(astrologer),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Helper method to validate image URLs
-  bool _isValidImageUrl(String url) {
-    if (url.isEmpty) return false;
-    if (url.toLowerCase().contains('null')) return false;
-    if (url.startsWith('file://')) {
-      // Check if it's a valid file path that can be converted
-      return url.length > 7; // More than just 'file://'
-    }
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return !url.contains('/astro/null') &&
-          !url.contains('undefined') &&
-          !url.contains('placeholder');
-    }
-    // If it's a relative path, consider it valid
-    return url.isNotEmpty;
-  }
-
-  // Helper method to get complete image URL
-  String _getCompleteImageUrl(String imageUrl) {
-    if (imageUrl.startsWith('file://')) {
-      // Convert file:// URLs to complete network URLs
-      final String fileName = imageUrl.split('/').last;
-      return 'https://fastapi.jyotishionline.com/static/uploads/$fileName';
-    }
-
-    // If it's already a complete URL, return as is
-    if (imageUrl.startsWith('http')) {
-      return imageUrl;
-    }
-
-    // If it's a relative path, prepend base URL
-    if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
-      return 'https://fastapi.jyotishionline.com${imageUrl.startsWith('/') ? imageUrl : '/$imageUrl'}';
-    }
-
-    return imageUrl;
-  }
-
-  Widget _buildHeaderSection(Astrologer astrologer, bool hasValidImage, String imageUrl) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -204,15 +133,15 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> with Single
                   ),
                 ),
                 child: CircleAvatar(
-                  radius: 50,
+                  radius: 60,
                   backgroundColor: Colors.grey.shade100,
                   backgroundImage: hasValidImage
-                      ? NetworkImage(imageUrl)
+                      ? NetworkImage(completeImageUrl)
                       : null,
                   child: !hasValidImage
                       ? Icon(
                     Icons.person,
-                    size: 50,
+                    size: 60,
                     color: Colors.grey.shade400,
                   )
                       : null,
@@ -220,15 +149,16 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> with Single
               ),
               // Online Status Badge
               Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
                   color: Colors.green,
                   shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: const Icon(
                   Icons.circle,
                   color: Colors.white,
-                  size: 12,
+                  size: 14,
                 ),
               ),
             ],
@@ -243,296 +173,643 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> with Single
               Text(
                 astrologer.name,
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 26,
                   fontWeight: FontWeight.w700,
                   color: Colors.black87,
                 ),
+                maxLines: 1, // only one line
+                overflow: TextOverflow.ellipsis, // show ...
+                softWrap: false, // prevents wrapping to the next line
               ),
+
               const SizedBox(width: 8),
               Icon(
-                Icons.verified,
-                color: appColor,
-                size: 20,
+                astrologer.isVerified ? Icons.verified : Icons.verified_outlined,
+                color: astrologer.isVerified ? appColor : Colors.grey,
+                size: 22,
               ),
             ],
           ),
 
           const SizedBox(height: 8),
 
-          // Tagline
+          // Primary Skill
           Text(
-            "Expert ${astrologer.primarySkill} Astrologer",
+            astrologer.primarySkill ?? "Astrology Expert",
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
+              color: appColor,
+              fontWeight: FontWeight.w600,
             ),
-            textAlign: TextAlign.center,
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
-          // Rating and Reviews
+          // Experience and Location
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.star, color: Colors.amber, size: 20),
+              Icon(Icons.work_outline, size: 16, color: Colors.grey.shade500),
               const SizedBox(width: 4),
-              const Text(
-                "4.8",
+              Text(
+                "${astrologer.experienceInYears ?? 0} Years Exp",
                 style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                width: 1,
-                height: 16,
-                color: Colors.grey.shade300,
-              ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 16),
+              Icon(Icons.location_on_outlined, size: 16, color: Colors.grey.shade500),
+              const SizedBox(width: 4),
               Text(
-                "1.2k Reviews",
+                astrologer.currentCity ?? "Not specified",
                 style: TextStyle(
-                  color: Colors.grey.shade600,
                   fontSize: 14,
+                  color: Colors.grey.shade600,
                 ),
               ),
             ],
           ),
+
+          const SizedBox(height: 16),
+
+          // Rating and Consultations
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.shade200,
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildStatItem(Icons.star, "4.8", "Rating"),
+                const SizedBox(width: 24),
+                Container(
+                  width: 1,
+                  height: 30,
+                  color: Colors.grey.shade300,
+                ),
+                const SizedBox(width: 24),
+                _buildStatItem(Icons.people, "${astrologer.totalOrder ?? 0}", "Consultations"),
+                const SizedBox(width: 24),
+                Container(
+                  width: 1,
+                  height: 30,
+                  color: Colors.grey.shade300,
+                ),
+                const SizedBox(width: 24),
+                _buildStatItem(Icons.thumb_up, "98%", "Satisfaction"),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCallTab(Astrologer astrologer, String callType) {
-    final isAudio = callType == 'Audio';
-    final icon = isAudio ? Icons.audiotrack : Icons.videocam;
-    final price = isAudio
-        ? (astrologer.charge! * 0.8) // 20% discount for audio
-        : astrologer.charge!;
-    final totalPrice = price * _selectedDuration;
+  Widget _buildStatItem(IconData icon, String value, String label) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: appColor, size: 16),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+  Widget _buildProfileDetails(Astrologer astrologer) {
+    return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Pricing Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [appColor, appColor.withOpacity(0.8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: appColor.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+          // About Me Section
+          if (astrologer.loginBio != null && astrologer.loginBio!.isNotEmpty)
+            _buildInfoCard(
+              title: 'About Me',
+              icon: Icons.info_outline,
+              child: Text(
+                astrologer.loginBio!,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade700,
+                  height: 1.5,
                 ),
-              ],
+              ),
             ),
+
+          if (astrologer.loginBio != null && astrologer.loginBio!.isNotEmpty)
+            const SizedBox(height: 16),
+
+          // Professional Details
+          _buildInfoCard(
+            title: 'Professional Background',
+            icon: Icons.work_outline,
             child: Column(
               children: [
-                Text(
-                  "$callType Call Consultation",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "₹ ${price.toStringAsFixed(2)} / min",
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "Total for $_selectedDuration mins: ₹ ${totalPrice.toStringAsFixed(2)}",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "First 5 mins free for new users",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                ),
-                if (isAudio) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    "20% off regular video call rate",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.8),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
+                _buildProfileRow('Primary Expertise', astrologer.primarySkill ?? 'Not specified'),
+                _buildProfileRow('Experience', '${astrologer.experienceInYears ?? 0} Years'),
+                _buildProfileRow('Highest Qualification', astrologer.highestQualification ?? 'Not specified'),
+                _buildProfileRow('Astrology Education', astrologer.learnAstrology ?? 'Not specified'),
+                _buildProfileRow('Currently Working', astrologer.currentlyworkingfulltimejob ?? 'Not specified'),
               ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Duration Selection
-          _buildDurationSection(callType),
-
-          const SizedBox(height: 24),
-
-          // Send Request Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _sendCallRequest(astrologer, callType, _selectedDuration),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: appColor,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 2,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: Colors.white, size: 24),
-                  const SizedBox(width: 12),
-                  Text(
-                    "Send ${callType} Call Request",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
 
           const SizedBox(height: 16),
 
-          // Features List
-          _buildFeaturesList(callType),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChatTab(Astrologer astrologer) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // Pricing Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [appColor, appColor.withOpacity(0.8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: appColor.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
+          // Personal Details
+          _buildInfoCard(
+            title: 'Personal Information',
+            icon: Icons.person_outline,
             child: Column(
               children: [
-                Text(
-                  "Chat Consultation",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "₹ ${(astrologer.charge! * 0.5).toStringAsFixed(2)} / message",
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "First message free for new users",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "50% off call rates",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.8),
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
+                _buildProfileRow('Languages Known', astrologer.languageKnown ?? 'Not specified'),
+                _buildProfileRow('Location', '${astrologer.currentCity ?? 'Not specified'}${astrologer.country != null ? ', ${astrologer.country}' : ''}'),
+                _buildProfileRow('Contact Verified', astrologer.isContactVerified ? '✅ Verified' : '❌ Not Verified'),
+                _buildProfileRow('Profile Status', astrologer.isVerified ? '✅ Verified Astrologer' : '❌ Not Verified'),
               ],
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-          // Chat Features
-          _buildChatFeatures(),
+          // Consultation Rates
+          _buildInfoCard(
+            title: 'Consultation Rates',
+            icon: Icons.attach_money_outlined,
+            child: Column(
+              children: [
+                _buildProfileRow('Call Rate', '₹ ${astrologer.charge} / minute'),
+                _buildProfileRow('Audio Call', '₹ ${(astrologer.charge * 0.8).toStringAsFixed(0)} / minute (20% off)'),
+                _buildProfileRow('Chat', '₹ ${(astrologer.charge * 0.5).toStringAsFixed(0)} / message (50% off)'),
+                if (astrologer.monthlyEarning != null && astrologer.monthlyEarning!.isNotEmpty)
+                  _buildProfileRow('Monthly Earnings', '₹ ${astrologer.monthlyEarning}'),
+              ],
+            ),
+          ),
 
-          const SizedBox(height: 24),
+          // Social Links
+          if (_hasSocialLinks(astrologer)) ...[
+            const SizedBox(height: 16),
+            _buildInfoCard(
+              title: 'Connect With Me',
+              icon: Icons.link_outlined,
+              child: _buildSocialLinks(astrologer),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
-          // Send Chat Request Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _sendChatRequest(astrologer),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: appColor,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+  Widget _buildConsultationOptions(Astrologer astrologer) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: _buildInfoCard(
+        title: 'Consultation Options',
+        icon: Icons.video_call_outlined,
+        child: Column(
+          children: [
+            _buildConsultationOption(
+              icon: Icons.audiotrack,
+              title: 'Audio Call',
+              subtitle: 'Clear voice consultation',
+              price: '₹ ${(astrologer.charge * 0.8).toStringAsFixed(0)}/min',
+              features: ['20% cheaper than video', 'Record call option', 'Uninterrupted connection'],
+            ),
+            const SizedBox(height: 16),
+            _buildConsultationOption(
+              icon: Icons.videocam,
+              title: 'Video Call',
+              subtitle: 'Face-to-face consultation',
+              price: '₹ ${astrologer.charge}/min',
+              features: ['Better understanding', 'Screen sharing', 'Record session'],
+            ),
+            const SizedBox(height: 16),
+            _buildConsultationOption(
+              icon: Icons.chat,
+              title: 'Chat',
+              subtitle: 'Text-based consultation',
+              price: '₹ ${(astrologer.charge * 0.5).toStringAsFixed(0)}/message',
+              features: ['50% off call rates', '24-hour access', 'Share images'],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConsultationOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String price,
+    required List<String> features,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: appColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
                 ),
-                elevation: 2,
+                child: Icon(icon, color: appColor, size: 20),
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                price,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: appColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: features.map((feature) {
+              return Chip(
+                label: Text(
+                  feature,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                backgroundColor: Colors.grey.shade100,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingActionButtons(Astrologer astrologer) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildFAB(
+              icon: Icons.audiotrack,
+              label: 'Audio Call',
+              price: '₹ ${(astrologer.charge * 0.8).toStringAsFixed(0)}/min',
+              onPressed: () => _showCallRequestDialog(astrologer, 'Audio'),
+              color: Colors.blue,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildFAB(
+              icon: Icons.videocam,
+              label: 'Video Call',
+              price: '₹ ${astrologer.charge}/min',
+              onPressed: () => _showCallRequestDialog(astrologer, 'Video'),
+              color: Colors.green,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildFAB(
+              icon: Icons.chat,
+              label: 'Chat',
+              price: '₹ ${(astrologer.charge * 0.5).toStringAsFixed(0)}/msg',
+              onPressed: () => _sendChatRequest(astrologer),
+              color: Colors.orange,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFAB({
+    required IconData icon,
+    required String label,
+    required String price,
+    required VoidCallback onPressed,
+    required Color color,
+  }) {
+    return Material(
+      color: color,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                price,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w400,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCallRequestDialog(Astrologer astrologer, String callType) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.chat, color: Colors.white, size: 24),
-                  SizedBox(width: 12),
-                  Text(
-                    "Send Chat Request",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '$callType Call Consultation',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'with ${astrologer.name}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Select Duration (minutes)',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [5, 10, 15, 30, 60].map((duration) {
+                      return ChoiceChip(
+                        label: Text('$duration min'),
+                        selected: _selectedDuration == duration,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedDuration = duration;
+                          });
+                        },
+                        selectedColor: appColor.withOpacity(0.2),
+                        labelStyle: TextStyle(
+                          color: _selectedDuration == duration ? appColor : Colors.grey.shade700,
+                          fontWeight: _selectedDuration == duration ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: appColor.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: appColor.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total Amount',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        Text(
+                          '₹ ${(callType == 'Audio' ? astrologer.charge * 0.8 : astrologer.charge) * _selectedDuration}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: appColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _sendCallRequest(astrologer, callType, _selectedDuration);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: appColor,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Send Request",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                 ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Keep existing helper methods...
+  Widget _buildInfoCard({required String title, required IconData icon, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: appColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value.isNotEmpty ? value : 'Not specified',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade800,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ),
@@ -541,151 +818,74 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> with Single
     );
   }
 
-  Widget _buildDurationSection(String callType) {
-    final durations = [5, 10, 15, 30, 60];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Select Duration (minutes)",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: durations.map((duration) {
-            return ChoiceChip(
-              label: Text('$duration min'),
-              selected: _selectedDuration == duration,
-              onSelected: (selected) {
-                setState(() {
-                  _selectedDuration = duration;
-                });
-              },
-              selectedColor: appColor.withOpacity(0.2),
-              labelStyle: TextStyle(
-                color: _selectedDuration == duration ? appColor : Colors.grey.shade700,
-                fontWeight: _selectedDuration == duration ? FontWeight.w600 : FontWeight.normal,
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFeaturesList(String callType) {
-    final features = callType == 'Audio'
-        ? [
-      'Clear voice quality',
-      'Uninterrupted connection',
-      'Record call option',
-      '20% cheaper than video'
-    ]
-        : [
-      'Face-to-face consultation',
-      'Screen sharing available',
-      'Record session option',
-      'Better understanding through video'
+  Widget _buildSocialLinks(Astrologer astrologer) {
+    final socialLinks = [
+      if (astrologer.instaProfileLink != null && astrologer.instaProfileLink!.isNotEmpty && astrologer.instaProfileLink != 'string')
+        _buildSocialLinkItem('Instagram', Icons.photo_camera_outlined, astrologer.instaProfileLink!),
+      if (astrologer.facebookProfileLink != null && astrologer.facebookProfileLink!.isNotEmpty && astrologer.facebookProfileLink != 'string')
+        _buildSocialLinkItem('Facebook', Icons.facebook, astrologer.facebookProfileLink!),
+      if (astrologer.linkedInProfileLink != null && astrologer.linkedInProfileLink!.isNotEmpty && astrologer.linkedInProfileLink != 'string')
+        _buildSocialLinkItem('LinkedIn', Icons.business_center, astrologer.linkedInProfileLink!),
+      if (astrologer.youtubeChannelLink != null && astrologer.youtubeChannelLink!.isNotEmpty && astrologer.youtubeChannelLink != 'string')
+        _buildSocialLinkItem('YouTube', Icons.video_library, astrologer.youtubeChannelLink!),
+      if (astrologer.websiteProfileLink != null && astrologer.websiteProfileLink!.isNotEmpty && astrologer.websiteProfileLink != 'string')
+        _buildSocialLinkItem('Website', Icons.language, astrologer.websiteProfileLink!),
     ];
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Features",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Column(
-          children: features.map((feature) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.check_circle,
-                    color: appColor,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      feature,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ],
+      children: socialLinks,
     );
   }
 
-  Widget _buildChatFeatures() {
-    final features = [
-      'Unlimited messages for 24 hours',
-      'Share images and documents',
-      'Get detailed written responses',
-      '50% cheaper than call rates',
-      'Response within 15 minutes'
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Chat Features",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
+  Widget _buildSocialLinkItem(String platform, IconData icon, String url) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: appColor, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  platform,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+                Text(
+                  url.length > 40 ? '${url.substring(0, 40)}...' : url,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Column(
-          children: features.map((feature) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.check_circle,
-                    color: appColor,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      feature,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ],
+          IconButton(
+            icon: Icon(Icons.open_in_new, size: 18, color: appColor),
+            onPressed: () => _launchUrl(url),
+          ),
+        ],
+      ),
     );
+  }
+
+  bool _hasSocialLinks(Astrologer astrologer) {
+    return (astrologer.instaProfileLink != null && astrologer.instaProfileLink!.isNotEmpty && astrologer.instaProfileLink != 'string') ||
+        (astrologer.facebookProfileLink != null && astrologer.facebookProfileLink!.isNotEmpty && astrologer.facebookProfileLink != 'string') ||
+        (astrologer.linkedInProfileLink != null && astrologer.linkedInProfileLink!.isNotEmpty && astrologer.linkedInProfileLink != 'string') ||
+        (astrologer.youtubeChannelLink != null && astrologer.youtubeChannelLink!.isNotEmpty && astrologer.youtubeChannelLink != 'string') ||
+        (astrologer.websiteProfileLink != null && astrologer.websiteProfileLink!.isNotEmpty && astrologer.websiteProfileLink != 'string');
+  }
+
+  void _launchUrl(String url) {
+    print('Launching URL: $url');
   }
 
   void _sendCallRequest(Astrologer astrologer, String callType, int duration) {
@@ -701,7 +901,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> with Single
             const SizedBox(height: 8),
             Text("Duration: $duration minutes"),
             const SizedBox(height: 8),
-            Text("Total Amount: ₹ ${(callType == 'Audio' ? astrologer.charge! * 0.8 : astrologer.charge!) * duration}"),
+            Text("Total Amount: ₹ ${(callType == 'Audio' ? astrologer.charge * 0.8 : astrologer.charge) * duration}"),
             const SizedBox(height: 16),
             const Text(
               "The astrologer will receive your request and can accept it to start the call.",
@@ -782,7 +982,6 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> with Single
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // Optionally navigate to requests page
             },
             child: const Text("View My Requests"),
           ),
@@ -947,5 +1146,36 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> with Single
         ],
       ),
     );
+  }
+
+  bool _isValidImageUrl(String url) {
+    if (url.isEmpty) return false;
+    if (url.toLowerCase().contains('null')) return false;
+    if (url.startsWith('file://')) {
+      return url.length > 7;
+    }
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return !url.contains('/astro/null') &&
+          !url.contains('undefined') &&
+          !url.contains('placeholder');
+    }
+    return url.isNotEmpty;
+  }
+
+  String _getCompleteImageUrl(String imageUrl) {
+    if (imageUrl.startsWith('file://')) {
+      final String fileName = imageUrl.split('/').last;
+      return 'https://fastapi.jyotishionline.com/static/uploads/$fileName';
+    }
+
+    if (imageUrl.startsWith('http')) {
+      return imageUrl;
+    }
+
+    if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+      return 'https://fastapi.jyotishionline.com${imageUrl.startsWith('/') ? imageUrl : '/$imageUrl'}';
+    }
+
+    return imageUrl;
   }
 }

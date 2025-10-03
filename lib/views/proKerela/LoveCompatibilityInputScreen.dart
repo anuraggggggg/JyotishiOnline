@@ -374,7 +374,7 @@ class _LoveCompatibilityInputScreenState extends State<LoveCompatibilityInputScr
                                       ],
                                     )
                                   : Text(
-                                      "Check Compatibility",
+                                      "Check Compatibility ₹599 + GST",
                                       style: GoogleFonts.poppins(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,

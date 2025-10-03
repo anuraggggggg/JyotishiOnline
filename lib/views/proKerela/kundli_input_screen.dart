@@ -680,14 +680,11 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
                           return SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: controller.isLoading.value
-                                  ? null
-                                  : () => _submit(),
+                              onPressed: controller.isLoading.value ? null : () => _submit(),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: celestialGold,
                                 foregroundColor: cosmicBlue,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 18),
+                                padding: const EdgeInsets.symmetric(vertical: 18),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -696,35 +693,38 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
                               ),
                               child: controller.isLoading.value
                                   ? Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        const SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 3,
-                                            color: cosmicBlue,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 15),
-                                        Text(
-                                          "Generating Kundli...",
-                                          style: GoogleFonts.poppins(
-                                              fontSize: 18, color: cosmicBlue),
-                                        ),
-                                      ],
-                                    )
-                                  : Text(
-                                      "Get Kundli",
-                                      style: GoogleFonts.poppins(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: cosmicBlue),
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 3,
+                                      color: cosmicBlue,
                                     ),
+                                  ),
+                                  const SizedBox(width: 15),
+                                  Text(
+                                    "Generating Kundli...",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      color: cosmicBlue,
+                                    ),
+                                  ),
+                                ],
+                              )
+                                  : Text(
+                                "Get Kundli – ₹599 + GST",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: cosmicBlue,
+                                ),
+                              ),
                             ),
                           );
-                        }),
+                        })
+
                       ],
                     ),
                   ),
