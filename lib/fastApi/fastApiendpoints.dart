@@ -11,6 +11,9 @@ class FastApiEndpoints {
   static const String verifyMobileOtp =
       "$fastApiBaseUrl/api/v1/auth/verify-otp";
 
+  // ---------------- SESSION / CALL ----------------
+  static const String createSession = "$fastApiBaseUrl/api/v1/create";
+
   // ---------------- USERS ----------------
   // ----------------ALL CUSTOMER DETAILS ----------------
   static const String customerDetails =

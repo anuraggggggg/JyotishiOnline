@@ -21,6 +21,9 @@ class FastAPIServices {
   String? _accessToken;
   String? _userId;
 
+  String? get userId => _userId;
+  String? get accessToken => _accessToken;
+
   // ---------------- CHECK LOGIN STATUS ----------------
   Future<void> checkLoginStatus() async {
     final prefs = await SharedPreferences.getInstance();
@@ -220,7 +223,39 @@ class FastAPIServices {
     return prefs.getString("user_name");
   }
 
-  // ---------------- FETCH ALL ASTROLOGERS ----------------
+  /// Update the current user's profile
+  static Future<bool> updateUserProfile({
+    required String userId,
+    required String accessToken,
+    required Map<String, dynamic> updatedData,
+  }) async {
+    final url = Uri.parse("${FastApiEndpoints.customerDetails}$userId");
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $accessToken",
+        },
+        body: jsonEncode(updatedData),
+      );
+
+      if (response.statusCode == 200) {
+        print("✅ Profile updated successfully");
+        return true;
+      } else {
+        print("❌ Failed to update profile: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("⚠️ Error updating profile: $e");
+      return false;
+    }
+  }
+
+
+
   // ---------------- FETCH ALL ASTROLOGERS ----------------
   Future<List<dynamic>> fetchAllAstrologers() async {
     await _loadCredentials(); // Load token
@@ -631,4 +666,59 @@ class FastAPIServices {
       return null;
     }
   }
+
+
+
+  Future<bool> createSession({
+    required String astrologerId,
+    required String sessionType, // "Audio Call", "Video Call", or "Chat"
+  }) async {
+    await _loadCredentials(); // make sure _userId and _accessToken are loaded
+
+    if (_userId == null || _accessToken == null) {
+      print("❌ Missing credentials: userId=$_userId, accessToken=$_accessToken");
+      return false;
+    }
+
+    final url = Uri.parse(FastApiEndpoints.createSession);
+
+    final body = {
+      "user_id": _userId,
+      "astrologer_id": astrologerId,
+      "session_type": sessionType,
+    };
+
+    print("🔹 API URL: $url");
+    print("📦 Request Body: $body");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "accept": "application/json",
+          "Authorization": "Bearer $_accessToken",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode(body),
+      );
+
+      print("📤 Request sent to FastAPI");
+      print("📥 Response Status Code: ${response.statusCode}");
+      print("📄 Response Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print("✅ Session created successfully!");
+        return true;
+      } else {
+        print("❌ Failed to create session: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("⚠️ Error creating session: $e");
+      return false;
+    }
+  }
+
+
+
 }

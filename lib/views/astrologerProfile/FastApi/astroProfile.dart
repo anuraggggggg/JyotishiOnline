@@ -234,42 +234,42 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
           const SizedBox(height: 16),
 
           // Rating and Consultations
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.shade200,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildStatItem(Icons.star, "4.8", "Rating"),
-                const SizedBox(width: 24),
-                Container(
-                  width: 1,
-                  height: 30,
-                  color: Colors.grey.shade300,
-                ),
-                const SizedBox(width: 24),
-                _buildStatItem(Icons.people, "${astrologer.totalOrder ?? 0}", "Consultations"),
-                const SizedBox(width: 24),
-                Container(
-                  width: 1,
-                  height: 30,
-                  color: Colors.grey.shade300,
-                ),
-                const SizedBox(width: 24),
-                _buildStatItem(Icons.thumb_up, "98%", "Satisfaction"),
-              ],
-            ),
-          ),
+          // Container(
+          //   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          //   decoration: BoxDecoration(
+          //     color: Colors.white,
+          //     borderRadius: BorderRadius.circular(12),
+          //     boxShadow: [
+          //       BoxShadow(
+          //         color: Colors.grey.shade200,
+          //         blurRadius: 8,
+          //         offset: const Offset(0, 2),
+          //       ),
+          //     ],
+          //   ),
+          //   child: Row(
+          //     mainAxisAlignment: MainAxisAlignment.center,
+          //     children: [
+          //       _buildStatItem(Icons.star, "4.8", "Rating"),
+          //       const SizedBox(width: 24),
+          //       Container(
+          //         width: 1,
+          //         height: 30,
+          //         color: Colors.grey.shade300,
+          //       ),
+          //       const SizedBox(width: 24),
+          //       _buildStatItem(Icons.people, "${astrologer.totalOrder ?? 0}", "Consultations"),
+          //       const SizedBox(width: 24),
+          //       Container(
+          //         width: 1,
+          //         height: 30,
+          //         color: Colors.grey.shade300,
+          //       ),
+          //       const SizedBox(width: 24),
+          //       _buildStatItem(Icons.thumb_up, "98%", "Satisfaction"),
+          //     ],
+          //   ),
+          // ),
         ],
       ),
     );
@@ -608,6 +608,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
   }
 
   void _showCallRequestDialog(Astrologer astrologer, String callType) {
+    const int defaultDuration = 10; // Fixed duration
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -615,134 +617,131 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Container(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '$callType Call Consultation',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'with ${astrologer.name}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Select Duration (minutes)',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [5, 10, 15, 30, 60].map((duration) {
-                      return ChoiceChip(
-                        label: Text('$duration min'),
-                        selected: _selectedDuration == duration,
-                        onSelected: (selected) {
-                          setState(() {
-                            _selectedDuration = duration;
-                          });
-                        },
-                        selectedColor: appColor.withOpacity(0.2),
-                        labelStyle: TextStyle(
-                          color: _selectedDuration == duration ? appColor : Colors.grey.shade700,
-                          fontWeight: _selectedDuration == duration ? FontWeight.w600 : FontWeight.normal,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: appColor.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: appColor.withOpacity(0.1)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Total Amount',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        Text(
-                          '₹ ${(callType == 'Audio' ? astrologer.charge * 0.8 : astrologer.charge) * _selectedDuration}',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: appColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _sendCallRequest(astrologer, callType, _selectedDuration);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: appColor,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "Send Request",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
+                ),
               ),
-            );
-          },
+              const SizedBox(height: 16),
+              Text(
+                '$callType Call Consultation',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'with ${astrologer.name}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: appColor.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: appColor.withOpacity(0.1)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Total Amount (10 min)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    Text(
+                      '₹ ${(callType == 'Audio' ? astrologer.charge * 0.8 : astrologer.charge) * defaultDuration}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: appColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    print("🟡 [BUTTON] Send Request clicked");
+                    print("➡️ Selected Call Type: $callType");
+                    print("➡️ Astrologer ID: ${astrologer.astroId}");
+
+                    // 🧠 Map callType to correct backend value
+                    String mappedSessionType;
+                    switch (callType.toLowerCase()) {
+                      case "audio":
+                      case "audio call":
+                        mappedSessionType = "audio_call";
+                        break;
+                      case "video":
+                      case "video call":
+                        mappedSessionType = "video_call";
+                        break;
+                      case "chat":
+                        mappedSessionType = "chat";
+                        break;
+                      default:
+                        mappedSessionType = "chat"; // fallback
+                    }
+
+                    print("✅ Mapped session_type for API: $mappedSessionType");
+
+                    print("➡️ Current User ID: ${FastAPIServices().userId}");
+                    print("🟠 [API CALL INITIATED]");
+
+                    bool success = await FastAPIServices().createSession(
+                      astrologerId: astrologer.astroId,
+                      sessionType: mappedSessionType,
+                    );
+
+                    if (success) {
+                      print("✅ [SUCCESS] Session created successfully.");
+                      _showRequestSentDialog(callType);
+                    } else {
+                      print("❌ [FAILED] Session creation failed.");
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Failed to send request. Please try again.")),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: appColor),
+                  child: const Text(
+                    "Send Request",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+
+
+              ),
+            ],
+          ),
         );
       },
     );
   }
+
 
   // Keep existing helper methods...
   Widget _buildInfoCard({required String title, required IconData icon, required Widget child}) {
