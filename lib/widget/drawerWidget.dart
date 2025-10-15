@@ -61,9 +61,12 @@ class _DrawerWidgetState extends State<DrawerWidget> {
   }
 
   Future<void> _loadUserName() async {
+
+
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       userName = prefs.getString("user_name"); // read the saved name
+       var userId = FastAPIServices().userId ;  // read the saved name
     });
   }
 
@@ -92,27 +95,12 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                       splashColor: Colors.transparent,
                       highlightColor: Colors.transparent,
                       onTap: () async {
-                        bool isLogin = await global.isLogin();
-                        if (isLogin) {
-                          global.showOnlyLoaderDialog(context);
-                          await splashController.getCurrentUserData();
-                          global.hideLoader();
+
                           Get.to(() => EditUserProfile());
-                        }
+
                       },
-                      child: splashController.currentUser?.profile == "" ||
-                              splashController.currentUser?.profile == null
-                          ? CircleAvatar(
-                              radius: 30,
-                              backgroundColor:
-                                  Get.theme.primaryColor.withOpacity(0.2),
-                              child: Icon(
-                                Icons.person,
-                                size: 30,
-                                color: Get.theme.primaryColor,
-                              ),
-                            )
-                          : CachedNetworkImage(
+                      child:
+                           CachedNetworkImage(
                               imageUrl:
                                   "${global.imgBaseurl}${splashController.currentUser?.profile}",
                               imageBuilder: (context, imageProvider) {

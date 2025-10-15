@@ -41,6 +41,7 @@ import 'package:AstrowayCustomer/views/kudali/kundliScreen.dart';
 import 'package:AstrowayCustomer/views/kundliMatching/kundliMatchingScreen.dart';
 import 'package:AstrowayCustomer/views/liveAstrologerList.dart';
 import 'package:AstrowayCustomer/views/live_astrologer/live_astrologer_screen.dart';
+import 'package:AstrowayCustomer/views/notification.dart';
 import 'package:AstrowayCustomer/views/panchangScreen.dart';
 import 'package:AstrowayCustomer/views/proKerela/LoveCompatibilityInputScreen.dart';
 import 'package:AstrowayCustomer/views/proKerela/birthdayNumberInputScreen.dart';
@@ -1134,19 +1135,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: Colors.black,
                         )),
                   ),
-                  GestureDetector(
-                      onTap: () {
-                        Get.to(() => CustomerSupportChat());
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: Image.asset(
-                          "assets/images/support.png",
-                          height: 25,
-                          width: 25,
-                        ),
-                      ))
-                ],
+            GestureDetector(
+              onTap: () {
+                Get.to(() => NotificationPage());
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: Icon(
+                  Icons.notifications_none,
+                  size: 28,
+                  color: Colors.black,
+                ),
+              ),
+            )
+
+          ],
         ),
         body: RefreshIndicator(
           onRefresh: () async {

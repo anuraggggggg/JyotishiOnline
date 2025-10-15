@@ -4,12 +4,22 @@ class FastApiEndpoints {
   // Base URL
   static const String fastApiBaseUrl = "https://fastapi.jyotishionline.com";
 
+  // ---------------- CUSTOMER NOTIFICATIONS ----------------
+  /// Fetch notifications for a customer
+  /// Replace {user_id} dynamically when calling
+  static String customerNotifications(String userId) =>
+      "$fastApiBaseUrl/api/v1/$userId";
   // ---------------- LOGIN ----------------
   static const String login = "$fastApiBaseUrl/api/v1/auth/login";
   static const String loginOtp = "$fastApiBaseUrl/api/v1/auth/login-otp";
   static const String sendMobileOtp = "$fastApiBaseUrl/api/v1/auth/send-otp";
   static const String verifyMobileOtp =
       "$fastApiBaseUrl/api/v1/auth/verify-otp";
+
+  /// Block or Report Astrologer
+  static const String blockAstrologer = "$fastApiBaseUrl/api/v1/block";
+  static const String reportAstrologer = "$fastApiBaseUrl/api/v1/block/report";
+
 
   // ---------------- SESSION / CALL ----------------
   static const String createSession = "$fastApiBaseUrl/api/v1/create";

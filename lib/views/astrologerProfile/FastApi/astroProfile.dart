@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../fastApi/fastApiServices.dart';
+import '../../../fastApi/fastApiendpoints.dart';
 import '../../../model/fastApiModel/astrologerProfileModel.dart';
 import '../../../theme/appTheme.dart';
 import '../../../utils/global.dart';
@@ -43,12 +44,27 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
+          // Report Astrologer Button
           IconButton(
-            icon: Icon(Icons.report_problem_outlined, color: Colors.grey.shade600),
+            icon: Icon(
+              Icons.report_problem_outlined,
+              color: Colors.grey.shade600,
+            ),
             onPressed: _showReportDialog,
             tooltip: 'Report Astrologer',
           ),
+
+          // Block Astrologer Button
+          IconButton(
+            icon: Icon(
+              Icons.block,
+              color: Colors.red.shade400,
+            ),
+            onPressed: _showBlockDialog,
+            tooltip: 'Block Astrologer',
+          ),
         ],
+
       ),
       body: FutureBuilder<Astrologer>(
         future: astrologerFuture,
@@ -102,7 +118,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     // Calculate image URL inside this method
     final imageUrl = (astrologer.profileImage ?? '').trim();
     final hasValidImage = _isValidImageUrl(imageUrl);
-    final completeImageUrl = hasValidImage ? _getCompleteImageUrl(imageUrl) : '';
+    final completeImageUrl = hasValidImage
+        ? _getCompleteImageUrl(imageUrl)
+        : '';
 
     return Container(
       width: double.infinity,
@@ -184,7 +202,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
 
               const SizedBox(width: 8),
               Icon(
-                astrologer.isVerified ? Icons.verified : Icons.verified_outlined,
+                astrologer.isVerified ? Icons.verified : Icons
+                    .verified_outlined,
                 color: astrologer.isVerified ? appColor : Colors.grey,
                 size: 22,
               ),
@@ -219,7 +238,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                 ),
               ),
               const SizedBox(width: 16),
-              Icon(Icons.location_on_outlined, size: 16, color: Colors.grey.shade500),
+              Icon(Icons.location_on_outlined, size: 16,
+                  color: Colors.grey.shade500),
               const SizedBox(width: 4),
               Text(
                 astrologer.currentCity ?? "Not specified",
@@ -333,11 +353,16 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             icon: Icons.work_outline,
             child: Column(
               children: [
-                _buildProfileRow('Primary Expertise', astrologer.primarySkill ?? 'Not specified'),
-                _buildProfileRow('Experience', '${astrologer.experienceInYears ?? 0} Years'),
-                _buildProfileRow('Highest Qualification', astrologer.highestQualification ?? 'Not specified'),
-                _buildProfileRow('Astrology Education', astrologer.learnAstrology ?? 'Not specified'),
-                _buildProfileRow('Currently Working', astrologer.currentlyworkingfulltimejob ?? 'Not specified'),
+                _buildProfileRow('Primary Expertise',
+                    astrologer.primarySkill ?? 'Not specified'),
+                _buildProfileRow(
+                    'Experience', '${astrologer.experienceInYears ?? 0} Years'),
+                _buildProfileRow('Highest Qualification',
+                    astrologer.highestQualification ?? 'Not specified'),
+                _buildProfileRow('Astrology Education',
+                    astrologer.learnAstrology ?? 'Not specified'),
+                _buildProfileRow('Currently Working',
+                    astrologer.currentlyworkingfulltimejob ?? 'Not specified'),
               ],
             ),
           ),
@@ -350,10 +375,18 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             icon: Icons.person_outline,
             child: Column(
               children: [
-                _buildProfileRow('Languages Known', astrologer.languageKnown ?? 'Not specified'),
-                _buildProfileRow('Location', '${astrologer.currentCity ?? 'Not specified'}${astrologer.country != null ? ', ${astrologer.country}' : ''}'),
-                _buildProfileRow('Contact Verified', astrologer.isContactVerified ? '✅ Verified' : '❌ Not Verified'),
-                _buildProfileRow('Profile Status', astrologer.isVerified ? '✅ Verified Astrologer' : '❌ Not Verified'),
+                _buildProfileRow('Languages Known',
+                    astrologer.languageKnown ?? 'Not specified'),
+                _buildProfileRow('Location',
+                    '${astrologer.currentCity ?? 'Not specified'}${astrologer
+                        .country != null ? ', ${astrologer.country}' : ''}'),
+                _buildProfileRow('Contact Verified',
+                    astrologer.isContactVerified
+                        ? '✅ Verified'
+                        : '❌ Not Verified'),
+                _buildProfileRow('Profile Status', astrologer.isVerified
+                    ? '✅ Verified Astrologer'
+                    : '❌ Not Verified'),
               ],
             ),
           ),
@@ -366,11 +399,18 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             icon: Icons.attach_money_outlined,
             child: Column(
               children: [
-                _buildProfileRow('Call Rate', '₹ ${astrologer.charge} / minute'),
-                _buildProfileRow('Audio Call', '₹ ${(astrologer.charge * 0.8).toStringAsFixed(0)} / minute (20% off)'),
-                _buildProfileRow('Chat', '₹ ${(astrologer.charge * 0.5).toStringAsFixed(0)} / message (50% off)'),
-                if (astrologer.monthlyEarning != null && astrologer.monthlyEarning!.isNotEmpty)
-                  _buildProfileRow('Monthly Earnings', '₹ ${astrologer.monthlyEarning}'),
+                _buildProfileRow(
+                    'Call Rate', '₹ ${astrologer.charge} / minute'),
+                _buildProfileRow('Audio Call',
+                    '₹ ${(astrologer.charge * 0.8).toStringAsFixed(
+                        0)} / minute (20% off)'),
+                _buildProfileRow('Chat',
+                    '₹ ${(astrologer.charge * 0.5).toStringAsFixed(
+                        0)} / message (50% off)'),
+                if (astrologer.monthlyEarning != null &&
+                    astrologer.monthlyEarning!.isNotEmpty)
+                  _buildProfileRow(
+                      'Monthly Earnings', '₹ ${astrologer.monthlyEarning}'),
               ],
             ),
           ),
@@ -402,7 +442,11 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               title: 'Audio Call',
               subtitle: 'Clear voice consultation',
               price: '₹ ${(astrologer.charge * 0.8).toStringAsFixed(0)}/min',
-              features: ['20% cheaper than video', 'Record call option', 'Uninterrupted connection'],
+              features: [
+                '20% cheaper than video',
+                'Record call option',
+                'Uninterrupted connection'
+              ],
             ),
             const SizedBox(height: 16),
             _buildConsultationOption(
@@ -410,15 +454,24 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               title: 'Video Call',
               subtitle: 'Face-to-face consultation',
               price: '₹ ${astrologer.charge}/min',
-              features: ['Better understanding', 'Screen sharing', 'Record session'],
+              features: [
+                'Better understanding',
+                'Screen sharing',
+                'Record session'
+              ],
             ),
             const SizedBox(height: 16),
             _buildConsultationOption(
               icon: Icons.chat,
               title: 'Chat',
               subtitle: 'Text-based consultation',
-              price: '₹ ${(astrologer.charge * 0.5).toStringAsFixed(0)}/message',
-              features: ['50% off call rates', '24-hour access', 'Share images'],
+              price: '₹ ${(astrologer.charge * 0.5).toStringAsFixed(
+                  0)}/message',
+              features: [
+                '50% off call rates',
+                '24-hour access',
+                'Share images'
+              ],
             ),
           ],
         ),
@@ -669,7 +722,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                       ),
                     ),
                     Text(
-                      '₹ ${(callType == 'Audio' ? astrologer.charge * 0.8 : astrologer.charge) * defaultDuration}',
+                      '₹ ${(callType == 'Audio'
+                          ? astrologer.charge * 0.8
+                          : astrologer.charge) * defaultDuration}',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -722,7 +777,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                     } else {
                       print("❌ [FAILED] Session creation failed.");
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Failed to send request. Please try again.")),
+                        const SnackBar(content: Text(
+                            "Failed to send request. Please try again.")),
                       );
                     }
                   },
@@ -744,7 +800,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
 
 
   // Keep existing helper methods...
-  Widget _buildInfoCard({required String title, required IconData icon, required Widget child}) {
+  Widget _buildInfoCard(
+      {required String title, required IconData icon, required Widget child}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -819,16 +876,31 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
 
   Widget _buildSocialLinks(Astrologer astrologer) {
     final socialLinks = [
-      if (astrologer.instaProfileLink != null && astrologer.instaProfileLink!.isNotEmpty && astrologer.instaProfileLink != 'string')
-        _buildSocialLinkItem('Instagram', Icons.photo_camera_outlined, astrologer.instaProfileLink!),
-      if (astrologer.facebookProfileLink != null && astrologer.facebookProfileLink!.isNotEmpty && astrologer.facebookProfileLink != 'string')
-        _buildSocialLinkItem('Facebook', Icons.facebook, astrologer.facebookProfileLink!),
-      if (astrologer.linkedInProfileLink != null && astrologer.linkedInProfileLink!.isNotEmpty && astrologer.linkedInProfileLink != 'string')
-        _buildSocialLinkItem('LinkedIn', Icons.business_center, astrologer.linkedInProfileLink!),
-      if (astrologer.youtubeChannelLink != null && astrologer.youtubeChannelLink!.isNotEmpty && astrologer.youtubeChannelLink != 'string')
-        _buildSocialLinkItem('YouTube', Icons.video_library, astrologer.youtubeChannelLink!),
-      if (astrologer.websiteProfileLink != null && astrologer.websiteProfileLink!.isNotEmpty && astrologer.websiteProfileLink != 'string')
-        _buildSocialLinkItem('Website', Icons.language, astrologer.websiteProfileLink!),
+      if (astrologer.instaProfileLink != null &&
+          astrologer.instaProfileLink!.isNotEmpty &&
+          astrologer.instaProfileLink != 'string')
+        _buildSocialLinkItem('Instagram', Icons.photo_camera_outlined,
+            astrologer.instaProfileLink!),
+      if (astrologer.facebookProfileLink != null &&
+          astrologer.facebookProfileLink!.isNotEmpty &&
+          astrologer.facebookProfileLink != 'string')
+        _buildSocialLinkItem(
+            'Facebook', Icons.facebook, astrologer.facebookProfileLink!),
+      if (astrologer.linkedInProfileLink != null &&
+          astrologer.linkedInProfileLink!.isNotEmpty &&
+          astrologer.linkedInProfileLink != 'string')
+        _buildSocialLinkItem(
+            'LinkedIn', Icons.business_center, astrologer.linkedInProfileLink!),
+      if (astrologer.youtubeChannelLink != null &&
+          astrologer.youtubeChannelLink!.isNotEmpty &&
+          astrologer.youtubeChannelLink != 'string')
+        _buildSocialLinkItem(
+            'YouTube', Icons.video_library, astrologer.youtubeChannelLink!),
+      if (astrologer.websiteProfileLink != null &&
+          astrologer.websiteProfileLink!.isNotEmpty &&
+          astrologer.websiteProfileLink != 'string')
+        _buildSocialLinkItem(
+            'Website', Icons.language, astrologer.websiteProfileLink!),
     ];
 
     return Column(
@@ -876,11 +948,21 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
   }
 
   bool _hasSocialLinks(Astrologer astrologer) {
-    return (astrologer.instaProfileLink != null && astrologer.instaProfileLink!.isNotEmpty && astrologer.instaProfileLink != 'string') ||
-        (astrologer.facebookProfileLink != null && astrologer.facebookProfileLink!.isNotEmpty && astrologer.facebookProfileLink != 'string') ||
-        (astrologer.linkedInProfileLink != null && astrologer.linkedInProfileLink!.isNotEmpty && astrologer.linkedInProfileLink != 'string') ||
-        (astrologer.youtubeChannelLink != null && astrologer.youtubeChannelLink!.isNotEmpty && astrologer.youtubeChannelLink != 'string') ||
-        (astrologer.websiteProfileLink != null && astrologer.websiteProfileLink!.isNotEmpty && astrologer.websiteProfileLink != 'string');
+    return (astrologer.instaProfileLink != null &&
+        astrologer.instaProfileLink!.isNotEmpty &&
+        astrologer.instaProfileLink != 'string') ||
+        (astrologer.facebookProfileLink != null &&
+            astrologer.facebookProfileLink!.isNotEmpty &&
+            astrologer.facebookProfileLink != 'string') ||
+        (astrologer.linkedInProfileLink != null &&
+            astrologer.linkedInProfileLink!.isNotEmpty &&
+            astrologer.linkedInProfileLink != 'string') ||
+        (astrologer.youtubeChannelLink != null &&
+            astrologer.youtubeChannelLink!.isNotEmpty &&
+            astrologer.youtubeChannelLink != 'string') ||
+        (astrologer.websiteProfileLink != null &&
+            astrologer.websiteProfileLink!.isNotEmpty &&
+            astrologer.websiteProfileLink != 'string');
   }
 
   void _launchUrl(String url) {
@@ -890,74 +972,80 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
   void _sendCallRequest(Astrologer astrologer, String callType, int duration) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Send $callType Call Request"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("You are sending a $callType call request to ${astrologer.name}"),
-            const SizedBox(height: 8),
-            Text("Duration: $duration minutes"),
-            const SizedBox(height: 8),
-            Text("Total Amount: ₹ ${(callType == 'Audio' ? astrologer.charge * 0.8 : astrologer.charge) * duration}"),
-            const SizedBox(height: 16),
-            const Text(
-              "The astrologer will receive your request and can accept it to start the call.",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+      builder: (context) =>
+          AlertDialog(
+            title: Text("Send $callType Call Request"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("You are sending a $callType call request to ${astrologer
+                    .name}"),
+                const SizedBox(height: 8),
+                Text("Duration: $duration minutes"),
+                const SizedBox(height: 8),
+                Text("Total Amount: ₹ ${(callType == 'Audio' ? astrologer
+                    .charge * 0.8 : astrologer.charge) * duration}"),
+                const SizedBox(height: 16),
+                const Text(
+                  "The astrologer will receive your request and can accept it to start the call.",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showRequestSentDialog(callType);
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: appColor),
+                child: const Text(
+                    "Send Request", style: TextStyle(color: Colors.white)),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showRequestSentDialog(callType);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: appColor),
-            child: const Text("Send Request", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
     );
   }
 
   void _sendChatRequest(Astrologer astrologer) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Send Chat Request"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("You are sending a chat request to ${astrologer.name}"),
-            const SizedBox(height: 16),
-            const Text(
-              "The astrologer will receive your request and can accept it to start the chat session.",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+      builder: (context) =>
+          AlertDialog(
+            title: const Text("Send Chat Request"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("You are sending a chat request to ${astrologer.name}"),
+                const SizedBox(height: 16),
+                const Text(
+                  "The astrologer will receive your request and can accept it to start the chat session.",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showRequestSentDialog('Chat');
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: appColor),
+                child: const Text(
+                    "Send Request", style: TextStyle(color: Colors.white)),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showRequestSentDialog('Chat');
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: appColor),
-            child: const Text("Send Request", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
     );
   }
 
@@ -965,75 +1053,146 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 8),
-            Text("Request Sent!"),
-          ],
-        ),
-        content: Text(
-          "Your $requestType request has been sent successfully. "
-              "You will be notified when the astrologer accepts your request.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text("View My Requests"),
+      builder: (context) =>
+          AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green),
+                SizedBox(width: 8),
+                Text("Request Sent!"),
+              ],
+            ),
+            content: Text(
+              "Your $requestType request has been sent successfully. "
+                  "You will be notified when the astrologer accepts your request.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text("View My Requests"),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(backgroundColor: appColor),
+                child: const Text("OK", style: TextStyle(color: Colors.white)),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(backgroundColor: appColor),
-            child: const Text("OK", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
     );
   }
 
   void _showReportDialog() {
+    String? selectedReason;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Report Astrologer"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Please select the reason for reporting:"),
-            const SizedBox(height: 16),
-            ...['Inappropriate behavior', 'Fake profile', 'Poor service', 'Other']
-                .map((reason) => RadioListTile<String>(
-              title: Text(reason),
-              value: reason,
-              groupValue: null,
-              onChanged: (value) {},
-            ))
-                .toList(),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Report submitted successfully")),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("Submit Report", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) =>
+              AlertDialog(
+                title: const Text("Report Astrologer"),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Please select the reason for reporting:"),
+                    const SizedBox(height: 16),
+                    ...[
+                      'Inappropriate behavior',
+                      'Fake profile',
+                      'Poor service',
+                      'Other'
+                    ]
+                        .map(
+                          (reason) =>
+                          RadioListTile<String>(
+                            title: Text(reason),
+                            value: reason,
+                            groupValue: selectedReason,
+                            onChanged: (value) {
+                              setState(() => selectedReason = value);
+                            },
+                          ),
+                    )
+                        .toList(),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Cancel"),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red),
+                    onPressed: () async {
+                      if (selectedReason == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                "Please select a reason before submitting."),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                        return;
+                      }
+
+                      Navigator.pop(context);
+
+                      try {
+                        // Get astrologer details from the future
+                        final astrologer = await astrologerFuture;
+
+                        // Create an instance of FastAPIServices
+                        final apiService = FastAPIServices();
+
+                        final response = await apiService.reportAstrologer(
+
+                          astrologerId: astrologer.astroId,
+                          // using the fetched astrologer ID
+                          reason: selectedReason!,
+                        );
+
+                        if (response != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  "Astrologer reported successfully."),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Failed to report astrologer."),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Error: $e"),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text(
+                      "Submit Report",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+
+                ],
+              ),
+        );
+      },
     );
   }
+
 
   Widget _buildLoadingShimmer() {
     return ListView(
@@ -1104,11 +1263,13 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             ElevatedButton(
               onPressed: () {
                 setState(() {
-                  astrologerFuture = FastAPIServices().fetchAstrologerDetail(widget.astroId);
+                  astrologerFuture =
+                      FastAPIServices().fetchAstrologerDetail(widget.astroId);
                 });
               },
               style: ElevatedButton.styleFrom(backgroundColor: appColor),
-              child: const Text("Try Again", style: TextStyle(color: Colors.white)),
+              child: const Text(
+                  "Try Again", style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -1163,7 +1324,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
 
   String _getCompleteImageUrl(String imageUrl) {
     if (imageUrl.startsWith('file://')) {
-      final String fileName = imageUrl.split('/').last;
+      final String fileName = imageUrl
+          .split('/')
+          .last;
       return 'https://fastapi.jyotishionline.com/static/uploads/$fileName';
     }
 
@@ -1172,9 +1335,75 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     }
 
     if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
-      return 'https://fastapi.jyotishionline.com${imageUrl.startsWith('/') ? imageUrl : '/$imageUrl'}';
+      return 'https://fastapi.jyotishionline.com${imageUrl.startsWith('/')
+          ? imageUrl
+          : '/$imageUrl'}';
     }
 
     return imageUrl;
   }
+
+  void _showBlockDialog() {
+    final apiService = FastAPIServices();
+
+    showDialog(
+      context: context,
+      builder: (context) =>
+          AlertDialog(
+            title: const Text("Block Astrologer"),
+            content: const Text(
+              "Are you sure you want to block this astrologer? You will no longer be able to chat or call them.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () async {
+                  Navigator.pop(context);
+
+                  try {
+                    final astrologer = await astrologerFuture;
+
+                    final response = await apiService.blockAstrologer(
+
+                      astrologerId: astrologer.astroId,
+                    );
+
+                    if (response != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Astrologer blocked successfully."),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Failed to block astrologer."),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Error: $e"),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                child: const Text(
+                  "Block",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
 }

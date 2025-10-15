@@ -15,6 +15,7 @@ import 'package:http/http.dart' as http;
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../model/fastApiModel/NotificationModel.dart';
 import '../model/fastApiModel/astrologerProfileModel.dart';
 
 class FastAPIServices {
@@ -23,6 +24,184 @@ class FastAPIServices {
 
   String? get userId => _userId;
   String? get accessToken => _accessToken;
+
+  // ---------------- FETCH CUSTOMER NOTIFICATIONS ----------------
+  // Helper to load credentials
+  // Future<Map<String, String?>> _loadCredentials() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final userId = prefs.getString("user_id");
+  //   final accessToken = prefs.getString("access_token");
+  //
+  //   print("🔑 _loadCredentials() -> userId: $userId, accessToken: $accessToken");
+  //
+  //   return {
+  //     'userId': userId,
+  //     'accessToken': accessToken,
+  //   };
+  // }
+
+// Updated fetch function using _loadCredentials()
+  Future<List<NotificationModel>> fetchCustomerNotifications() async {
+    print("🚀 Starting fetchCustomerNotifications");
+
+    // Load credentials
+    await _loadCredentials(); // this sets _userId and _accessToken
+    print("🔑 Loaded userId: $_userId");
+    print("🔑 Loaded accessToken: $_accessToken");
+
+    if (_userId == null || _accessToken == null) {
+      print("❌ UserId or AccessToken is null, throwing credential exception");
+      // Throwing an exception when credentials are not available
+      throw Exception('Authentication credentials missing. Please log in.');
+    }
+
+    // NOTE: Assuming the correct URL is ${FastApiEndpoints.fastApiBaseUrl}/api/v1/notifications/$_userId
+    // The original URL was just /api/v1/$_userId, which may be incorrect for a notifications endpoint.
+    // Using the original URL for now:
+    final url = Uri.parse("${FastApiEndpoints.fastApiBaseUrl}/api/v1/$_userId");
+    print("🌐 Fetching notifications from: $url");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+      );
+
+      print("📩 Response status: ${response.statusCode}");
+      print("📩 Response body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        print("✅ Successfully fetched ${data.length} notifications.");
+        return data.map((json) => NotificationModel.fromJson(json)).toList();
+      } else {
+        // ❌ Throw descriptive exception for non-200 status codes
+        print("❌ Failed to fetch notifications, status code: ${response.statusCode}");
+        throw Exception(
+          'API call failed: Status ${response.statusCode}. Body: ${response.body}',
+        );
+      }
+    } catch (e) {
+      // ❌ Re-throw network/decoding exceptions
+      print("❌ Error fetching notifications: $e");
+      throw Exception('Network or decoding error while fetching notifications: $e');
+    }
+  }
+
+
+
+
+
+
+
+
+  /// Block or report an astrologer with full debug
+  /// ✅ Block an astrologer (Final Version)
+  Future<Map<String, dynamic>?> blockAstrologer({
+
+    required String astrologerId,
+  }) async {
+    await _loadCredentials();
+    final url = Uri.parse("${FastApiEndpoints.fastApiBaseUrl}/api/v1/block/block");
+
+    print("📌 URL: $url");
+
+    final headers = {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": "Bearer $accessToken", // Make sure this is set
+    };
+
+    final body = {
+      "astrologerId": astrologerId,
+    };
+
+    print("📌 Headers: $headers");
+    print("📌 Body: ${jsonEncode(body)}");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      print("📌 Status Code: ${response.statusCode}");
+      print("📌 Response Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print("✅ Astrologer blocked successfully");
+        return jsonDecode(response.body);
+      } else {
+        print("❌ Error: ${response.statusCode} -> ${response.body}");
+        return null;
+      }
+    } catch (e) {
+      print("⚠️ Exception in blockAstrologer(): $e");
+      return null;
+    }
+  }
+  /// Block or report an astrologer with full debug
+  Future<Map<String, dynamic>?> reportAstrologer({
+    required String astrologerId,
+    String? reason,
+  }) async {
+    await _loadCredentials(); // ensures _userId and _accessToken are set
+
+    if (_accessToken == null) {
+      print("❌ Missing credentials: accessToken=$_accessToken");
+      return null;
+    }
+
+    final url = Uri.parse(FastApiEndpoints.reportAstrologer);
+
+    // Correct body with camelCase field names
+    final body = {
+      "astrologerId": astrologerId, // camelCase
+      "reason": reason ?? "",
+    };
+
+    print("📌 URL: $url");
+    print("📌 Headers: ${{
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": "Bearer $_accessToken",
+    }}");
+    print("📌 Body: ${jsonEncode(body)}");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": "Bearer $_accessToken",
+        },
+        body: jsonEncode(body),
+      );
+
+      print("📌 Status Code: ${response.statusCode}");
+      print("📌 Response Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print("✅ Astrologer reported successfully");
+        return jsonDecode(response.body);
+      } else {
+        print("❌ Error: ${response.statusCode} -> ${response.body}");
+        return null;
+      }
+    } catch (e) {
+      print("⚠️ Exception in reportAstrologer(): $e");
+      return null;
+    }
+  }
+
+
+
+
 
   // ---------------- CHECK LOGIN STATUS ----------------
   Future<void> checkLoginStatus() async {
@@ -325,7 +504,7 @@ class FastAPIServices {
   // ---------------- LOGIN & TOKEN ----------------
   Future<void> loginAndGetToken() async {
     final url = Uri.parse(FastApiEndpoints.login);
-    print("🔑 Logging in user...");
+    print("🔑 Logging in user (for re-authentication)...");
 
     final response = await http.post(
       url,
@@ -343,12 +522,29 @@ class FastAPIServices {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+
+      // 1. Set Access Token
       _accessToken = data["access_token"];
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString("access_token", _accessToken!);
+      // 2. CRITICAL FIX: Extract and set the User ID
+      // Assuming the user object is nested in the response under the key 'user'
+      final userJson = data["user"];
+      if (userJson != null) {
+        final user = UserModel.fromJson(userJson); // Assuming UserModel is available
+        _userId = user.id; // ✅ FIX: Set the class property _userId
+      }
 
-      print("✅ Token saved: $_accessToken");
+      final prefs = await SharedPreferences.getInstance();
+
+      // 3. Save both credentials to SharedPreferences
+      if (_accessToken != null) {
+        await prefs.setString("access_token", _accessToken!);
+      }
+      if (_userId != null) {
+        await prefs.setString("user_id", _userId!); // ✅ FIX: Save user_id to storage
+      }
+
+      print("✅ Token and UserId saved after re-login: $_accessToken, $_userId");
     } else {
       throw Exception("🚨 Failed to login: ${response.body}");
     }
@@ -477,26 +673,43 @@ class FastAPIServices {
     final url = Uri.parse(FastApiEndpoints.customerDetails);
     print("🔥 [API CALL] Fetching Customer Details from $url");
 
-    final res = await http.get(
-      url,
-      headers: {
-        "accept": "application/json",
-        "Authorization": "Bearer $_accessToken",
-      },
-    );
+    try {
+      final res = await http.get(
+        url,
+        headers: {
+          "accept": "application/json",
+          "Authorization": "Bearer $_accessToken",
+        },
+      );
 
-    print("📡 Status Code: ${res.statusCode}");
+      print("📡 Status Code: ${res.statusCode}");
+      print("📝 Raw Response Body ↓\n${res.body}");
 
-    if (res.statusCode == 200) {
-      print("✅ 🎯 Successfully fetched customer details");
-      final List<dynamic> data = jsonDecode(res.body);
-      final customers =
-          data.map((json) => CustomerDetail.fromJson(json)).toList();
-      return customers;
-    } else {
-      throw Exception("❌ Failed to fetch customer details: ${res.body}");
+      if (res.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(res.body);
+
+        print("✅ 🎯 Successfully fetched customer details");
+        print("👥 Total Customers Fetched: ${data.length}");
+
+        // Pretty print each customer JSON for clarity
+        for (int i = 0; i < data.length; i++) {
+          final prettyJson = const JsonEncoder.withIndent('  ').convert(data[i]);
+          print("📌 Customer $i:\n$prettyJson");
+        }
+
+        final customers = data.map((json) => CustomerDetail.fromJson(json)).toList();
+        return customers;
+      } else {
+        print("❌ Failed to fetch customer details: ${res.body}");
+        throw Exception("Failed to fetch customer details: ${res.body}");
+      }
+    } catch (e, stack) {
+      print("🚨 Exception while fetching customer details: $e");
+      print("🧾 StackTrace: $stack");
+      rethrow;
     }
   }
+
 
   // ---------------- FETCH CURRENT USER DETAILS ----------------
   Future<CustomerDetail> fetchCurrentUserDetails() async {
@@ -526,9 +739,11 @@ class FastAPIServices {
   }
 
   // ---------------- LOAD TOKEN & USER ID FROM STORAGE ----------------
+// ---------------- LOAD TOKEN & USER ID FROM STORAGE (REFINED) ----------------
   Future<void> _loadCredentials() async {
     final prefs = await SharedPreferences.getInstance();
 
+    // Always attempt to load from storage first
     _accessToken = prefs.getString("access_token");
     _userId = prefs.getString("user_id");
 
@@ -540,14 +755,26 @@ class FastAPIServices {
       needsLogin = true;
     }
 
+    // The re-login logic is now robust enough to handle _userId being null,
+    // so we keep the check here to trigger the login flow.
     if (_userId == null) {
       needsLogin = true;
     }
 
     if (needsLogin) {
-      await loginAndGetToken();
+      await loginAndGetToken(); // This now correctly sets _userId and _accessToken
+
+      // Safety check: Re-read values just in case loginAndGetToken succeeded
+      // but didn't update the properties correctly (or read the ID from storage)
+      if (_userId == null) {
+        _accessToken = prefs.getString("access_token");
+        _userId = prefs.getString("user_id");
+      }
     }
+
+    print("✅ _loadCredentials() completed -> _userId=$_userId, _accessToken=${_accessToken != null ? 'LOADED' : 'NULL'}");
   }
+
 
   bool _isTokenExpired(String token) {
     try {
