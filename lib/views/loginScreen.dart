@@ -222,7 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       countryCode:
                                           "+91", // TODO: Make dynamic if multi-country support needed
                                       sendWhatsapp: true,
-                                      sendSms: false,
+                                      sendSms: true,
                                     );
 
                                     print(

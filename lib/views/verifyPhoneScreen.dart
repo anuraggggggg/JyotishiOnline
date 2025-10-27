@@ -56,9 +56,11 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
 
   @override
   void codeUpdated() {
-    setState(() {
-      pinEditingControllerlogin.text = code ?? '';
-      loginController.smsCode = code ?? '';
+    // ✅ Avoid setState & update during build phase
+    pinEditingControllerlogin.text = code ?? '';
+    loginController.smsCode = code ?? '';
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       loginController.update();
     });
   }
@@ -183,21 +185,31 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
-                    strokeColorBuilder: FixedColorBuilder(Colors.grey.shade300),
+                    strokeColorBuilder:
+                    FixedColorBuilder(Colors.grey.shade300),
                     bgColorBuilder: FixedColorBuilder(Colors.grey.shade50),
                     gapSpace: 12,
                     strokeWidth: 2,
                   ),
                   onCodeChanged: (code) {
                     loginController.smsCode = code ?? '';
-                    loginController.update();
+
+                    // ✅ Delay update until after current frame
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      loginController.update();
+                    });
+
                     if ((code?.length ?? 0) == 6) {
                       _verifyOtp();
                     }
                   },
                   onCodeSubmitted: (code) {
                     loginController.smsCode = code;
-                    loginController.update();
+
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      loginController.update();
+                    });
+
                     _verifyOtp();
                   },
                 ),
@@ -241,9 +253,8 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
                           controller.timer(); // ✅ restart timer
                           controller.phoneController.text =
                               widget.phoneNumber;
-                          global.showOnlyLoaderDialog(context);
+
                           await controller.sendOtpToPhone();
-                          global.hideLoader();
                         },
                         child: Container(
                           padding: EdgeInsets.symmetric(

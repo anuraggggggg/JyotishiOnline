@@ -4,6 +4,7 @@ import '../../../fastApi/fastApiendpoints.dart';
 import '../../../model/fastApiModel/astrologerProfileModel.dart';
 import '../../../theme/appTheme.dart';
 import '../../../utils/global.dart';
+import '../../chat/newChatScreen.dart';
 
 class AstrologerDetailPage extends StatefulWidget {
   final String astroId;
@@ -605,7 +606,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               icon: Icons.chat,
               label: 'Chat',
               price: '₹ ${(astrologer.charge * 0.5).toStringAsFixed(0)}/msg',
-              onPressed: () => _sendChatRequest(astrologer),
+              onPressed: () =>  _showCallRequestDialog(astrologer, 'Chat'),
               color: Colors.orange,
             ),
           ),
@@ -1038,7 +1039,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  _showRequestSentDialog('Chat');
+                  _showRequestSentDialog('chat');
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: appColor),
                 child: const Text(
@@ -1067,17 +1068,26 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                   "You will be notified when the astrologer accepts your request.",
             ),
             actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text("View My Requests"),
-              ),
+              // TextButton(
+              //   onPressed: () {
+              //     Navigator.pop(context);
+              //   },
+              //   child: const Text("View My Requests"),
+              // ),
               ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  Navigator.pop(context); // close the dialog first
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CustomerChatPage(astrologerUid: widget.astroId),
+                    ),
+                  );
+                },
                 style: ElevatedButton.styleFrom(backgroundColor: appColor),
                 child: const Text("OK", style: TextStyle(color: Colors.white)),
               ),
+
             ],
           ),
     );

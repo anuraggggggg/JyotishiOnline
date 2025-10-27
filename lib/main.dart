@@ -47,6 +47,7 @@ import 'package:http/http.dart' as http;
 import 'controllers/splashController.dart';
 import 'controllers/timer_controller.dart';
 import 'fastApi/fastApiServices.dart';
+import 'newglobal.dart';
 
 bool isWeb = false;
 
@@ -241,14 +242,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   // Initialize Shared Preferences first
-  global.sp =
-      await SharedPreferences.getInstance(); // Ensure global.sp is initialized
+  global.sp = await SharedPreferences.getInstance();
+
   await EasyLocalization.ensureInitialized();
+
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.white,
-    statusBarIconBrightness: Brightness
-        .dark, // kyunki white background hai, dark icons better lagenge
+    statusBarIconBrightness: Brightness.dark,
   ));
 
   if (kIsWeb) {
@@ -258,11 +260,16 @@ void main() async {
     isWeb = false;
   }
 
+  // ✅ Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // ✅ Initialize FCM token
+  await initFcmToken();
+
   HttpOverrides.global = PostHttpOverrides();
+
   FirebaseMessaging messaging = FirebaseMessaging.instance;
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -280,11 +287,10 @@ void main() async {
   final String? storedLangCode = global.sp!.getString('currentLanguage');
   final String? storedCountryCode = global.sp!.getString('currentCountry');
 
-  Locale? startLocale;
+  Locale startLocale;
   if (storedLangCode != null && storedCountryCode != null) {
     startLocale = Locale(storedLangCode, storedCountryCode);
   } else {
-    // If no language is stored, default to English, and SplashScreen will prompt
     startLocale = const Locale('ml', 'IN');
   }
 
@@ -304,17 +310,18 @@ void main() async {
           Locale('gu', 'IN'),
           Locale('kn', 'IN'),
           Locale('ml', 'IN'),
-          Locale('mr', 'IN'), //marathi
+          Locale('mr', 'IN'),
           Locale('ta', 'IN'),
         ],
         path: 'assets/translations',
         fallbackLocale: const Locale('en', 'US'),
-        startLocale: startLocale, // Set dynamic startLocale here
+        startLocale: startLocale,
         child: MyApp(),
       ),
     ),
   );
 }
+
 
 class MyApp extends StatefulWidget {
   @override

@@ -554,27 +554,26 @@ class FastAPIServices {
   Future<http.Response> sendOtp({
     required String contactNo,
     required String countryCode,
-    bool sendWhatsapp = false,
-    bool sendSms = false,
+    bool sendWhatsapp = true,
+    bool sendSms = true,
   }) async {
     final url = Uri.parse(FastApiEndpoints.sendMobileOtp);
 
     print("🌐 Sending OTP to $contactNo ($countryCode)");
     print("📦 send_whatsapp: $sendWhatsapp, send_sms: $sendSms");
 
-    final body = {
-      "contactNo": contactNo,
-      "countryCode": countryCode,
-      "send_whatsapp": sendWhatsapp.toString(),
-      "send_sms": sendSms.toString(),
-    };
-
     final response = await http.post(
       url,
       headers: {
+        "accept": "application/json",
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: body,
+      body: {
+        "contactNo": contactNo,
+        "countryCode": countryCode,
+        "send_whatsapp": sendWhatsapp.toString(),
+        "send_sms": sendSms.toString(),
+      },
     );
 
     print("✅ Response Status: ${response.statusCode}");
@@ -582,6 +581,7 @@ class FastAPIServices {
 
     return response;
   }
+
 
   // ---------------- VERIFY OTP ----------------
   Future<http.Response> verifyOtp({
@@ -945,6 +945,10 @@ class FastAPIServices {
       return false;
     }
   }
+
+
+
+
 
 
 

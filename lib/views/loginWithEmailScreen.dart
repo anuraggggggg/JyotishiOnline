@@ -1,3 +1,4 @@
+import 'package:AstrowayCustomer/views/loginScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:AstrowayCustomer/theme/appTheme.dart';
@@ -134,7 +135,7 @@ class _LoginWithEmailScreenState extends State<LoginWithEmailScreen> {
                       const SizedBox(height: 16),
 
                       TextButton(
-                        onPressed: () => Get.to(() => HomeScreen()),
+                        onPressed: () => Get.to(() => LoginScreen()),
                         child: const Text(
                           "Don't have an account? Sign Up",
                           style: TextStyle(color: Colors.blue),
