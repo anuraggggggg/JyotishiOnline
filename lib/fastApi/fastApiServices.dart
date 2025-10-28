@@ -91,7 +91,12 @@ class FastAPIServices {
     }
   }
 
-
+  Future<void> loadFromStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    _accessToken = prefs.getString("access_token");
+    _userId = prefs.getString("user_id");
+    print("📦 Loaded from storage → userId=$_userId, token=$_accessToken");
+  }
 
 
 
@@ -506,49 +511,54 @@ class FastAPIServices {
     final url = Uri.parse(FastApiEndpoints.login);
     print("🔑 Logging in user (for re-authentication)...");
 
-    final response = await http.post(
-      url,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: {
-        "username": "Jincy@gmail.com",
-        "password": "Jincy@12345",
-      },
-    );
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: {
+          "username": "Jincy@gmail.com",
+          "password": "Jincy@12345",
+        },
+      );
 
-    print("📡 Login Status: ${response.statusCode}");
-    print("📩 Login Body: ${response.body}");
+      print("📡 Login Status: ${response.statusCode}");
+      print("📩 Login Body: ${response.body}");
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
 
-      // 1. Set Access Token
-      _accessToken = data["access_token"];
+        // 1️⃣ Access Token
+        _accessToken = data["access_token"];
 
-      // 2. CRITICAL FIX: Extract and set the User ID
-      // Assuming the user object is nested in the response under the key 'user'
-      final userJson = data["user"];
-      if (userJson != null) {
-        final user = UserModel.fromJson(userJson); // Assuming UserModel is available
-        _userId = user.id; // ✅ FIX: Set the class property _userId
+        // 2️⃣ Extract and set User ID safely
+        final userJson = data["user"];
+        if (userJson != null) {
+          final user = UserModel.fromJson(userJson);
+          _userId = user.id?.toString();
+        }
+
+        // 3️⃣ Save credentials locally
+        final prefs = await SharedPreferences.getInstance();
+        if (_accessToken != null) {
+          await prefs.setString("access_token", _accessToken!);
+        }
+        if (_userId != null) {
+          await prefs.setString("user_id", _userId!);
+        }
+
+        print("✅ Token and UserId saved successfully!");
+      } else {
+        print("🚨 Login failed with status: ${response.statusCode}");
+        throw Exception("Login failed: ${response.body}");
       }
-
-      final prefs = await SharedPreferences.getInstance();
-
-      // 3. Save both credentials to SharedPreferences
-      if (_accessToken != null) {
-        await prefs.setString("access_token", _accessToken!);
-      }
-      if (_userId != null) {
-        await prefs.setString("user_id", _userId!); // ✅ FIX: Save user_id to storage
-      }
-
-      print("✅ Token and UserId saved after re-login: $_accessToken, $_userId");
-    } else {
-      throw Exception("🚨 Failed to login: ${response.body}");
+    } catch (e) {
+      print("❌ Exception during login: $e");
+      rethrow;
     }
   }
+
 
   // ---------------- SEND OTP ----------------
   Future<http.Response> sendOtp({
@@ -847,6 +857,70 @@ class FastAPIServices {
       return null;
     }
   }
+  /// 🗂️ Get Chat History
+  Future<List<dynamic>> getChatHistory(String roomId) async {
+    final url = Uri.parse(FastApiEndpoints.getChatHistory(roomId));
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('❌ Failed to load chat history: ${response.body}');
+    }
+  }
+
+  /// 🕒 Get Last Message in a Chat Room
+  Future<Map<String, dynamic>> getLastMessage(String roomId) async {
+    final url = Uri.parse(FastApiEndpoints.getLastMessage(roomId));
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('❌ Failed to load last message: ${response.body}');
+    }
+  }
+
+  /// ✅ Mark Messages as Read
+  Future<bool> markAsRead(String roomId) async {
+    final url = Uri.parse(FastApiEndpoints.markMessagesAsRead(roomId));
+    final response = await http.post(url);
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      throw Exception('❌ Failed to mark messages as read: ${response.body}');
+    }
+  }
+
+  /// ✉️ Send a Chat Message
+  Future<Map<String, dynamic>> sendMessage({
+    required String roomId,
+    required String senderId,
+    required String receiverId,
+    required String message,
+  }) async {
+    final url = Uri.parse(FastApiEndpoints.sendMessage  );
+
+    final body = {
+      "room_id": roomId,
+      "sender_id": senderId,
+      "receiver_id": receiverId,
+      "message": message,
+    };
+
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('❌ Failed to send message: ${response.body}');
+    }
+  }
 
   // ---------------- Credit Wallet ----------------
   Future<CurrentUserWalletModel?> creditWallet(int amount) async {
@@ -944,6 +1018,7 @@ class FastAPIServices {
       print("⚠️ Error creating session: $e");
       return false;
     }
+
   }
 
 

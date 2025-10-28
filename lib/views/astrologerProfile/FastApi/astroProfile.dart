@@ -23,6 +23,14 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
   void initState() {
     super.initState();
     astrologerFuture = FastAPIServices().fetchAstrologerDetail(widget.astroId);
+    final fastApi = FastAPIServices();
+    fetchTokenId();
+    // make sure data is loaded
+  }
+
+  fetchTokenId() async{
+    final fastApi = FastAPIServices();
+    await fastApi.loadFromStorage(); // make sure data is loaded
   }
 
   @override
@@ -1080,9 +1088,18 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => CustomerChatPage(astrologerUid: widget.astroId),
+                      builder: (context) => CustomerChatPage(
+                        astrologerUid: widget.astroId,
+                        myUserId: FastAPIServices().userId ?? '',
+                        token: FastAPIServices().accessToken ?? '',
+                      )
+
                     ),
                   );
+                  print('🧠 astroId: ${widget.astroId}');
+                  print('🧠 userId: ${FastAPIServices().userId}');
+                  print('🧠 accessToken: ${FastAPIServices().accessToken}');
+
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: appColor),
                 child: const Text("OK", style: TextStyle(color: Colors.white)),

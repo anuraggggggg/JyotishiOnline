@@ -54,6 +54,24 @@ class FastApiEndpoints {
 
   static const String debitWallet = "$fastApiBaseUrl/api/v1/userwallets/";
 
+  // ---------------- CHAT ROUTER ----------------
+
+// Get chat history (with pagination)
+  static String getChatHistory(String roomId, {int page = 1, int size = 20}) =>
+      "$fastApiBaseUrl/chat/$roomId?page=$page&size=$size";
+
+// Get last message in a chat room
+  static String getLastMessage(String roomId) =>
+      "$fastApiBaseUrl/chat/$roomId/last";
+
+// Mark messages as read in a chat room
+  static String markMessagesAsRead(String roomId) =>
+      "$fastApiBaseUrl/chat/$roomId/read";
+
+// Send a new message
+  static const String sendMessage = "$fastApiBaseUrl/chat/send";
+
+
   // ---------------- CURRENT USER DETAILS ----------------
 
   static String currentUserDetails(String userId) =>
@@ -120,19 +138,6 @@ class FastApiEndpoints {
   static const String checkAndSendMessage =
       "$fastApiBaseUrl/api/v1/users/chat/check-send/"; // Append receiver_id
 
-  // ---------------- CHAT ----------------
-  static const String chatUsersWithLastMessage =
-      "$fastApiBaseUrl/api/v1/chat/users_with_last_message";
-  static const String getChatHistory =
-      "$fastApiBaseUrl/api/v1/chat/chat/history/"; // Append other_user_id
-  static const String generateAgoraTokenVideo =
-      "$fastApiBaseUrl/api/v1/chat/agora/token/videogenerate";
-  static const String generateAgoraTokenVoice =
-      "$fastApiBaseUrl/api/v1/chat/agora/token/Voicegenerate";
-  static const String userVideoCallStatus =
-      "$fastApiBaseUrl/api/v1/chat/uservideocallstatus";
-  static const String userAudioCallStatus =
-      "$fastApiBaseUrl/api/v1/chat/useraudiocallstatus";
 
   // ---------------- ADMIN ----------------
   static const String adminGetUsers =
