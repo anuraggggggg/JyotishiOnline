@@ -17,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../model/fastApiModel/NotificationModel.dart';
 import '../model/fastApiModel/astrologerProfileModel.dart';
+import '../model/fastApiModel/newChatModel.dart';
 
 class FastAPIServices {
   String? _accessToken;
@@ -24,6 +25,60 @@ class FastAPIServices {
 
   String? get userId => _userId;
   String? get accessToken => _accessToken;
+
+  /// 🗂️ Get Chat History (Refactored to use internal credentials)
+  Future<List<ChatMessage>> getChatHistory(String otherUserId) async {
+    await _loadCredentials();
+
+    if (_accessToken == null) {
+      debugPrint("❌ Token is null. Cannot fetch chat history.");
+      throw Exception('Authentication required to fetch chat history.');
+    }
+
+    final url = Uri.parse(
+      "https://fastapi.jyotishionline.com/chat/history/$otherUserId?page=1&size=20",
+    );
+
+    debugPrint("🌐 Fetching chat history for user: $otherUserId");
+    debugPrint("🔗 API URL: $url");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+      );
+
+      debugPrint("📦 Response status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data['messages'] != null) {
+          final messages = (data['messages'] as List)
+              .map((msg) => ChatMessage.fromJson(msg))
+              .toList();
+
+          debugPrint("✅ Successfully fetched ${messages.length} messages.");
+          return messages.reversed.toList(); // optional: newest last
+        } else {
+          debugPrint("⚠️ No 'messages' key found in response.");
+          return [];
+        }
+      } else {
+        debugPrint("❌ Failed to load chat history: ${response.body}");
+        throw Exception('Failed to load chat history');
+      }
+    } catch (e, st) {
+      debugPrint("💥 Exception while fetching chat history: $e");
+      debugPrint("📄 Stack trace: $st");
+      rethrow;
+    }
+  }
+
+
 
   // ---------------- FETCH CUSTOMER NOTIFICATIONS ----------------
   // Helper to load credentials
@@ -857,16 +912,61 @@ class FastAPIServices {
       return null;
     }
   }
-  /// 🗂️ Get Chat History
-  Future<List<dynamic>> getChatHistory(String roomId) async {
-    final url = Uri.parse(FastApiEndpoints.getChatHistory(roomId));
-    final response = await http.get(url);
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('❌ Failed to load chat history: ${response.body}');
+
+
+  /// 🗂️ Get Chat History (Refactored to use internal credentials)
+  /// 🗂️ Get Chat History (Using `other_user_id` as required by API)
+  Future<List<dynamic>> fetchChatHistory(String otherUserId) async {
+    // 1. Ensure internal credentials (_accessToken and _userId) are loaded and valid
+    await _loadCredentials();
+
+    if (_accessToken == null) {
+      debugPrint("❌ Token is null. Cannot fetch chat history.");
+      throw Exception('Authentication required to fetch chat history.');
     }
+
+    // ✅ Correct API endpoint as per your documentation
+    final url = Uri.parse(
+      "https://fastapi.jyotishionline.com/chat/history/$otherUserId?page=1&size=20",
+    );
+
+    debugPrint("🌐 Fetching chat history for user: $otherUserId");
+    debugPrint("🔗 API URL: $url");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $_accessToken', // ✅ internal token
+        },
+      );
+
+      debugPrint("📦 Response status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // Check for valid message list
+        if (data['messages'] != null) {
+          debugPrint("✅ Chat history fetched successfully. Total messages: ${data['messages'].length}");
+          return List.from(data['messages'].reversed); // reverse for correct order
+        } else {
+          debugPrint("⚠️ No messages found in response.");
+          return [];
+        }
+      } else {
+        debugPrint("❌ Failed to load chat history. Response: ${response.body}");
+        throw Exception('Failed to load chat history: Status ${response.statusCode}');
+      }
+    } catch (e, st) {
+      debugPrint("💥 Exception while fetching chat history: $e");
+      debugPrint("📄 Stack trace: $st");
+      rethrow;
+    }
+
+
   }
 
   /// 🕒 Get Last Message in a Chat Room

@@ -1,408 +1,345 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:intl/intl.dart';
-import '../../fastApi/fastApiServices.dart';
-
-
-// =================================================================
-// 🧩 Chat Message Model
-// =================================================================
-
-class ChatMessage {
-  final int id;
-  final String fromId;
-  final String message;
-  final DateTime timestamp;
-  final bool isRead;
-  final bool isSender;
-
-  ChatMessage({
-    required this.id,
-    required this.fromId,
-    required this.message,
-    required this.timestamp,
-    required this.isRead,
-    required this.isSender,
-  });
-
-  factory ChatMessage.fromJson(Map<String, dynamic> json, String myUserId) {
-    return ChatMessage(
-      id: json['id'] ?? 0,
-      fromId: json['from_id'].toString(),
-      message: json['message'] ?? '',
-      timestamp: DateTime.parse(json['timestamp']).toLocal(),
-      isRead: json['is_read'] ?? false,
-      isSender: json['from_id'].toString() == myUserId,
-    );
-  }
-}
-
-// =================================================================
-// 🧠 Chat Page
-// =================================================================
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../fastApi/fastapiservices.dart';
+import '../../model/fastApiModel/newChatModel.dart';
 
 class CustomerChatPage extends StatefulWidget {
-  final String astrologerUid; // ID of the astrologer (other user)
-  final String myUserId; // current user ID (customer)
-  final String token; // JWT token (used in headers and WebSocket)
+  final String astrologerUid;
+  final String? roomId;
+  final String? myUserId;
+  final String? token;
 
   const CustomerChatPage({
     Key? key,
     required this.astrologerUid,
-    required this.myUserId,
-    required this.token,
+    this.roomId,
+    this.myUserId,
+    this.token,
   }) : super(key: key);
 
   @override
   State<CustomerChatPage> createState() => _CustomerChatPageState();
 }
 
-class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBindingObserver {
+class _CustomerChatPageState extends State<CustomerChatPage> {
   final FastAPIServices _api = FastAPIServices();
-  final List<ChatMessage> _messages = [];
+  final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final TextEditingController _messageController = TextEditingController();
 
-  WebSocketChannel? _webSocketChannel;
-  bool _isLoading = true;
+  WebSocket? _socket;
   bool _isConnected = false;
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _messages = [];
+  Timer? _pingTimer;
+  Timer? _reconnectTimer;
+
+  String? _myUserId;
+  String? _token;
   String? _roomId;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _initializeChat();
+    _initializeUserData();
   }
 
-  // =================================================================
-  // 🚀 Initialize Chat
-  // =================================================================
-  Future<void> _initializeChat() async {
-    try {
-      // 1️⃣ Get or Create Room
-      await _fetchOrCreateRoomId();
+  /// ✅ Load stored user data, chat history and connect socket
+  Future<void> _initializeUserData() async {
+    debugPrint('🧠 Loading stored user data...');
+    final prefs = await SharedPreferences.getInstance();
 
-      // 2️⃣ Load Chat History
-      if (_roomId != null) await _loadChatHistory();
+    _myUserId = widget.myUserId ?? prefs.getString('userId');
+    _token = widget.token ?? prefs.getString('accessToken');
+    _roomId = widget.roomId ?? 'room_${widget.astrologerUid}_$_myUserId';
 
-      // 3️⃣ Connect WebSocket
-      _connectWebSocket();
+    debugPrint('✅ Loaded userId: $_myUserId');
+    debugPrint('✅ Loaded token: $_token');
+    debugPrint('✅ Room ID: $_roomId');
 
-      // 4️⃣ Mark Messages as Read
-      if (_roomId != null) await _markMessagesAsRead();
-    } catch (e) {
-      print('❌ Error initializing chat: $e');
-      _showSnackBar('Chat initialization failed.');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _fetchOrCreateRoomId() async {
-    // For now assume your backend auto-creates the room via WebSocket or first message.
-    // If you have a specific endpoint, call it here.
-    // For simplicity, use astrologerUid + myUserId combo as roomId.
-    final ids = [widget.myUserId, widget.astrologerUid]..sort();
-    _roomId = ids.join('_');
-    print('✅ Room ID: $_roomId');
-  }
-
-  Future<void> _loadChatHistory() async {
-    if (_roomId == null) return;
-    try {
-      final response = await _api.getChatHistory(_roomId!);
-      final List<ChatMessage> history = response
-          .map<ChatMessage>((json) => ChatMessage.fromJson(json, widget.myUserId))
-          .toList();
-
-      setState(() {
-        _messages.clear();
-        _messages.addAll(history.reversed);
-      });
-      _scrollToBottom();
-    } catch (e) {
-      print('❌ Failed to load chat history: $e');
-    }
-  }
-
-  Future<void> _markMessagesAsRead() async {
-    if (_roomId == null) return;
-    try {
-      await _api.markAsRead(_roomId!);
-    } catch (e) {
-      print('⚠️ Could not mark messages as read: $e');
-    }
-  }
-
-  // =================================================================
-  // 🔌 WebSocket Connection
-  // =================================================================
-  void _connectWebSocket() {
-    // 🔹 Ensure required values are available
-    if (widget.astrologerUid.isEmpty || widget.token.isEmpty) {
-      print('❌ Missing astrologerUid or token. Cannot connect to WebSocket.');
+    if (_myUserId == null) {
+      debugPrint('⚠️ Missing user ID! Cannot continue.');
       return;
     }
 
-    // 🔹 Construct WebSocket URL
-    final uri = Uri.parse(
-        'wss://fastapi.umeed.app/api/v1/chat/ws/chat/${widget.astrologerUid}?token=${widget.token}');
-    print('🔗 Connecting WebSocket: $uri');
+    await _loadChatHistory();
+    setState(() => _isLoading = false);
+    _connectWebSocket();
+  }
+
+  /// ✅ Fetch previous chat messages
+  Future<void> _loadChatHistory() async {
+    debugPrint('📦 Fetching chat history for astrologer: $widget.astrologerUid');
 
     try {
-      // 🔹 Connect to WebSocket
-      _webSocketChannel = WebSocketChannel.connect(uri);
+      final messages = await _api.getChatHistory(widget.astrologerUid);
+
+      if (messages.isEmpty) {
+        debugPrint('⚠️ No chat messages found.');
+      }
+
+      setState(() {
+        _messages = messages
+            .map((msg) => {
+          'sender_id': msg.senderId,
+          'message': msg.content,
+          'created_at': msg.createdAt.toIso8601String(),
+        })
+            .toList();
+      });
+
+      debugPrint('✅ Loaded ${_messages.length} messages from history');
+    } catch (e, st) {
+      debugPrint('❌ Error loading chat history: $e');
+      debugPrint('📄 Stack trace: $st');
+    }
+  }
+
+
+
+
+
+
+  /// ✅ WebSocket connection setup
+  Future<void> _connectWebSocket() async {
+    final wsUrl = Uri.parse('wss://fastapi.jyotishionline.com/chat/ws/$_roomId');
+    debugPrint('🌐 Connecting to WebSocket: $wsUrl');
+
+    try {
+      _socket = await WebSocket.connect(wsUrl.toString());
       setState(() => _isConnected = true);
+      debugPrint('✅ WebSocket connected successfully');
 
-      // 🔹 Listen for incoming messages
-      _webSocketChannel!.stream.listen(
-            (message) {
-          _handleWebSocketMessage(message);
-        },
-        onDone: () {
-          print('⚠️ WebSocket disconnected');
-          setState(() => _isConnected = false);
-        },
+      _socket!.listen(
+            (data) => _handleIncomingMessage(data),
+        onDone: _handleDisconnect,
         onError: (error) {
-          print('❌ WebSocket error: $error');
-          setState(() => _isConnected = false);
+          debugPrint('⚠️ WebSocket error: $error');
+          _handleDisconnect();
         },
       );
 
-      print('✅ WebSocket Connected');
+      _sendRaw({
+        "action": "join",
+        "room_id": _roomId,
+        "sender_id": _myUserId,
+        "receiver_id": widget.astrologerUid,
+      });
+
+      _startPing();
     } catch (e) {
-      print('❌ Failed to connect WebSocket: $e');
-      setState(() => _isConnected = false);
+      debugPrint('❌ WebSocket connection failed: $e');
+      _scheduleReconnect();
     }
   }
 
-
-  void _handleWebSocketMessage(dynamic rawMessage) {
+  void _handleIncomingMessage(dynamic data) {
+    debugPrint('📨 Incoming message: $data');
     try {
-      final json = jsonDecode(rawMessage);
-      final msg = ChatMessage.fromJson(json, widget.myUserId);
-      setState(() => _messages.insert(0, msg));
+      final decoded = jsonDecode(data);
+      if (decoded['type'] == 'pong' || decoded['action'] == 'join') return;
+
+      final msg = decoded['message'] ?? decoded;
+      final content = msg['content'] ?? msg['message'];
+      if (content == null) return;
+
+      setState(() {
+        _messages.add({
+          'sender_id': msg['sender_id'] ?? '',
+          'message': content,
+          'created_at': msg['created_at'] ?? DateTime.now().toIso8601String(),
+        });
+      });
       _scrollToBottom();
     } catch (e) {
-      print('⚠️ WebSocket message parse error: $e');
+      debugPrint('❌ Failed to decode message: $e');
     }
   }
 
-  void _sendMessage() async {
-    if (_messageController.text.trim().isEmpty) return;
-    final text = _messageController.text.trim();
+  void _handleDisconnect() {
+    debugPrint('❌ Disconnected from WebSocket');
+    _stopPing();
+    setState(() => _isConnected = false);
+    _socket = null;
+    _scheduleReconnect();
+  }
+
+  void _scheduleReconnect() {
+    if (_reconnectTimer?.isActive ?? false) return;
+    debugPrint('🔁 Scheduling reconnect in 5 seconds...');
+    _reconnectTimer = Timer(const Duration(seconds: 5), _connectWebSocket);
+  }
+
+  void _startPing() {
+    _stopPing();
+    debugPrint('🏓 Starting ping timer...');
+    _pingTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      _sendRaw({"action": "ping", "ts": DateTime.now().toIso8601String()});
+    });
+  }
+
+  void _stopPing() {
+    debugPrint('🛑 Stopping ping timer...');
+    _pingTimer?.cancel();
+    _pingTimer = null;
+  }
+
+  void _sendRaw(Map<String, dynamic> map) {
+    if (!_isConnected || _socket == null) {
+      debugPrint('⚠️ Tried to send data while disconnected: $map');
+      return;
+    }
+    final jsonMsg = jsonEncode(map);
+    _socket!.add(jsonMsg);
+    debugPrint('📤 Sent: $jsonMsg');
+  }
+
+
+  /// ✅ Send chat message
+  void _sendMessage() {
+    final text = _controller.text.trim();
+    if (text.isEmpty || !_isConnected) {
+      debugPrint('⚠️ Cannot send empty or disconnected message.');
+      return;
+    }
+
+    // 🔹 Convert everything to String before sending
+    final payload = {
+      "action": "send",
+      "room_id": _roomId.toString(),
+      "sender_id": _myUserId.toString(),
+      "receiver_id": widget.astrologerUid.toString(),
+      "content": text.toString(),
+    };
 
     try {
-      // Send via WebSocket
-      _webSocketChannel?.sink.add(text);
+      // 🔹 Convert to JSON and send directly (avoid type conflicts)
+      _socket?.add(jsonEncode(payload));
 
-      // Also POST to backend to persist message
-      await _api.sendMessage(
-        roomId: _roomId!,
-        senderId: widget.myUserId,
-        receiverId: widget.astrologerUid,
-        message: text,
-      );
-
-      _messageController.clear();
+      // 🧠 Update UI instantly
+      setState(() {
+        _messages.add({
+          "sender_id": _myUserId,
+          "message": text,
+          "created_at": DateTime.now().toIso8601String(),
+        });
+        _controller.clear();
+      });
       _scrollToBottom();
     } catch (e) {
-      print('❌ Send message error: $e');
-      _showSnackBar('Failed to send message.');
+      debugPrint('❌ Failed to send message: $e');
     }
   }
 
-  void _disconnectWebSocket() {
-    _webSocketChannel?.sink.close();
-  }
 
-  // =================================================================
-  // 🧭 Utility
-  // =================================================================
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          0.0,
-          duration: const Duration(milliseconds: 300),
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
       }
     });
   }
 
-  void _showSnackBar(String text) {
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(text)));
-    }
-  }
-
   @override
   void dispose() {
-    _disconnectWebSocket();
+    _stopPing();
+    _socket?.close();
+    _controller.dispose();
     _scrollController.dispose();
-    _messageController.dispose();
-    WidgetsBinding.instance.removeObserver(this);
+    _reconnectTimer?.cancel();
     super.dispose();
   }
 
-  // =================================================================
-  // 💬 UI
-  // =================================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Chat with ${widget.astrologerUid}',
-            style: const TextStyle(fontSize: 16)),
-        backgroundColor: const Color(0xFFE57373),
+        title: Text(_isConnected ? 'Chat (Online)' : 'Chat (Offline)'),
+        backgroundColor: Colors.deepPurple,
         actions: [
           Icon(
             _isConnected ? Icons.circle : Icons.circle_outlined,
-            color: _isConnected ? Colors.greenAccent : Colors.white70,
+            color: _isConnected ? Colors.greenAccent : Colors.redAccent,
           ),
           const SizedBox(width: 12),
         ],
       ),
       body: _isLoading
-          ? const Center(
-        child: CircularProgressIndicator(color: Color(0xFFE57373)),
-      )
+          ? const Center(child: CircularProgressIndicator())
           : Column(
         children: [
           Expanded(
             child: ListView.builder(
-              reverse: true,
               controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 final msg = _messages[index];
-                return _buildMessageBubble(msg);
+                final isMine =
+                    msg['sender_id']?.toString() == _myUserId;
+
+                return Align(
+                  alignment: isMine
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(
+                        vertical: 5, horizontal: 8),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isMine
+                          ? Colors.deepPurpleAccent.withOpacity(0.8)
+                          : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      msg['message'] ?? msg['content'] ?? '',
+                      style: TextStyle(
+                        color: isMine ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                );
               },
             ),
           ),
-          _buildMessageInput(),
+          _buildInputBox(),
         ],
       ),
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage msg) {
-    final isMe = msg.isSender;
-    return Row(
-      mainAxisAlignment:
-      isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-      children: [
-        Flexible(
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: isMe
-                  ? const Color(0xFFE57373).withOpacity(0.9)
-                  : Colors.grey.shade200,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(isMe ? 16 : 0),
-                bottomRight: Radius.circular(isMe ? 0 : 16),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                Text(
-                  msg.message,
-                  style: TextStyle(
-                    color: isMe ? Colors.white : Colors.black87,
-                    fontSize: 15,
+  Widget _buildInputBox() {
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        color: Colors.grey.shade100,
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                decoration: const InputDecoration(
+                  hintText: 'Type a message...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      DateFormat('hh:mm a').format(msg.timestamp),
-                      style: TextStyle(
-                        color: isMe ? Colors.white70 : Colors.black45,
-                        fontSize: 10,
-                      ),
-                    ),
-                    if (isMe)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: Icon(
-                          msg.isRead ? Icons.done_all : Icons.done,
-                          size: 14,
-                          color: msg.isRead
-                              ? Colors.lightBlueAccent
-                              : Colors.white70,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMessageInput() {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 5,
-            offset: const Offset(0, -1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: 'Type a message...',
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25.0),
-                  borderSide: BorderSide.none,
-                ),
+                onSubmitted: (_) => _sendMessage(),
               ),
-              maxLines: null,
             ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 48,
-            height: 48,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE57373),
-              shape: BoxShape.circle,
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.send, color: Colors.deepPurple),
+              onPressed: _sendMessage,
             ),
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white, size: 20),
-              onPressed: _isConnected ? _sendMessage : null,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

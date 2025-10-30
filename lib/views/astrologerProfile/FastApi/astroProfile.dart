@@ -1089,9 +1089,13 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => CustomerChatPage(
-                        astrologerUid: widget.astroId,
-                        myUserId: FastAPIServices().userId ?? '',
-                        token: FastAPIServices().accessToken ?? '',
+                        // receiverId: widget.astroId,
+                        // myUserId: FastAPIServices().userId ?? '',
+                        // token: FastAPIServices().accessToken ?? '',
+                        astrologerUid: "fea423d4-3f23-43a9-9ecb-a5cd4d0d5247",
+                        myUserId:  'user_779b09b9560f490e92889c35f5ff8de5',
+                        // token: FastAPIServices().accessToken ?? '',
+                        roomId: 'room_7cbc2ffb81574c528e9d4fafd095cd2a',
                       )
 
                     ),
