@@ -1070,23 +1070,24 @@ class FastAPIServices {
 
 
 
-  Future<bool> createSession({
+
+  Future<Map<String, dynamic>?> createSession({
     required String astrologerId,
-    required String sessionType, // "Audio Call", "Video Call", or "Chat"
+    required String sessionType, // "chat" | "audio_call" | "video_call"
   }) async {
     await _loadCredentials(); // make sure _userId and _accessToken are loaded
 
     if (_userId == null || _accessToken == null) {
       print("❌ Missing credentials: userId=$_userId, accessToken=$_accessToken");
-      return false;
+      return null;
     }
 
     final url = Uri.parse(FastApiEndpoints.createSession);
 
     final body = {
-      "user_id": _userId,
+      "user_id": _userId,           // if your backend derives user from token, you can omit this
       "astrologer_id": astrologerId,
-      "session_type": sessionType,
+      "session_type": sessionType,  // e.g. "chat", "audio_call", "video_call"
     };
 
     print("🔹 API URL: $url");
@@ -1109,16 +1110,29 @@ class FastAPIServices {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         print("✅ Session created successfully!");
-        return true;
+        final decoded = jsonDecode(response.body);
+
+        // Your API returns a flat object:
+        // {"room_id": "...", "id": 174, "user_id": "...", "astrologer_id": "...", ...}
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+
+        // If server ever wraps it: { "data": { ... } }
+        if (decoded is Map && decoded['data'] is Map<String, dynamic>) {
+          return decoded['data'] as Map<String, dynamic>;
+        }
+
+        print("⚠️ Unexpected JSON shape for createSession");
+        return null;
       } else {
         print("❌ Failed to create session: ${response.body}");
-        return false;
+        return null;
       }
     } catch (e) {
       print("⚠️ Error creating session: $e");
-      return false;
+      return null;
     }
-
   }
 
 

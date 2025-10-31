@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../../../fastApi/fastApiServices.dart';
 import '../../../fastApi/fastApiendpoints.dart';
@@ -19,16 +21,19 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
   late Future<Astrologer> astrologerFuture;
   int _selectedDuration = 10;
 
+  // Optional: keep last created session details (for debugging / reuse)
+  String? _lastRoomId;
+  String? _lastAstrologerUid;
+  String? _lastMyUserId;
+
   @override
   void initState() {
     super.initState();
     astrologerFuture = FastAPIServices().fetchAstrologerDetail(widget.astroId);
-    final fastApi = FastAPIServices();
-    fetchTokenId();
-    // make sure data is loaded
+    fetchTokenId(); // make sure identity/token loaded from storage
   }
 
-  fetchTokenId() async{
+  fetchTokenId() async {
     final fastApi = FastAPIServices();
     await fastApi.loadFromStorage(); // make sure data is loaded
   }
@@ -73,7 +78,6 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             tooltip: 'Block Astrologer',
           ),
         ],
-
       ),
       body: FutureBuilder<Astrologer>(
         future: astrologerFuture,
@@ -127,9 +131,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     // Calculate image URL inside this method
     final imageUrl = (astrologer.profileImage ?? '').trim();
     final hasValidImage = _isValidImageUrl(imageUrl);
-    final completeImageUrl = hasValidImage
-        ? _getCompleteImageUrl(imageUrl)
-        : '';
+    final completeImageUrl = hasValidImage ? _getCompleteImageUrl(imageUrl) : '';
 
     return Container(
       width: double.infinity,
@@ -162,9 +164,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                 child: CircleAvatar(
                   radius: 60,
                   backgroundColor: Colors.grey.shade100,
-                  backgroundImage: hasValidImage
-                      ? NetworkImage(completeImageUrl)
-                      : null,
+                  backgroundImage: hasValidImage ? NetworkImage(completeImageUrl) : null,
                   child: !hasValidImage
                       ? Icon(
                     Icons.person,
@@ -208,11 +208,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                 overflow: TextOverflow.ellipsis, // show ...
                 softWrap: false, // prevents wrapping to the next line
               ),
-
               const SizedBox(width: 8),
               Icon(
-                astrologer.isVerified ? Icons.verified : Icons
-                    .verified_outlined,
+                astrologer.isVerified ? Icons.verified : Icons.verified_outlined,
                 color: astrologer.isVerified ? appColor : Colors.grey,
                 size: 22,
               ),
@@ -247,8 +245,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                 ),
               ),
               const SizedBox(width: 16),
-              Icon(Icons.location_on_outlined, size: 16,
-                  color: Colors.grey.shade500),
+              Icon(Icons.location_on_outlined, size: 16, color: Colors.grey.shade500),
               const SizedBox(width: 4),
               Text(
                 astrologer.currentCity ?? "Not specified",
@@ -259,46 +256,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               ),
             ],
           ),
-
           const SizedBox(height: 16),
-
-          // Rating and Consultations
-          // Container(
-          //   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          //   decoration: BoxDecoration(
-          //     color: Colors.white,
-          //     borderRadius: BorderRadius.circular(12),
-          //     boxShadow: [
-          //       BoxShadow(
-          //         color: Colors.grey.shade200,
-          //         blurRadius: 8,
-          //         offset: const Offset(0, 2),
-          //       ),
-          //     ],
-          //   ),
-          //   child: Row(
-          //     mainAxisAlignment: MainAxisAlignment.center,
-          //     children: [
-          //       _buildStatItem(Icons.star, "4.8", "Rating"),
-          //       const SizedBox(width: 24),
-          //       Container(
-          //         width: 1,
-          //         height: 30,
-          //         color: Colors.grey.shade300,
-          //       ),
-          //       const SizedBox(width: 24),
-          //       _buildStatItem(Icons.people, "${astrologer.totalOrder ?? 0}", "Consultations"),
-          //       const SizedBox(width: 24),
-          //       Container(
-          //         width: 1,
-          //         height: 30,
-          //         color: Colors.grey.shade300,
-          //       ),
-          //       const SizedBox(width: 24),
-          //       _buildStatItem(Icons.thumb_up, "98%", "Satisfaction"),
-          //     ],
-          //   ),
-          // ),
         ],
       ),
     );
@@ -353,8 +311,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               ),
             ),
 
-          if (astrologer.loginBio != null && astrologer.loginBio!.isNotEmpty)
-            const SizedBox(height: 16),
+          if (astrologer.loginBio != null && astrologer.loginBio!.isNotEmpty) const SizedBox(height: 16),
 
           // Professional Details
           _buildInfoCard(
@@ -362,16 +319,11 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             icon: Icons.work_outline,
             child: Column(
               children: [
-                _buildProfileRow('Primary Expertise',
-                    astrologer.primarySkill ?? 'Not specified'),
-                _buildProfileRow(
-                    'Experience', '${astrologer.experienceInYears ?? 0} Years'),
-                _buildProfileRow('Highest Qualification',
-                    astrologer.highestQualification ?? 'Not specified'),
-                _buildProfileRow('Astrology Education',
-                    astrologer.learnAstrology ?? 'Not specified'),
-                _buildProfileRow('Currently Working',
-                    astrologer.currentlyworkingfulltimejob ?? 'Not specified'),
+                _buildProfileRow('Primary Expertise', astrologer.primarySkill ?? 'Not specified'),
+                _buildProfileRow('Experience', '${astrologer.experienceInYears ?? 0} Years'),
+                _buildProfileRow('Highest Qualification', astrologer.highestQualification ?? 'Not specified'),
+                _buildProfileRow('Astrology Education', astrologer.learnAstrology ?? 'Not specified'),
+                _buildProfileRow('Currently Working', astrologer.currentlyworkingfulltimejob ?? 'Not specified'),
               ],
             ),
           ),
@@ -384,18 +336,11 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             icon: Icons.person_outline,
             child: Column(
               children: [
-                _buildProfileRow('Languages Known',
-                    astrologer.languageKnown ?? 'Not specified'),
+                _buildProfileRow('Languages Known', astrologer.languageKnown ?? 'Not specified'),
                 _buildProfileRow('Location',
-                    '${astrologer.currentCity ?? 'Not specified'}${astrologer
-                        .country != null ? ', ${astrologer.country}' : ''}'),
-                _buildProfileRow('Contact Verified',
-                    astrologer.isContactVerified
-                        ? '✅ Verified'
-                        : '❌ Not Verified'),
-                _buildProfileRow('Profile Status', astrologer.isVerified
-                    ? '✅ Verified Astrologer'
-                    : '❌ Not Verified'),
+                    '${astrologer.currentCity ?? 'Not specified'}${astrologer.country != null ? ', ${astrologer.country}' : ''}'),
+                _buildProfileRow('Contact Verified', astrologer.isContactVerified ? '✅ Verified' : '❌ Not Verified'),
+                _buildProfileRow('Profile Status', astrologer.isVerified ? '✅ Verified Astrologer' : '❌ Not Verified'),
               ],
             ),
           ),
@@ -408,18 +353,11 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             icon: Icons.attach_money_outlined,
             child: Column(
               children: [
-                _buildProfileRow(
-                    'Call Rate', '₹ ${astrologer.charge} / minute'),
-                _buildProfileRow('Audio Call',
-                    '₹ ${(astrologer.charge * 0.8).toStringAsFixed(
-                        0)} / minute (20% off)'),
-                _buildProfileRow('Chat',
-                    '₹ ${(astrologer.charge * 0.5).toStringAsFixed(
-                        0)} / message (50% off)'),
-                if (astrologer.monthlyEarning != null &&
-                    astrologer.monthlyEarning!.isNotEmpty)
-                  _buildProfileRow(
-                      'Monthly Earnings', '₹ ${astrologer.monthlyEarning}'),
+                _buildProfileRow('Call Rate', '₹ ${astrologer.charge} / minute'),
+                _buildProfileRow('Audio Call', '₹ ${(astrologer.charge * 0.8).toStringAsFixed(0)} / minute (20% off)'),
+                _buildProfileRow('Chat', '₹ ${(astrologer.charge * 0.5).toStringAsFixed(0)} / message (50% off)'),
+                if (astrologer.monthlyEarning != null && astrologer.monthlyEarning!.isNotEmpty)
+                  _buildProfileRow('Monthly Earnings', '₹ ${astrologer.monthlyEarning}'),
               ],
             ),
           ),
@@ -451,11 +389,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               title: 'Audio Call',
               subtitle: 'Clear voice consultation',
               price: '₹ ${(astrologer.charge * 0.8).toStringAsFixed(0)}/min',
-              features: [
-                '20% cheaper than video',
-                'Record call option',
-                'Uninterrupted connection'
-              ],
+              features: ['20% cheaper than video', 'Record call option', 'Uninterrupted connection'],
             ),
             const SizedBox(height: 16),
             _buildConsultationOption(
@@ -463,24 +397,15 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               title: 'Video Call',
               subtitle: 'Face-to-face consultation',
               price: '₹ ${astrologer.charge}/min',
-              features: [
-                'Better understanding',
-                'Screen sharing',
-                'Record session'
-              ],
+              features: ['Better understanding', 'Screen sharing', 'Record session'],
             ),
             const SizedBox(height: 16),
             _buildConsultationOption(
               icon: Icons.chat,
               title: 'Chat',
               subtitle: 'Text-based consultation',
-              price: '₹ ${(astrologer.charge * 0.5).toStringAsFixed(
-                  0)}/message',
-              features: [
-                '50% off call rates',
-                '24-hour access',
-                'Share images'
-              ],
+              price: '₹ ${(astrologer.charge * 0.5).toStringAsFixed(0)}/message',
+              features: ['50% off call rates', '24-hour access', 'Share images'],
             ),
           ],
         ),
@@ -552,8 +477,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
           Wrap(
             spacing: 8,
             runSpacing: 4,
-            children: features.map((feature) {
-              return Chip(
+            children: features
+                .map(
+                  (feature) => Chip(
                 label: Text(
                   feature,
                   style: TextStyle(
@@ -564,8 +490,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                 backgroundColor: Colors.grey.shade100,
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              );
-            }).toList(),
+              ),
+            )
+                .toList(),
           ),
         ],
       ),
@@ -614,7 +541,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               icon: Icons.chat,
               label: 'Chat',
               price: '₹ ${(astrologer.charge * 0.5).toStringAsFixed(0)}/msg',
-              onPressed: () =>  _showCallRequestDialog(astrologer, 'Chat'),
+              onPressed: () => _showCallRequestDialog(astrologer, 'Chat'),
               color: Colors.orange,
             ),
           ),
@@ -671,14 +598,16 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
 
   void _showCallRequestDialog(Astrologer astrologer, String callType) {
     const int defaultDuration = 10; // Fixed duration
+    // Capture the page context for later navigation (avoid using sheet context).
+    final BuildContext pageContext = context;
 
     showModalBottomSheet(
-      context: context,
+      context: pageContext,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
+      builder: (sheetContext) {
         return Container(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -731,9 +660,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                       ),
                     ),
                     Text(
-                      '₹ ${(callType == 'Audio'
-                          ? astrologer.charge * 0.8
-                          : astrologer.charge) * defaultDuration}',
+                      '₹ ${(callType == 'Audio' ? astrologer.charge * 0.8 : astrologer.charge) * defaultDuration}',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -748,47 +675,146 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
-                    print("🟡 [BUTTON] Send Request clicked");
-                    print("➡️ Selected Call Type: $callType");
-                    print("➡️ Astrologer ID: ${astrologer.astroId}");
+                    try {
+                      print("🟡 [BUTTON] Send Request clicked");
+                      print("➡️ Selected Call Type: $callType");
+                      print("➡️ Astrologer ID: ${astrologer.astroId}");
 
-                    // 🧠 Map callType to correct backend value
-                    String mappedSessionType;
-                    switch (callType.toLowerCase()) {
-                      case "audio":
-                      case "audio call":
-                        mappedSessionType = "audio_call";
-                        break;
-                      case "video":
-                      case "video call":
-                        mappedSessionType = "video_call";
-                        break;
-                      case "chat":
-                        mappedSessionType = "chat";
-                        break;
-                      default:
-                        mappedSessionType = "chat"; // fallback
-                    }
+                      // Map callType -> backend enum
+                      String mappedSessionType;
+                      switch (callType.toLowerCase()) {
+                        case "audio":
+                        case "audio call":
+                          mappedSessionType = "audio_call";
+                          break;
+                        case "video":
+                        case "video call":
+                          mappedSessionType = "video_call";
+                          break;
+                        case "chat":
+                        default:
+                          mappedSessionType = "chat";
+                      }
+                      print("✅ Mapped session_type for API: $mappedSessionType");
 
-                    print("✅ Mapped session_type for API: $mappedSessionType");
+                      // Ensure identity loaded
+                      await FastAPIServices().loadFromStorage();
+                      final myUserIdFromStorage = FastAPIServices().userId;
+                      print("➡️ Current User ID: $myUserIdFromStorage");
+                      print("🟠 [API CALL INITIATED]");
 
-                    print("➡️ Current User ID: ${FastAPIServices().userId}");
-                    print("🟠 [API CALL INITIATED]");
-
-                    bool success = await FastAPIServices().createSession(
-                      astrologerId: astrologer.astroId,
-                      sessionType: mappedSessionType,
-                    );
-
-                    if (success) {
-                      print("✅ [SUCCESS] Session created successfully.");
-                      _showRequestSentDialog(callType);
-                    } else {
-                      print("❌ [FAILED] Session creation failed.");
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text(
-                            "Failed to send request. Please try again.")),
+                      // Call API (may return Map / String / bool depending on service)
+                      final dynamic raw = await FastAPIServices().createSession(
+                        astrologerId: astrologer.astroId,
+                        sessionType: mappedSessionType,
                       );
+
+                      // Normalize to Map<String, dynamic>
+                      Map<String, dynamic>? session;
+                      if (raw == null) {
+                        // null -> fail
+                      } else if (raw is Map<String, dynamic>) {
+                        session = raw;
+                      } else if (raw is String) {
+                        try {
+                          final decoded = jsonDecode(raw);
+                          if (decoded is Map<String, dynamic>) {
+                            session = decoded;
+                          }
+                        } catch (_) {}
+                      } else if (raw is bool) {
+                        print("⚠️ createSession returned bool=$raw; expected a JSON map.");
+                      }
+
+                      if (session == null) {
+                        print("❌ [FAILED] Session creation failed or unexpected response type.");
+                        if (mounted) {
+                          ScaffoldMessenger.of(sheetContext).showSnackBar(
+                            const SnackBar(
+                              content: Text("Failed to send request. Please try again."),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+
+                      // Extract keys from your backend response
+                      final String roomId = (session["room_id"] ?? "").toString();
+                      final String userUid = (session["user_id"] ?? myUserIdFromStorage ?? "").toString();
+                      final String astrologerUid = (session["astrologer_id"] ?? astrologer.astroId).toString();
+                      final String status = (session["status"] ?? "").toString();
+                      final String sessionType = (session["session_type"] ?? "").toString();
+
+                      if (roomId.isEmpty || userUid.isEmpty || astrologerUid.isEmpty) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(sheetContext).showSnackBar(
+                            const SnackBar(
+                              content: Text("Couldn’t get session details. Please try again."),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+
+                      if (!mounted) return;
+                      setState(() {
+                        _lastRoomId = roomId;
+                        _lastAstrologerUid = astrologerUid;
+                        _lastMyUserId = userUid;
+                      });
+
+                      print("✅ [SUCCESS] Session created.");
+                      print("   roomId: $roomId");
+                      print("   user_id: $userUid");
+                      print("   astrologer_id: $astrologerUid");
+                      print("   status: $status");
+                      print("   session_type: $sessionType");
+
+                      // Close only the bottom sheet (use sheetContext)
+                      if (Navigator.of(sheetContext).canPop()) {
+                        Navigator.of(sheetContext).pop();
+                      }
+
+                      if (!mounted) return;
+
+                      // Show success dialog using the PAGE context
+                      _showRequestSentDialog(
+                        callType,
+                        onOk: () {
+                          if (!mounted) return;
+
+                          // Extra safety before navigating
+                          if (roomId.isEmpty || userUid.isEmpty || astrologerUid.isEmpty) {
+                            ScaffoldMessenger.of(pageContext).showSnackBar(
+                              const SnackBar(content: Text("Missing navigation payload.")),
+                            );
+                            return;
+                          }
+
+                          Navigator.of(pageContext).push(
+                            MaterialPageRoute(
+                              builder: (_) => CustomerChatPage(
+                                astrologerUid: astrologerUid, // dynamic
+                                myUserId: userUid,            // dynamic
+                                roomId: roomId,
+                                astrologerName: astrologer.name,             // dynamic
+                                // token: FastAPIServices().accessToken, // <- if your chat needs token, make param nullable in CustomerChatPage
+                              ),
+                            ),
+                          );
+
+                          print('🧠 astroId (route param): ${widget.astroId}');
+                          print('🧠 userId (storage): ${FastAPIServices().userId}');
+                          print('🧠 accessToken: ${FastAPIServices().accessToken}');
+                        },
+                      );
+                    } catch (e) {
+                      print("🔥 Exception in Send Request: $e");
+                      if (mounted) {
+                        ScaffoldMessenger.of(sheetContext).showSnackBar(
+                          SnackBar(content: Text("Something went wrong: $e")),
+                        );
+                      }
                     }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: appColor),
@@ -797,8 +823,6 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
-
-
               ),
             ],
           ),
@@ -807,10 +831,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     );
   }
 
-
   // Keep existing helper methods...
-  Widget _buildInfoCard(
-      {required String title, required IconData icon, required Widget child}) {
+  Widget _buildInfoCard({required String title, required IconData icon, required Widget child}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -888,28 +910,23 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       if (astrologer.instaProfileLink != null &&
           astrologer.instaProfileLink!.isNotEmpty &&
           astrologer.instaProfileLink != 'string')
-        _buildSocialLinkItem('Instagram', Icons.photo_camera_outlined,
-            astrologer.instaProfileLink!),
+        _buildSocialLinkItem('Instagram', Icons.photo_camera_outlined, astrologer.instaProfileLink!),
       if (astrologer.facebookProfileLink != null &&
           astrologer.facebookProfileLink!.isNotEmpty &&
           astrologer.facebookProfileLink != 'string')
-        _buildSocialLinkItem(
-            'Facebook', Icons.facebook, astrologer.facebookProfileLink!),
+        _buildSocialLinkItem('Facebook', Icons.facebook, astrologer.facebookProfileLink!),
       if (astrologer.linkedInProfileLink != null &&
           astrologer.linkedInProfileLink!.isNotEmpty &&
           astrologer.linkedInProfileLink != 'string')
-        _buildSocialLinkItem(
-            'LinkedIn', Icons.business_center, astrologer.linkedInProfileLink!),
+        _buildSocialLinkItem('LinkedIn', Icons.business_center, astrologer.linkedInProfileLink!),
       if (astrologer.youtubeChannelLink != null &&
           astrologer.youtubeChannelLink!.isNotEmpty &&
           astrologer.youtubeChannelLink != 'string')
-        _buildSocialLinkItem(
-            'YouTube', Icons.video_library, astrologer.youtubeChannelLink!),
+        _buildSocialLinkItem('YouTube', Icons.video_library, astrologer.youtubeChannelLink!),
       if (astrologer.websiteProfileLink != null &&
           astrologer.websiteProfileLink!.isNotEmpty &&
           astrologer.websiteProfileLink != 'string')
-        _buildSocialLinkItem(
-            'Website', Icons.language, astrologer.websiteProfileLink!),
+        _buildSocialLinkItem('Website', Icons.language, astrologer.websiteProfileLink!),
     ];
 
     return Column(
@@ -981,136 +998,108 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
   void _sendCallRequest(Astrologer astrologer, String callType, int duration) {
     showDialog(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            title: Text("Send $callType Call Request"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("You are sending a $callType call request to ${astrologer
-                    .name}"),
-                const SizedBox(height: 8),
-                Text("Duration: $duration minutes"),
-                const SizedBox(height: 8),
-                Text("Total Amount: ₹ ${(callType == 'Audio' ? astrologer
-                    .charge * 0.8 : astrologer.charge) * duration}"),
-                const SizedBox(height: 16),
-                const Text(
-                  "The astrologer will receive your request and can accept it to start the call.",
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
+      builder: (context) => AlertDialog(
+        title: Text("Send $callType Call Request"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("You are sending a $callType call request to ${astrologer.name}"),
+            const SizedBox(height: 8),
+            Text("Duration: $duration minutes"),
+            const SizedBox(height: 8),
+            Text("Total Amount: ₹ ${(callType == 'Audio' ? astrologer.charge * 0.8 : astrologer.charge) * duration}"),
+            const SizedBox(height: 16),
+            const Text(
+              "The astrologer will receive your request and can accept it to start the call.",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _showRequestSentDialog(callType);
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: appColor),
-                child: const Text(
-                    "Send Request", style: TextStyle(color: Colors.white)),
-              ),
-            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
           ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showRequestSentDialog(callType);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: appColor),
+            child: const Text("Send Request", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 
   void _sendChatRequest(Astrologer astrologer) {
     showDialog(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            title: const Text("Send Chat Request"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("You are sending a chat request to ${astrologer.name}"),
-                const SizedBox(height: 16),
-                const Text(
-                  "The astrologer will receive your request and can accept it to start the chat session.",
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
+      builder: (context) => AlertDialog(
+        title: const Text("Send Chat Request"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("You are sending a chat request to ${astrologer.name}"),
+            const SizedBox(height: 16),
+            const Text(
+              "The astrologer will receive your request and can accept it to start the chat session.",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _showRequestSentDialog('chat');
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: appColor),
-                child: const Text(
-                    "Send Request", style: TextStyle(color: Colors.white)),
-              ),
-            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
           ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showRequestSentDialog('chat');
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: appColor),
+            child: const Text("Send Request", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 
-  void _showRequestSentDialog(String requestType) {
+  /// UPDATED: accepts an optional [onOk] callback to navigate with dynamic values
+  void _showRequestSentDialog(
+      String requestType, {
+        VoidCallback? onOk,
+      }) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) =>
-          AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.green),
-                SizedBox(width: 8),
-                Text("Request Sent!"),
-              ],
-            ),
-            content: Text(
-              "Your $requestType request has been sent successfully. "
-                  "You will be notified when the astrologer accepts your request.",
-            ),
-            actions: [
-              // TextButton(
-              //   onPressed: () {
-              //     Navigator.pop(context);
-              //   },
-              //   child: const Text("View My Requests"),
-              // ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context); // close the dialog first
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CustomerChatPage(
-                        // receiverId: widget.astroId,
-                        // myUserId: FastAPIServices().userId ?? '',
-                        // token: FastAPIServices().accessToken ?? '',
-                        astrologerUid: "fea423d4-3f23-43a9-9ecb-a5cd4d0d5247",
-                        myUserId:  'user_779b09b9560f490e92889c35f5ff8de5',
-                        // token: FastAPIServices().accessToken ?? '',
-                        roomId: 'room_7cbc2ffb81574c528e9d4fafd095cd2a',
-                      )
-
-                    ),
-                  );
-                  print('🧠 astroId: ${widget.astroId}');
-                  print('🧠 userId: ${FastAPIServices().userId}');
-                  print('🧠 accessToken: ${FastAPIServices().accessToken}');
-
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: appColor),
-                child: const Text("OK", style: TextStyle(color: Colors.white)),
-              ),
-
-            ],
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text("Request Sent!"),
+          ],
+        ),
+        content: Text(
+          "Your $requestType request has been sent successfully. "
+              "You will be notified when the astrologer accepts your request.",
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop(); // close the dialog first
+              if (onOk != null) onOk();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: appColor),
+            child: const Text("OK", style: TextStyle(color: Colors.white)),
           ),
+        ],
+      ),
     );
   }
 
@@ -1121,109 +1110,95 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       context: context,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setState) =>
-              AlertDialog(
-                title: const Text("Report Astrologer"),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Please select the reason for reporting:"),
-                    const SizedBox(height: 16),
-                    ...[
-                      'Inappropriate behavior',
-                      'Fake profile',
-                      'Poor service',
-                      'Other'
-                    ]
-                        .map(
-                          (reason) =>
-                          RadioListTile<String>(
-                            title: Text(reason),
-                            value: reason,
-                            groupValue: selectedReason,
-                            onChanged: (value) {
-                              setState(() => selectedReason = value);
-                            },
-                          ),
-                    )
-                        .toList(),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("Cancel"),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red),
-                    onPressed: () async {
-                      if (selectedReason == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                                "Please select a reason before submitting."),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
-                        return;
-                      }
-
-                      Navigator.pop(context);
-
-                      try {
-                        // Get astrologer details from the future
-                        final astrologer = await astrologerFuture;
-
-                        // Create an instance of FastAPIServices
-                        final apiService = FastAPIServices();
-
-                        final response = await apiService.reportAstrologer(
-
-                          astrologerId: astrologer.astroId,
-                          // using the fetched astrologer ID
-                          reason: selectedReason!,
-                        );
-
-                        if (response != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  "Astrologer reported successfully."),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Failed to report astrologer."),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("Error: $e"),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
+          builder: (context, setState) => AlertDialog(
+            title: const Text("Report Astrologer"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Please select the reason for reporting:"),
+                const SizedBox(height: 16),
+                ...['Inappropriate behavior', 'Fake profile', 'Poor service', 'Other']
+                    .map(
+                      (reason) => RadioListTile<String>(
+                    title: Text(reason),
+                    value: reason,
+                    groupValue: selectedReason,
+                    onChanged: (value) {
+                      setState(() => selectedReason = value);
                     },
-                    child: const Text(
-                      "Submit Report",
-                      style: TextStyle(color: Colors.white),
-                    ),
                   ),
-
-                ],
+                )
+                    .toList(),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
               ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () async {
+                  if (selectedReason == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Please select a reason before submitting."),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                    return;
+                  }
+
+                  Navigator.pop(context);
+
+                  try {
+                    // Get astrologer details from the future
+                    final astrologer = await astrologerFuture;
+
+                    // Create an instance of FastAPIServices
+                    final apiService = FastAPIServices();
+
+                    final response = await apiService.reportAstrologer(
+                      astrologerId: astrologer.astroId, // using the fetched astrologer ID
+                      reason: selectedReason!,
+                    );
+
+                    if (response != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Astrologer reported successfully."),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Failed to report astrologer."),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Error: $e"),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                child: const Text(
+                  "Submit Report",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
-
 
   Widget _buildLoadingShimmer() {
     return ListView(
@@ -1294,13 +1269,11 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             ElevatedButton(
               onPressed: () {
                 setState(() {
-                  astrologerFuture =
-                      FastAPIServices().fetchAstrologerDetail(widget.astroId);
+                  astrologerFuture = FastAPIServices().fetchAstrologerDetail(widget.astroId);
                 });
               },
               style: ElevatedButton.styleFrom(backgroundColor: appColor),
-              child: const Text(
-                  "Try Again", style: TextStyle(color: Colors.white)),
+              child: const Text("Try Again", style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -1346,18 +1319,14 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       return url.length > 7;
     }
     if (url.startsWith('http://') || url.startsWith('https://')) {
-      return !url.contains('/astro/null') &&
-          !url.contains('undefined') &&
-          !url.contains('placeholder');
+      return !url.contains('/astro/null') && !url.contains('undefined') && !url.contains('placeholder');
     }
     return url.isNotEmpty;
   }
 
   String _getCompleteImageUrl(String imageUrl) {
     if (imageUrl.startsWith('file://')) {
-      final String fileName = imageUrl
-          .split('/')
-          .last;
+      final String fileName = imageUrl.split('/').last;
       return 'https://fastapi.jyotishionline.com/static/uploads/$fileName';
     }
 
@@ -1366,9 +1335,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     }
 
     if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
-      return 'https://fastapi.jyotishionline.com${imageUrl.startsWith('/')
-          ? imageUrl
-          : '/$imageUrl'}';
+      return 'https://fastapi.jyotishionline.com${imageUrl.startsWith('/') ? imageUrl : '/$imageUrl'}';
     }
 
     return imageUrl;
@@ -1379,62 +1346,59 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
 
     showDialog(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            title: const Text("Block Astrologer"),
-            content: const Text(
-              "Are you sure you want to block this astrologer? You will no longer be able to chat or call them.",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () async {
-                  Navigator.pop(context);
-
-                  try {
-                    final astrologer = await astrologerFuture;
-
-                    final response = await apiService.blockAstrologer(
-
-                      astrologerId: astrologer.astroId,
-                    );
-
-                    if (response != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Astrologer blocked successfully."),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Failed to block astrologer."),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text("Error: $e"),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                },
-                child: const Text(
-                  "Block",
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text("Block Astrologer"),
+        content: const Text(
+          "Are you sure you want to block this astrologer? You will no longer be able to chat or call them.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
           ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(context);
+
+              try {
+                final astrologer = await astrologerFuture;
+
+                final response = await apiService.blockAstrologer(
+                  astrologerId: astrologer.astroId,
+                );
+
+                if (response != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Astrologer blocked successfully."),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Failed to block astrologer."),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Error: $e"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text(
+              "Block",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
     );
   }
-
 }
