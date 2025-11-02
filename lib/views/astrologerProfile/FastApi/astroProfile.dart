@@ -598,8 +598,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
 
   void _showCallRequestDialog(Astrologer astrologer, String callType) {
     const int defaultDuration = 10; // Fixed duration
-    // Capture the page context for later navigation (avoid using sheet context).
-    final BuildContext pageContext = context;
+    final BuildContext pageContext = context; // keep page context for navigation
 
     showModalBottomSheet(
       context: pageContext,
@@ -627,18 +626,12 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               const SizedBox(height: 16),
               Text(
                 '$callType Call Consultation',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Text(
                 'with ${astrologer.name}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade600,
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               ),
               const SizedBox(height: 24),
               Container(
@@ -651,16 +644,13 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    Text('Total Amount (10 min)',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700)),
                     Text(
-                      'Total Amount (10 min)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    Text(
-                      '₹ ${(callType == 'Audio' ? astrologer.charge * 0.8 : astrologer.charge) * defaultDuration}',
+                      '₹ ${(callType.toLowerCase().startsWith('audio') ? astrologer.charge * 0.8 : astrologer.charge) * defaultDuration}',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -674,13 +664,15 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: appColor),
+                  child: const Text("Send Request", style: TextStyle(color: Colors.white)),
                   onPressed: () async {
                     try {
-                      print("🟡 [BUTTON] Send Request clicked");
-                      print("➡️ Selected Call Type: $callType");
-                      print("➡️ Astrologer ID: ${astrologer.astroId}");
+                      debugPrint("🟡 [SEND_REQUEST] tapped");
+                      debugPrint("   • callType UI = $callType");
+                      debugPrint("   • astrologerId = ${astrologer.astroId}");
 
-                      // Map callType -> backend enum
+                      // Map callType → backend enum
                       String mappedSessionType;
                       switch (callType.toLowerCase()) {
                         case "audio":
@@ -695,121 +687,153 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                         default:
                           mappedSessionType = "chat";
                       }
-                      print("✅ Mapped session_type for API: $mappedSessionType");
+                      debugPrint("✅ Mapped session_type = $mappedSessionType");
 
-                      // Ensure identity loaded
+                      // Load identity
                       await FastAPIServices().loadFromStorage();
                       final myUserIdFromStorage = FastAPIServices().userId;
-                      print("➡️ Current User ID: $myUserIdFromStorage");
-                      print("🟠 [API CALL INITIATED]");
+                      debugPrint("👤 currentUserId = $myUserIdFromStorage");
 
-                      // Call API (may return Map / String / bool depending on service)
+                      // Create session
+                      debugPrint("🌐 [API] createSession → astrologerId=${astrologer.astroId}, type=$mappedSessionType");
                       final dynamic raw = await FastAPIServices().createSession(
                         astrologerId: astrologer.astroId,
                         sessionType: mappedSessionType,
                       );
+                      debugPrint("🌐 [API] createSession raw = $raw");
 
-                      // Normalize to Map<String, dynamic>
+                      // Normalize response to map
                       Map<String, dynamic>? session;
                       if (raw == null) {
-                        // null -> fail
+                        debugPrint("❌ raw == null");
                       } else if (raw is Map<String, dynamic>) {
                         session = raw;
                       } else if (raw is String) {
                         try {
                           final decoded = jsonDecode(raw);
-                          if (decoded is Map<String, dynamic>) {
-                            session = decoded;
-                          }
-                        } catch (_) {}
+                          if (decoded is Map<String, dynamic>) session = decoded;
+                        } catch (e) {
+                          debugPrint("❌ decode string response failed: $e");
+                        }
                       } else if (raw is bool) {
-                        print("⚠️ createSession returned bool=$raw; expected a JSON map.");
+                        debugPrint("⚠️ createSession returned bool=$raw (unexpected)");
                       }
 
                       if (session == null) {
-                        print("❌ [FAILED] Session creation failed or unexpected response type.");
+                        debugPrint("❌ session == null (unexpected type or API error)");
                         if (mounted) {
                           ScaffoldMessenger.of(sheetContext).showSnackBar(
-                            const SnackBar(
-                              content: Text("Failed to send request. Please try again."),
-                            ),
+                            const SnackBar(content: Text("Failed to send request. Please try again.")),
                           );
                         }
                         return;
                       }
 
-                      // Extract keys from your backend response
-                      final String roomId = (session["room_id"] ?? "").toString();
-                      final String userUid = (session["user_id"] ?? myUserIdFromStorage ?? "").toString();
-                      final String astrologerUid = (session["astrologer_id"] ?? astrologer.astroId).toString();
-                      final String status = (session["status"] ?? "").toString();
-                      final String sessionType = (session["session_type"] ?? "").toString();
+                      // ---------- EXTRACT + NORMALIZE REQUIRED FIELDS (FIXED) ----------
+                      final Map<String, dynamic> sessionMap = Map<String, dynamic>.from(session);
 
-                      if (roomId.isEmpty || userUid.isEmpty || astrologerUid.isEmpty) {
+                      final String roomId = (sessionMap["room_id"] ?? "").toString();
+
+                      // Inspect 'user' field
+                      final dynamic userField = sessionMap["user"];
+                      debugPrint("👀 session['user'] runtimeType = ${userField.runtimeType}");
+                      if (userField is Map) {
+                        debugPrint("🔑 session['user'] keys = ${userField.keys.toList()}");
+                      }
+
+                      // userUid can be nested under "user"
+                      String userUid = '';
+                      if (userField is Map) {
+                        final m = Map<String, dynamic>.from(userField);
+                        userUid = (m['id'] ?? m['user_id'] ?? m['uid'] ?? m['uuid'] ?? '').toString();
+                      } else if (userField is String) {
+                        userUid = userField; // backend returns plain id string (rare)
+                      }
+
+                      // Fallbacks: top-level field or storage
+                      if (userUid.isEmpty) {
+                        userUid = (sessionMap["user_id"] ?? myUserIdFromStorage ?? '').toString();
+                      }
+
+                      // astrologer may be top-level or nested under "astrologer"
+                      String astrologerUid = '';
+                      final dynamic astroField = sessionMap["astrologer"];
+                      if (astroField is Map) {
+                        final m = Map<String, dynamic>.from(astroField);
+                        astrologerUid = (m['id'] ?? m['astro_id'] ?? m['uid'] ?? m['uuid'] ?? '').toString();
+                      }
+                      if (astrologerUid.isEmpty) {
+                        astrologerUid = (sessionMap["astrologer_id"] ?? astrologer.astroId).toString();
+                      }
+
+                      final String status  = (sessionMap["status"] ?? "").toString();
+                      final String apiType = (sessionMap["session_type"] ?? "").toString();
+
+                      debugPrint("📦 [SESSION] (normalized)");
+                      debugPrint("   • roomId        = $roomId");
+                      debugPrint("   • userUid       = $userUid");
+                      debugPrint("   • astrologerUid = $astrologerUid");
+                      debugPrint("   • status        = $status");
+                      debugPrint("   • session_type  = $apiType");
+
+                      // Validate before navigate
+                      final missing = <String>[];
+                      if (roomId.isEmpty)        missing.add('roomId');
+                      if (userUid.isEmpty)       missing.add('userUid');
+                      if (astrologerUid.isEmpty) missing.add('astrologerUid');
+
+                      if (missing.isNotEmpty) {
+                        debugPrint("🚫 Missing navigation payload: ${missing.join(', ')}");
                         if (mounted) {
                           ScaffoldMessenger.of(sheetContext).showSnackBar(
-                            const SnackBar(
-                              content: Text("Couldn’t get session details. Please try again."),
-                            ),
+                            SnackBar(content: Text("Couldn’t get session details (${missing.join(', ')}). Please try again.")),
                           );
                         }
                         return;
                       }
 
-                      if (!mounted) return;
-                      setState(() {
-                        _lastRoomId = roomId;
-                        _lastAstrologerUid = astrologerUid;
-                        _lastMyUserId = userUid;
-                      });
+                      // Save for debug (optional)
+                      if (mounted) {
+                        setState(() {
+                          _lastRoomId = roomId;
+                          _lastAstrologerUid = astrologerUid;
+                          _lastMyUserId = userUid;
+                        });
+                      }
 
-                      print("✅ [SUCCESS] Session created.");
-                      print("   roomId: $roomId");
-                      print("   user_id: $userUid");
-                      print("   astrologer_id: $astrologerUid");
-                      print("   status: $status");
-                      print("   session_type: $sessionType");
-
-                      // Close only the bottom sheet (use sheetContext)
+                      // Close ONLY the sheet
                       if (Navigator.of(sheetContext).canPop()) {
                         Navigator.of(sheetContext).pop();
                       }
 
                       if (!mounted) return;
 
-                      // Show success dialog using the PAGE context
+                      // Show success dialog and navigate to CustomerChatPage on OK
                       _showRequestSentDialog(
                         callType,
                         onOk: () {
                           if (!mounted) return;
 
-                          // Extra safety before navigating
-                          if (roomId.isEmpty || userUid.isEmpty || astrologerUid.isEmpty) {
-                            ScaffoldMessenger.of(pageContext).showSnackBar(
-                              const SnackBar(content: Text("Missing navigation payload.")),
-                            );
-                            return;
-                          }
-
-                          Navigator.of(pageContext).push(
+                          debugPrint("➡️ Navigating -> CustomerChatPage");
+                          Navigator.of(pageContext, rootNavigator: true).push(
                             MaterialPageRoute(
                               builder: (_) => CustomerChatPage(
-                                astrologerUid: astrologerUid, // dynamic
-                                myUserId: userUid,            // dynamic
+                                astrologerUid: astrologerUid,
+                                myUserId: userUid,
                                 roomId: roomId,
-                                astrologerName: astrologer.name,             // dynamic
-                                // token: FastAPIServices().accessToken, // <- if your chat needs token, make param nullable in CustomerChatPage
+                                astrologerName: astrologer.name,
+                                // token: FastAPIServices().accessToken, // uncomment if your chat page needs it
                               ),
                             ),
                           );
 
-                          print('🧠 astroId (route param): ${widget.astroId}');
-                          print('🧠 userId (storage): ${FastAPIServices().userId}');
-                          print('🧠 accessToken: ${FastAPIServices().accessToken}');
+                          debugPrint("🧠 route params posted:"
+                              " astroId(page)=${widget.astroId},"
+                              " myUserId(storage)=${FastAPIServices().userId}");
                         },
                       );
                     } catch (e) {
-                      print("🔥 Exception in Send Request: $e");
+                      debugPrint("🔥 Exception in Send Request: $e");
                       if (mounted) {
                         ScaffoldMessenger.of(sheetContext).showSnackBar(
                           SnackBar(content: Text("Something went wrong: $e")),
@@ -817,11 +841,6 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                       }
                     }
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: appColor),
-                  child: const Text(
-                    "Send Request",
-                    style: TextStyle(color: Colors.white),
-                  ),
                 ),
               ),
             ],
@@ -830,6 +849,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       },
     );
   }
+
+
 
   // Keep existing helper methods...
   Widget _buildInfoCard({required String title, required IconData icon, required Widget child}) {
