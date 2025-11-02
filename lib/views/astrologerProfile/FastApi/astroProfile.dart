@@ -6,6 +6,7 @@ import '../../../fastApi/fastApiendpoints.dart';
 import '../../../model/fastApiModel/astrologerProfileModel.dart';
 import '../../../theme/appTheme.dart';
 import '../../../utils/global.dart';
+import '../../audioCall/newAudioCall.dart';
 import '../../chat/newChatScreen.dart';
 import '../../chat/video_call_page.dart';
 
@@ -842,16 +843,34 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                               ),
                             );
                           } else if (type == 'audio_call') {
-                            // AUDIO CALL (customer side => isAstrologer:false)
+                            // AUDIO CALL (customer side)
+                            if (astrologerUid.isEmpty) {
+                              ScaffoldMessenger.of(pageContext).showSnackBar(
+                                const SnackBar(content: Text("Missing astrologer id for audio call.")),
+                              );
+                              return;
+                            }
+
+                            // If you created a dedicated customer page:
+                            Navigator.of(pageContext, rootNavigator: true).push(
+                              MaterialPageRoute(
+                                builder: (_) => AudioCallPage(
+                                  otherUserId: astrologerUid, // pass astro_id here
+                                ),
+                              ),
+                            );
+
+                            // --- OR, if your customer app uses a generic AudioCallPage with role flag ---
                             // Navigator.of(pageContext, rootNavigator: true).push(
                             //   MaterialPageRoute(
                             //     builder: (_) => AudioCallPage(
-                            //       astroId: astrologerUid,
-                            //       isAstrologer: false,
+                            //       otherUserId: astrologerUid,     // pass astro_id
+                            //       isAstrologer: false,            // customer side
                             //     ),
                             //   ),
                             // );
-                          } else {
+                          }
+                          else {
                             // Fallback: open chat
                             Navigator.of(pageContext, rootNavigator: true).push(
                               MaterialPageRoute(
