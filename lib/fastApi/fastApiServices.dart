@@ -1135,6 +1135,46 @@ class FastAPIServices {
     }
   }
 
+  Future<Map<String, dynamic>> getAgoraVideoTokenForCustomer({
+    required String astroId,
+  }) async {
+    // Load credentials from storage into _accessToken / _userId
+    await _loadCredentials();
+    if (_accessToken == null || _accessToken!.isEmpty) {
+      throw Exception("No bearer token. Please log in again.");
+    }
+
+    final url = Uri.parse("https://fastapi.jyotishionline.com/agora/token/video")
+        .replace(queryParameters: {"astro_id": astroId});
+
+    debugPrint("🎥 [AGORA] Requesting token for astro_id=$astroId");
+    debugPrint("🔗 URL: $url");
+
+    final resp = await http.get(
+      url,
+      headers: {
+        "accept": "application/json",
+        "Authorization": "Bearer $_accessToken", // ✅ use the customer token
+      },
+    );
+
+    debugPrint("🎥 [AGORA] status=${resp.statusCode}");
+    debugPrint("🎥 [AGORA] body=${resp.body}");
+
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      // sanity log
+      debugPrint("✅ Got channel=${data['channelName']} appID=${data['appID']}");
+      return data;
+    } else {
+      throw Exception("Failed: ${resp.statusCode} ${resp.body}");
+    }
+  }
+
+
+
+
+
 
 
 

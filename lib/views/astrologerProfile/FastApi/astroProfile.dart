@@ -7,6 +7,7 @@ import '../../../model/fastApiModel/astrologerProfileModel.dart';
 import '../../../theme/appTheme.dart';
 import '../../../utils/global.dart';
 import '../../chat/newChatScreen.dart';
+import '../../chat/video_call_page.dart';
 
 class AstrologerDetailPage extends StatefulWidget {
   final String astroId;
@@ -814,24 +815,58 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                         onOk: () {
                           if (!mounted) return;
 
-                          debugPrint("➡️ Navigating -> CustomerChatPage");
-                          Navigator.of(pageContext, rootNavigator: true).push(
-                            MaterialPageRoute(
-                              builder: (_) => CustomerChatPage(
-                                astrologerUid: astrologerUid,
-                                myUserId: userUid,
-                                roomId: roomId,
-                                astrologerName: astrologer.name,
-                                // token: FastAPIServices().accessToken, // uncomment if your chat page needs it
-                              ),
-                            ),
-                          );
+                          // Decide destination by API session_type (NOT label)
+                          final type = apiType.toLowerCase(); // 'chat' | 'audio_call' | 'video_call'
+                          debugPrint("➡️ Navigate by session_type = $type");
 
-                          debugPrint("🧠 route params posted:"
-                              " astroId(page)=${widget.astroId},"
-                              " myUserId(storage)=${FastAPIServices().userId}");
+                          if (type == 'chat') {
+                            // CHAT
+                            Navigator.of(pageContext, rootNavigator: true).push(
+                              MaterialPageRoute(
+                                builder: (_) => CustomerChatPage(
+                                  astrologerUid: astrologerUid,
+                                  myUserId: userUid,
+                                  roomId: roomId,
+                                  astrologerName: astrologer.name,
+                                ),
+                              ),
+                            );
+                          } else if (type == 'video_call') {
+                            // VIDEO CALL (customer side => isAstrologer:false)
+                            Navigator.of(pageContext, rootNavigator: true).push(
+                              MaterialPageRoute(
+                                builder: (_) => CustomerVideoCallPage(
+                                  astroId: astrologerUid,
+
+                                ),
+                              ),
+                            );
+                          } else if (type == 'audio_call') {
+                            // AUDIO CALL (customer side => isAstrologer:false)
+                            // Navigator.of(pageContext, rootNavigator: true).push(
+                            //   MaterialPageRoute(
+                            //     builder: (_) => AudioCallPage(
+                            //       astroId: astrologerUid,
+                            //       isAstrologer: false,
+                            //     ),
+                            //   ),
+                            // );
+                          } else {
+                            // Fallback: open chat
+                            Navigator.of(pageContext, rootNavigator: true).push(
+                              MaterialPageRoute(
+                                builder: (_) => CustomerChatPage(
+                                  astrologerUid: astrologerUid,
+                                  myUserId: userUid,
+                                  roomId: roomId,
+                                  astrologerName: astrologer.name,
+                                ),
+                              ),
+                            );
+                          }
                         },
                       );
+
                     } catch (e) {
                       debugPrint("🔥 Exception in Send Request: $e");
                       if (mounted) {
