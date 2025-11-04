@@ -96,7 +96,9 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                       highlightColor: Colors.transparent,
                       onTap: () async {
 
-                          Get.to(() => EditUserProfile());
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => EditCustomerDetailsPage()),
+                        );
 
                       },
                       child:

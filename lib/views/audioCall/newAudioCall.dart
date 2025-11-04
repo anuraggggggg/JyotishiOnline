@@ -3,20 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-
 import '../../fastApi/agora_audio_service.dart';
 
 
-
-/// A single audio-call page usable by BOTH apps.
-/// Pass the astrologerId as [otherUserId] in BOTH apps (as you requested).
 class AudioCallPage extends StatefulWidget {
-  final String otherUserId; // you said: pass astro_id from both sides
+  /// Pass the astrologer ID here (the one customer wants to call)
+  final String otherUserId;
 
-  const AudioCallPage({
-    super.key,
-    required this.otherUserId,
-  });
+  const AudioCallPage({super.key, required this.otherUserId});
 
   @override
   State<AudioCallPage> createState() => _AudioCallPageState();
@@ -24,19 +18,16 @@ class AudioCallPage extends StatefulWidget {
 
 class _AudioCallPageState extends State<AudioCallPage> {
   late RtcEngine _engine;
-  bool _engineReady = false;
 
   String _appId = '';
   String _channel = '';
   String _token = '';
-  String _account = ''; // MUST be the "user" returned by API
-  int _ttl = 0;
+  String _account = '';
 
-  bool _joined = false;
-  int? _remoteUid;
-  bool _micOn = true;
-  bool _speakerOn = true;
   bool _loading = true;
+  bool _joined = false;
+  bool _muted = false;
+  bool _speakerOn = true;
 
   @override
   void initState() {
@@ -44,89 +35,86 @@ class _AudioCallPageState extends State<AudioCallPage> {
     _bootstrap();
   }
 
-  @override
-  void dispose() {
-    () async {
-      try { await _engine.leaveChannel(); } catch (_) {}
-      try { await _engine.release(); } catch (_) {}
-    }();
-    super.dispose();
-  }
-
   Future<void> _bootstrap() async {
     try {
-      // 1) mic permission
+      final incoming = widget.otherUserId.trim();
+      debugPrint('🎧 [CustomerVC] Bootstrapping with astrologer="$incoming"');
+
+      if (incoming.isEmpty || incoming.toLowerCase() == 'null') {
+        throw 'Invalid astrologer id';
+      }
+
+      // ── Request microphone permission ───────────────────────────────────────
       final statuses = await [Permission.microphone].request();
       if (statuses[Permission.microphone] != PermissionStatus.granted) {
         throw 'Microphone permission denied';
       }
 
-      // 2) fetch voice token
-      final auth = await AgoraVoiceService.getVoiceToken(widget.otherUserId);
+      // ── Fetch voice token from API ─────────────────────────────────────────
+      debugPrint('🌐 [CustomerVC] Fetching voice token for other_user_id=$incoming');
+      final auth = await AgoraVoiceService.getVoiceToken(incoming);
+
       _appId = auth.appId;
       _channel = auth.channelName;
       _token = auth.token;
-      _account = auth.account; // CRITICAL: userAccount to join with
-      _ttl = auth.ttl;
+      _account = auth.account;
 
-      final tokPreview = _token.length > 12
-          ? '${_token.substring(0, 6)}…${_token.substring(_token.length - 6)}'
-          : _token;
+      debugPrint('✅ [CustomerVC] Voice token OK:');
+      debugPrint('   • appId   = $_appId');
+      debugPrint('   • channel = $_channel');
+      debugPrint('   • account = $_account');
+      debugPrint('   • ttl     = ${auth.ttl}s');
 
-      debugPrint('🔑 [AUDIO] appId=$_appId  channel=$_channel');
-      debugPrint('🔑 [AUDIO] account(from API user)=$_account  ttl=$_ttl');
-      debugPrint('🔑 [AUDIO] token=$tokPreview');
       if (_appId.isEmpty || _channel.isEmpty || _token.isEmpty || _account.isEmpty) {
-        throw 'Missing appId/channel/token/account from API';
+        throw 'Missing required voice auth fields (appId/channel/token/account)';
       }
 
-      // 3) init engine
+      // ── Initialize Agora engine ────────────────────────────────────────────
       _engine = createAgoraRtcEngine();
       await _engine.initialize(RtcEngineContext(appId: _appId));
-      _engineReady = true;
+      debugPrint('⚙️ [CustomerVC] Agora engine initialized');
 
       await _engine.setChannelProfile(ChannelProfileType.channelProfileCommunication);
       await _engine.enableAudio();
-      await _engine.disableVideo(); // audio-only
-      await _engine.setEnableSpeakerphone(true);
+      await _engine.disableVideo();
+      debugPrint('🎛️ [CustomerVC] Audio enabled, video disabled');
 
-      // 4) events
-      _engine.registerEventHandler(RtcEngineEventHandler(
-        onConnectionStateChanged: (RtcConnection conn, ConnectionStateType state, ConnectionChangedReasonType reason) {
-          debugPrint('🔎 [AUDIO] onConnectionStateChanged ch=${conn.channelId} state=$state reason=$reason');
-        },
-        onJoinChannelSuccess: (RtcConnection conn, int elapsed) {
-          debugPrint('🎉 [AUDIO] onJoinChannelSuccess ch=${conn.channelId} elapsed=${elapsed}ms');
-          setState(() => _joined = true);
-        },
-        onUserJoined: (RtcConnection conn, int remoteUid, int elapsed) {
-          debugPrint('👋 [AUDIO] onUserJoined uid=$remoteUid elapsed=${elapsed}ms');
-          setState(() => _remoteUid = remoteUid);
-        },
-        onUserOffline: (RtcConnection conn, int remoteUid, UserOfflineReasonType reason) {
-          debugPrint('👋 [AUDIO] onUserOffline uid=$remoteUid reason=$reason');
-          setState(() => _remoteUid = null);
-        },
-        onLeaveChannel: (RtcConnection conn, RtcStats stats) {
-          debugPrint('👋 [AUDIO] onLeaveChannel duration=${stats.duration}');
-          setState(() {
-            _joined = false;
-            _remoteUid = null;
-          });
-        },
-        onTokenPrivilegeWillExpire: (RtcConnection conn, String token) async {
-          debugPrint('⏰ [AUDIO] Token expiring soon; call your API to refresh and _engine.renewToken(newToken).');
-        },
-        onError: (ErrorCodeType code, String msg) {
-          debugPrint('❗ [AUDIO] Agora error: $code $msg');
-          if (code == ErrorCodeType.errInvalidToken) {
-            debugPrint('🚨 [AUDIO] INVALID TOKEN. Ensure joinChannelWithUserAccount(account=$_account) matches the token.');
-          }
-        },
-      ));
+      // ── Register Agora event handlers ──────────────────────────────────────
+      _engine.registerEventHandler(
+        RtcEngineEventHandler(
+          onError: (ErrorCodeType code, String msg) {
+            debugPrint('💥 [CustomerVC] Agora error: $code $msg');
+          },
+          onJoinChannelSuccess: (RtcConnection conn, int elapsed) {
+            debugPrint('🎉 [CustomerVC] Joined channel ${conn.channelId}');
+            setState(() => _joined = true);
+            _setSpeaker(true);
+          },
+          onUserJoined: (RtcConnection conn, int uid, int elapsed) {
+            debugPrint('👋 [CustomerVC] Remote user joined uid=$uid');
+          },
+          onUserOffline:
+              (RtcConnection conn, int uid, UserOfflineReasonType reason) {
+            debugPrint('👋 [CustomerVC] Remote user left uid=$uid reason=$reason');
+          },
+          onLeaveChannel: (RtcConnection conn, RtcStats stats) {
+            debugPrint('👋 [CustomerVC] Left channel stats=$stats');
+            setState(() => _joined = false);
+          },
+          onConnectionStateChanged: (RtcConnection conn,
+              ConnectionStateType state, ConnectionChangedReasonType reason) {
+            debugPrint('🔎 [CustomerVC] connState=$state reason=$reason');
+          },
+          onTokenPrivilegeWillExpire: (RtcConnection conn, String token) async {
+            debugPrint('⌛ [CustomerVC] Token will expire soon — refresh if needed');
+          },
+        ),
+      );
 
-      // 5) join by ACCOUNT (CRITICAL)
-      debugPrint('➡️ [AUDIO] joinChannelWithUserAccount(channel=$_channel, account=$_account)');
+      // ── Register local user account & join channel ──────────────────────────
+      await _engine.registerLocalUserAccount(appId: _appId, userAccount: _account);
+      debugPrint('🪪 [CustomerVC] registerLocalUserAccount($_account) OK');
+
       await _engine.joinChannelWithUserAccount(
         token: _token,
         channelId: _channel,
@@ -139,8 +127,9 @@ class _AudioCallPageState extends State<AudioCallPage> {
           autoSubscribeVideo: false,
         ),
       );
+      debugPrint('📞 [CustomerVC] joinChannelWithUserAccount() called');
     } catch (e) {
-      debugPrint('💥 [AUDIO] init failed: $e');
+      debugPrint('💥 [CustomerVC] init failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Audio init failed: $e')),
@@ -151,88 +140,78 @@ class _AudioCallPageState extends State<AudioCallPage> {
     }
   }
 
-  Future<void> _toggleMic() async {
-    _micOn = !_micOn;
-    await _engine.muteLocalAudioStream(!_micOn);
-    debugPrint('🎙 [AUDIO] micOn=$_micOn');
-    setState(() {});
-  }
-
-  Future<void> _toggleSpeaker() async {
-    _speakerOn = !_speakerOn;
-    await _engine.setEnableSpeakerphone(_speakerOn);
-    debugPrint('🔊 [AUDIO] speakerOn=$_speakerOn');
-    setState(() {});
-  }
-
-  Future<void> _hangup() async {
-    debugPrint('↩️ [AUDIO] Leaving channel…');
-    try { await _engine.leaveChannel(); } catch (_) {}
+  Future<void> _leave() async {
+    try {
+      await _engine.leaveChannel();
+    } catch (_) {}
     if (mounted) Navigator.pop(context);
   }
 
   @override
+  void dispose() {
+    () async {
+      try {
+        await _engine.leaveChannel();
+      } catch (_) {}
+      try {
+        await _engine.release();
+      } catch (_) {}
+    }();
+    super.dispose();
+  }
+
+  Future<void> _toggleMute() async {
+    _muted = !_muted;
+    await _engine.muteLocalAudioStream(_muted);
+    debugPrint('🎙️ [CustomerVC] muteLocalAudioStream($_muted)');
+    setState(() {});
+  }
+
+  Future<void> _setSpeaker(bool on) async {
+    _speakerOn = on;
+    await _engine.setEnableSpeakerphone(_speakerOn);
+    debugPrint('🔊 [CustomerVC] setEnableSpeakerphone($_speakerOn)');
+    setState(() {});
+  }
+
+  Future<void> _toggleSpeaker() => _setSpeaker(!_speakerOn);
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Audio Call', style: TextStyle(fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.black,
-      ),
+      appBar: AppBar(title: const Text('Audio Call')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.phone_in_talk, color: Colors.white70, size: 72),
+          const Icon(Icons.phone_in_talk, size: 80, color: Colors.blueAccent),
           const SizedBox(height: 12),
-          Text(
-            _joined
-                ? (_remoteUid == null ? 'Waiting for the other user…' : 'Connected to $_remoteUid')
-                : 'Joining…',
-            style: const TextStyle(color: Colors.white70, fontSize: 16),
-          ),
-          const SizedBox(height: 32),
+          Text(_joined ? 'Connected • $_channel' : 'Connecting…'),
+          const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _roundBtn(
-                icon: _micOn ? Icons.mic : Icons.mic_off,
-                color: _micOn ? Colors.white : Colors.redAccent,
-                onTap: _toggleMic,
+              IconButton(
+                icon: Icon(_muted ? Icons.mic_off : Icons.mic),
+                onPressed: _toggleMute,
+                tooltip: _muted ? 'Unmute' : 'Mute',
               ),
-              const SizedBox(width: 16),
-              _roundBtn(
-                icon: _speakerOn ? Icons.volume_up : Icons.volume_off,
-                color: _speakerOn ? Colors.white : Colors.redAccent,
-                onTap: _toggleSpeaker,
+              const SizedBox(width: 24),
+              IconButton(
+                icon: Icon(_speakerOn ? Icons.volume_up : Icons.hearing),
+                onPressed: _toggleSpeaker,
+                tooltip: _speakerOn ? 'Speaker off' : 'Speaker on',
               ),
-              const SizedBox(width: 16),
-              _roundBtn(
-                icon: Icons.call_end,
-                color: Colors.white,
-                bg: Colors.redAccent,
-                onTap: _hangup,
+              const SizedBox(width: 24),
+              IconButton(
+                icon: const Icon(Icons.call_end, color: Colors.red),
+                onPressed: _leave,
+                tooltip: 'Hang up',
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _roundBtn({
-    required IconData icon,
-    Color color = Colors.white,
-    Color bg = const Color(0x44000000),
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        width: 56, height: 56,
-        decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-        child: Icon(icon, color: color),
       ),
     );
   }

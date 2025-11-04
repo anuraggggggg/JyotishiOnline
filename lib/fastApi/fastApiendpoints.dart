@@ -9,6 +9,7 @@ class FastApiEndpoints {
   /// Replace {user_id} dynamically when calling
   static String customerNotifications(String userId) =>
       "$fastApiBaseUrl/api/v1/$userId";
+  static const String sendMoney = "$fastApiBaseUrl/api/v1/send-money";
   // ---------------- LOGIN ----------------
   static const String login = "$fastApiBaseUrl/api/v1/auth/login";
   static const String loginOtp = "$fastApiBaseUrl/api/v1/auth/login-otp";
@@ -29,6 +30,9 @@ class FastApiEndpoints {
   static const String customerDetails =
       "$fastApiBaseUrl/api/v1/customerdetails";
 
+  static String customerDetailsById(String id) =>
+      "$fastApiBaseUrl/api/v1/customerdetails/$id";
+
 // --------------GET ALL ASTROLOGERS ----------------
   static const String allAstrologers =
       "$fastApiBaseUrl/api/v1/astro/astrologers";
@@ -38,8 +42,12 @@ class FastApiEndpoints {
 
   // ---------------- ALL WALLET DETAILS ----------------
 
+  static const String walletTransfer = "$fastApiBaseUrl/api/v1/wallet/transfer";
+
   static const String walletTransactions =
       "$fastApiBaseUrl/api/v1/wallettransactions/user/";
+
+
 
   static String updateWallet(String userId) =>
       "$fastApiBaseUrl/api/v1/userwallets/$userId";

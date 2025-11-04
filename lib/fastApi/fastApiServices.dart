@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:AstrowayCustomer/controllers/bottomNavigationController.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiendpoints.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/CustomerDetailModel.dart';
@@ -18,6 +19,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../model/fastApiModel/NotificationModel.dart';
 import '../model/fastApiModel/astrologerProfileModel.dart';
 import '../model/fastApiModel/newChatModel.dart';
+import '../model/fastApiModel/sendMoneyModel.dart';
+
+extension MultipartFieldHelper on http.MultipartRequest {
+  void addIfPresent(String key, String? value) {
+    if (value != null && value.trim().isNotEmpty) {
+      fields[key] = value.trim();
+    }
+  }
+}
 
 class FastAPIServices {
   String? _accessToken;
@@ -77,6 +87,82 @@ class FastAPIServices {
       rethrow;
     }
   }
+
+
+
+  /// Create customer detail (multipart/form-data)
+  /// Does NOT send fcm_token (backend stores it separately).
+  Future<CustomerDetail> createCustomerDetailFromPath({
+    String? name,
+    String? contactNo,
+    String? birthDate,     // yyyy-MM-dd
+    String? birthTime,     // HH:mm or "hh:mm a"
+    String? birthPlace,
+    String? addressLine1,
+    String? addressLine2,
+    String? location,      // "City,State,Country"
+    int? pincode,
+    String? gender,
+    String? profile,       // optional bio/description
+    String? token,         // optional (kept only if API accepts)
+    String? expirationDate,
+    String? countryCode,
+    String? profilePicPath,
+  }) async {
+    await _loadCredentials(); // uses your existing loader
+    if (_accessToken == null) {
+      throw Exception("Not authenticated: missing access token");
+    }
+
+    final uri = Uri.parse(FastApiEndpoints.customerDetails);
+    debugPrint("📤 [CUSTOMER DETAIL] → POST $uri");
+
+    final req = http.MultipartRequest('POST', uri)
+      ..headers['Authorization'] = 'Bearer $_accessToken'
+      ..headers['accept'] = 'application/json';
+
+    // Only send fields that exist
+    req.addIfPresent('name', name);
+    req.addIfPresent('contactNo', contactNo);
+    req.addIfPresent('birthDate', birthDate);
+    req.addIfPresent('birthTime', birthTime);
+    req.addIfPresent('birthPlace', birthPlace);
+    req.addIfPresent('addressLine1', addressLine1);
+    req.addIfPresent('addressLine2', addressLine2);
+    req.addIfPresent('location', location);
+    req.addIfPresent('gender', gender);
+    req.addIfPresent('profile', profile);
+    req.addIfPresent('token', token);
+    req.addIfPresent('expirationDate', expirationDate);
+    req.addIfPresent('countryCode', countryCode);
+    if (pincode != null) req.fields['pincode'] = pincode.toString();
+
+    // Optional file
+    if (profilePicPath != null &&
+        profilePicPath.isNotEmpty &&
+        File(profilePicPath).existsSync()) {
+      debugPrint("🖼️ [CUSTOMER DETAIL] attaching profile_pic: $profilePicPath");
+      req.files.add(await http.MultipartFile.fromPath('profile_pic', profilePicPath));
+    } else {
+      debugPrint("🖼️ [CUSTOMER DETAIL] no profile_pic attached");
+    }
+
+    // Debug dump
+    debugPrint("📝 [CUSTOMER DETAIL] fields: ${req.fields}");
+
+    final streamed = await req.send();
+    final res = await http.Response.fromStream(streamed);
+    debugPrint("✅ [CUSTOMER DETAIL] status=${res.statusCode}");
+    debugPrint("🧾 [CUSTOMER DETAIL] body=${res.body}");
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return CustomerDetail.fromJson(data);
+    }
+    throw Exception("Customer detail failed (${res.statusCode}): ${res.body}");
+  }
+
+
 
 
 
@@ -1134,6 +1220,70 @@ class FastAPIServices {
       return null;
     }
   }
+  Future<SendMoneyResponse> sendMoney({
+    required String astrologerId,
+    required num amount,
+    String type = 'send_money',
+  }) async {
+    // Load creds (sets _userId and _accessToken)
+    await _loadCredentials();
+
+    // 🔍 Debug credentials
+    debugPrint("💸 [sendMoney] ▶ start");
+    debugPrint("💸 [sendMoney] userId=$_userId  tokenPresent=${_accessToken != null}");
+    debugPrint("💸 [sendMoney] astrologerId=$astrologerId  amount=$amount  type=$type");
+
+    if (_userId == null || _userId!.isEmpty) {
+      throw Exception('Not authenticated: missing user id');
+    }
+    if (_accessToken == null || _accessToken!.isEmpty) {
+      throw Exception('Not authenticated: missing access token');
+    }
+
+    final uri = Uri.parse(FastApiEndpoints.sendMoney);
+    final headers = <String, String>{
+      'accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $_accessToken',
+    };
+    final body = <String, dynamic>{
+      'user_id': _userId,            // ✅ from storage
+      'astrologer_id': astrologerId, // ✅ from caller
+      'amount': amount,
+      'type': type,
+    };
+
+    // 🔎 Log request
+    debugPrint("💸 [sendMoney] URL: $uri");
+    debugPrint("💸 [sendMoney] HEADERS: ${jsonEncode(headers)}");
+    debugPrint("💸 [sendMoney] BODY: ${jsonEncode(body)}");
+
+    final response = await http.post(uri, headers: headers, body: jsonEncode(body));
+
+    // 📦 Log response
+    debugPrint("💸 [sendMoney] STATUS: ${response.statusCode}");
+    debugPrint("💸 [sendMoney] RESP: ${response.body}");
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final jsonMap = (response.body.isNotEmpty)
+          ? jsonDecode(response.body) as Map<String, dynamic>
+          : <String, dynamic>{'message': 'Money sent successfully'};
+      final parsed = SendMoneyResponse.fromJson(jsonMap);
+
+      debugPrint("✅ [sendMoney] OK → txId=${parsed.transactionId} type=${parsed.transactionType} "
+          "userBal=${parsed.userBalance} astroBal=${parsed.astroBalance}");
+      return parsed;
+    } else {
+      String details = response.body;
+      try {
+        final j = jsonDecode(response.body);
+        if (j is Map && j['detail'] != null) details = j['detail'].toString();
+      } catch (_) {}
+      debugPrint("💥 [sendMoney] ERROR ${response.statusCode}: $details");
+      throw Exception('Send money failed (${response.statusCode}): $details');
+    }
+
+
 
   Future<Map<String, dynamic>> getAgoraVideoTokenForCustomer({
     required String astroId,
@@ -1181,4 +1331,4 @@ class FastAPIServices {
 
 
 
-}
+}}

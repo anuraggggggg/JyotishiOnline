@@ -1,696 +1,378 @@
-// ignore_for_file: unused_local_variable, unrelated_type_equality_checks
+// lib/pages/edit_customer_details_page.dart
+// A fresh, dependency-light page to create/update customer details via FastAPI.
+// Uses only: material, intl, image_picker (optional).
 
-import 'dart:convert';
-
-import 'package:AstrowayCustomer/controllers/search_controller.dart';
-import 'package:AstrowayCustomer/controllers/splashController.dart';
-
-import 'package:AstrowayCustomer/controllers/userProfileController.dart';
-import 'package:AstrowayCustomer/views/placeOfBrithSearchScreen.dart';
-import 'package:AstrowayCustomer/widget/customBottomButton.dart';
-import 'package:AstrowayCustomer/widget/textFieldLabelWidget.dart';
-import 'package:AstrowayCustomer/widget/textFieldWidget.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:date_format/date_format.dart';
-import 'package:easy_localization/easy_localization.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
-// import 'package:gallery_saver/gallery_saver.dart';
-import 'package:get/get.dart';
-
+import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../utils/images.dart';
-import '../../widget/commonAppbar.dart';
-import 'package:AstrowayCustomer/utils/global.dart' as global;
+import '../../fastApi/fastApiServices.dart';
 
-// ignore: must_be_immutable
-class EditUserProfile extends StatelessWidget {
-  EditUserProfile({Key? key}) : super(key: key);
-  final UserProfileController userProfileController =
-      Get.find<UserProfileController>();
-  SearchControllerCustom searchController = Get.find<SearchControllerCustom>();
 
+class EditCustomerDetailsPage extends StatefulWidget {
+  const EditCustomerDetailsPage({super.key});
+
+  @override
+  State<EditCustomerDetailsPage> createState() => _EditCustomerDetailsPageState();
+}
+
+class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
+  // Form & controllers
+  final _formKey = GlobalKey<FormState>();
+
+  final _nameCtrl = TextEditingController();
+  final _contactCtrl = TextEditingController();
+  final _birthDateCtrl = TextEditingController();   // dd-MM-yyyy (UI)
+  final _birthTimeCtrl = TextEditingController();   // e.g. 6:05 PM (UI)
+  final _birthPlaceCtrl = TextEditingController();
+  final _addressLine1Ctrl = TextEditingController();
+  final _addressLine2Ctrl = TextEditingController();
+  final _locationCtrl = TextEditingController();    // City,State,Country
+  final _pincodeCtrl = TextEditingController();
+  final _countryCodeCtrl = TextEditingController();
+
+  String _gender = 'Male'; // default
+  File? _pickedImage;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _contactCtrl.dispose();
+    _birthDateCtrl.dispose();
+    _birthTimeCtrl.dispose();
+    _birthPlaceCtrl.dispose();
+    _addressLine1Ctrl.dispose();
+    _addressLine2Ctrl.dispose();
+    _locationCtrl.dispose();
+    _pincodeCtrl.dispose();
+    _countryCodeCtrl.dispose();
+    super.dispose();
+  }
+
+  // ---------- Helpers ----------
+  // Convert dd-MM-yyyy -> yyyy-MM-dd for API
+  String? _toApiDate(String? ddMMyyyy) {
+    if (ddMMyyyy == null || ddMMyyyy.trim().isEmpty) return null;
+    try {
+      final d = DateFormat('dd-MM-yyyy').parse(ddMMyyyy.trim());
+      return DateFormat('yyyy-MM-dd').format(d);
+    } catch (e) {
+      debugPrint("🧭 [EditCustomer] ⚠️ Invalid birthDate '$ddMMyyyy' – sending as-is");
+      return ddMMyyyy;
+    }
+  }
+
+  // Convert "6:05 PM" -> "HH:mm" for API (keeps HH:mm if already that)
+  String? _toApiTimeHHmm(String? uiTime) {
+    if (uiTime == null || uiTime.trim().isEmpty) return null;
+    try {
+      final t = DateFormat.jm().parse(uiTime.trim());
+      return DateFormat('HH:mm').format(t);
+    } catch (_) {
+      final maybeHHmm = RegExp(r'^\d{2}:\d{2}$');
+      if (maybeHHmm.hasMatch(uiTime)) return uiTime;
+      debugPrint("🧭 [EditCustomer] ⚠️ Invalid birthTime '$uiTime' – sending as-is");
+      return uiTime;
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year - 25),
+      firstDate: DateTime(1960),
+      lastDate: now,
+    );
+    if (picked != null) {
+      _birthDateCtrl.text = DateFormat('dd-MM-yyyy').format(picked);
+      setState(() {});
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 12, minute: 0),
+    );
+    if (picked != null) {
+      final now = DateTime.now();
+      final dt = DateTime(now.year, now.month, now.day, picked.hour, picked.minute);
+      _birthTimeCtrl.text = DateFormat.jm().format(dt); // e.g. "6:00 PM"
+      setState(() {});
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final img = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (img != null) {
+      setState(() => _pickedImage = File(img.path));
+      debugPrint("🧭 [EditCustomer] Picked image: ${img.path}");
+    }
+  }
+
+  void _showSnack(String msg, {Color? bg}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: bg),
+    );
+  }
+
+  // ---------- Submit ----------
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final name = _nameCtrl.text.trim();
+    final contact = _contactCtrl.text.trim();
+    final birthDateApi = _toApiDate(_birthDateCtrl.text.trim());
+    final birthTimeApi = _toApiTimeHHmm(_birthTimeCtrl.text.trim());
+    final birthPlace = _birthPlaceCtrl.text.trim();
+    final address1 = _addressLine1Ctrl.text.trim();
+    final address2 = _addressLine2Ctrl.text.trim();
+    final location = _locationCtrl.text.trim();
+    final pincode = _pincodeCtrl.text.trim();
+    final countryCode = _countryCodeCtrl.text.trim();
+
+    final int? pincodeInt = pincode.isEmpty ? null : int.tryParse(pincode);
+
+    debugPrint("🧭 [EditCustomer] 🔵 Submitting:");
+    debugPrint("  name=$name | gender=$_gender");
+    debugPrint("  birthDate(ui)=${_birthDateCtrl.text} -> api=$birthDateApi");
+    debugPrint("  birthTime(ui)=${_birthTimeCtrl.text} -> api=$birthTimeApi");
+    debugPrint("  birthPlace=$birthPlace");
+    debugPrint("  addressLine1=$address1 | addressLine2=$address2");
+    debugPrint("  location=$location | pincode=$pincodeInt | contact=$contact | countryCode=$countryCode");
+    debugPrint("  profilePic=${_pickedImage?.path ?? '(none)'}");
+
+    setState(() => _submitting = true);
+
+    try {
+      final svc = FastAPIServices();
+
+      final result = await svc.createCustomerDetailFromPath(
+        name: name.isEmpty ? null : name,
+        contactNo: contact.isEmpty ? null : contact,
+        birthDate: birthDateApi,
+        birthTime: birthTimeApi,
+        birthPlace: birthPlace.isEmpty ? null : birthPlace,
+        addressLine1: address1.isEmpty ? null : address1,
+        addressLine2: address2.isEmpty ? null : address2,
+        location: location.isEmpty ? null : location,
+        pincode: pincodeInt,
+        gender: _gender.isEmpty ? null : _gender,
+        countryCode: countryCode.isEmpty ? null : countryCode,
+        profilePicPath: _pickedImage?.path,
+      );
+
+      debugPrint("✅ [EditCustomer] Success → ${result.toString()}");
+      if (mounted) {
+        _showSnack("Profile updated successfully", bg: Colors.green);
+        Navigator.of(context).pop(true); // return success
+      }
+    } catch (e, st) {
+      debugPrint("💥 [EditCustomer] Failed: $e");
+      debugPrint("💥 Stack: $st");
+      if (mounted) _showSnack("Update failed: $e", bg: Colors.red);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: PreferredSize(
-          preferredSize: Size.fromHeight(56),
-          child: CommonAppBar(
-            title: 'Profile',
-          )),
-      body: SingleChildScrollView(
-          child: Padding(
-        padding: const EdgeInsets.only(left: 8.0, right: 8.0),
-        child: GetBuilder<UserProfileController>(builder: (userProfile) {
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                height: 20,
-              ),
-              Center(
-                child: Stack(
+      appBar: AppBar(
+        title: const Text("Edit Profile"),
+        centerTitle: true,
+      ),
+      body: AbsorbPointer(
+        absorbing: _submitting,
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
                   children: [
-                    userProfileController.userFile != null &&
-                            userProfileController.userFile != ''
-                        ? Container(
-                            height: 140,
-                            width: 140,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(7),
-                                color: Get.theme.primaryColor,
-                                image: DecorationImage(
-                                  image: FileImage(
-                                      userProfileController.userFile!),
-                                  fit: BoxFit.cover,
-                                )),
-                          )
-                        : GetBuilder<SplashController>(
-                            builder: (splashController) {
-                            return Container(
-                                height: 140,
-                                width: 140,
-                                alignment: Alignment.center,
-                                child: userProfileController.splashController
-                                                .currentUser?.profile ==
-                                            "" ||
-                                        userProfileController.splashController
-                                                .currentUser?.profile ==
-                                            null
-                                    ? CircleAvatar(
-                                        radius: 35,
-                                        backgroundColor: Colors.white,
-                                        child: Image.asset(
-                                          Images.deafultUser,
-                                          fit: BoxFit.fill,
-                                          height: 50,
-                                        ))
-                                    : Container(
-                                        height: 140,
-                                        width: 140,
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                            borderRadius:
-                                                BorderRadius.circular(7),
-                                            color: Get.theme.primaryColor,
-                                            image: DecorationImage(
-                                              image: NetworkImage(
-                                                  "${global.imgBaseurl}${userProfileController.splashController.currentUser?.profile}"),
-                                              fit: BoxFit.cover,
-                                            )),
-                                      ));
-                          }),
-                    Positioned(
-                        bottom: -5,
-                        right: -8,
-                        child: GestureDetector(
-                          onTap: () async {
-                            await userProfileController.getZodicImg();
-                            Get.defaultDialog(
-                                backgroundColor: Colors.white,
-                                titlePadding: EdgeInsets.all(0),
-                                contentPadding: EdgeInsets.all(0),
-                                title: "",
-                                content: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Center(
-                                        child: Text(
-                                      'Change Profile Pic',
-                                      style: Get.textTheme.titleLarge!.copyWith(
-                                          color: Colors.grey, fontSize: 16),
-                                    ).tr()),
-                                    Divider(
-                                      thickness: 2,
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 6.0, horizontal: 8.0),
-                                      child: Text(
-                                        'Select from Library',
-                                        style: TextStyle(
-                                          color: Colors.grey,
-                                        ),
-                                      ).tr(),
-                                    ),
-                                    SizedBox(
-                                      height: Get.height * 0.4,
-                                      width: Get.width,
-                                      child: ListView(
-                                        primary: true,
-                                        shrinkWrap: true,
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 8),
-                                        children: [
-                                          Center(
-                                            child: Wrap(
-                                              spacing: 15.0,
-                                              runSpacing: 16.0,
-                                              children: [
-                                                for (int i = 0;
-                                                    i <
-                                                        userProfileController
-                                                            .zodicData.length;
-                                                    i++)
-                                                  Column(
-                                                    children: [
-                                                      InkWell(
-                                                        onTap: () async {
-                                                          Get.dialog(
-                                                              AlertDialog(
-                                                            backgroundColor:
-                                                                Colors.white,
-                                                            title:
-                                                                GestureDetector(
-                                                              onTap: () {
-                                                                Get.back();
-                                                              },
-                                                              child: Container(
-                                                                padding:
-                                                                    const EdgeInsets
-                                                                        .all(8),
-                                                                child: Align(
-                                                                  alignment:
-                                                                      Alignment
-                                                                          .topRight,
-                                                                  child: Icon(
-                                                                    Icons.close,
-                                                                    size: 18,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ),
-                                                            titlePadding:
-                                                                const EdgeInsets
-                                                                    .all(0),
-                                                            content: Column(
-                                                              mainAxisSize:
-                                                                  MainAxisSize
-                                                                      .min,
-                                                              children: [
-                                                                Text('Update Profile Photo')
-                                                                    .tr(),
-                                                                Container(
-                                                                  height: 150,
-                                                                  width: 150,
-                                                                  margin:
-                                                                      const EdgeInsets
-                                                                          .all(
-                                                                          8),
-                                                                  padding:
-                                                                      const EdgeInsets
-                                                                          .all(
-                                                                          8),
-                                                                  decoration: BoxDecoration(
-                                                                      color: Get
-                                                                          .theme
-                                                                          .primaryColor,
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                              7)),
-                                                                  child:
-                                                                      CachedNetworkImage(
-                                                                    height: 20,
-                                                                    width: 20,
-                                                                    imageUrl:
-                                                                        '${global.imgBaseurl}${userProfileController.zodicData[i].image}',
-                                                                    placeholder: (context,
-                                                                            url) =>
-                                                                        const Center(
-                                                                            child:
-                                                                                CircularProgressIndicator()),
-                                                                    errorWidget: (context,
-                                                                            url,
-                                                                            error) =>
-                                                                        Icon(
-                                                                            Icons
-                                                                                .grid_view_rounded,
-                                                                            size:
-                                                                                20),
-                                                                  ),
-                                                                ),
-                                                                FittedBox(
-                                                                  child: Row(
-                                                                    mainAxisAlignment:
-                                                                        MainAxisAlignment
-                                                                            .spaceBetween,
-                                                                    children: [
-                                                                      ElevatedButton(
-                                                                        onPressed:
-                                                                            () async {
-                                                                          String
-                                                                              imgPath =
-                                                                              "${global.imgBaseurl}${userProfileController.zodicData[i].image}";
-                                                                          print(
-                                                                              'ontappp');
+                    // Profile picture
+                    Center(
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 54,
+                            backgroundColor: Colors.grey.shade200,
+                            backgroundImage: _pickedImage != null ? FileImage(_pickedImage!) : null,
+                            child: _pickedImage == null
+                                ? const Icon(Icons.person, size: 54, color: Colors.grey)
+                                : null,
+                          ),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: IconButton.filledTonal(
+                              onPressed: _pickImage,
+                              icon: const Icon(Icons.camera_alt),
+                              tooltip: "Change Photo",
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-                                                                          // GallerySaver.saveImage(imgPath)
-                                                                          //     .then((path) {
-                                                                          //   global.showToast(
-                                                                          //     message: 'Image has been downloaded.',
-                                                                          //     textColor: global.textColor,
-                                                                          //     bgColor: global.toastBackGoundColor,
-                                                                          //   );
-                                                                          // });
-                                                                          Get.back();
-                                                                        },
-                                                                        child: Text('Download')
-                                                                            .tr(),
-                                                                        style:
-                                                                            ButtonStyle(
-                                                                          backgroundColor: WidgetStateProperty.all(Get
-                                                                              .theme
-                                                                              .primaryColor),
-                                                                          foregroundColor:
-                                                                              WidgetStateProperty.all(Colors.black),
-                                                                          textStyle:
-                                                                              WidgetStateProperty.all(TextStyle(fontSize: 12)),
-                                                                        ),
-                                                                      ),
-                                                                      const SizedBox(
-                                                                        width:
-                                                                            4,
-                                                                      ),
-                                                                      ElevatedButton(
-                                                                        onPressed:
-                                                                            () async {
-                                                                          userProfileController.profile = userProfileController
-                                                                              .zodicData[i]
-                                                                              .image;
-                                                                          userProfileController.isImgSelectFromList =
-                                                                              true;
-                                                                          userProfileController
-                                                                              .update();
-                                                                          await userProfileController
-                                                                              .updateCurrentUserProfilepic(userProfileController.profile);
-                                                                          Get.back();
-                                                                        },
-                                                                        child: Text('Set profile pic')
-                                                                            .tr(),
-                                                                        style:
-                                                                            ButtonStyle(
-                                                                          backgroundColor: WidgetStateProperty.all(Get
-                                                                              .theme
-                                                                              .primaryColor),
-                                                                          foregroundColor:
-                                                                              WidgetStateProperty.all(Colors.black),
-                                                                          textStyle:
-                                                                              WidgetStateProperty.all(TextStyle(fontSize: 12)),
-                                                                        ),
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                )
-                                                              ],
-                                                            ),
-                                                          ));
-                                                        },
-                                                        child: Container(
-                                                          height: 50,
-                                                          width: 50,
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: Get.theme
-                                                                .primaryColor,
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        7),
-                                                          ),
-                                                          child:
-                                                              CachedNetworkImage(
-                                                            imageUrl:
-                                                                '${global.imgBaseurl}${userProfileController.zodicData[i].image}',
-                                                            placeholder: (context,
-                                                                    url) =>
-                                                                const Center(
-                                                                    child:
-                                                                        CircularProgressIndicator()),
-                                                            errorWidget: (context,
-                                                                    url,
-                                                                    error) =>
-                                                                Icon(
-                                                                    Icons
-                                                                        .grid_view_rounded,
-                                                                    size: 20),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                              userProfileController
-                                                                  .zodicData[i]
-                                                                  .title,
-                                                              style: Get
-                                                                  .textTheme
-                                                                  .bodySmall)
-                                                          .tr()
-                                                    ],
-                                                  )
-                                              ],
-                                            ),
-                                          )
-                                        ],
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 6.0, horizontal: 8.0),
-                                      child: Text(
-                                        'Upload from Phone',
-                                        style: TextStyle(
-                                          color: Colors.grey,
-                                        ),
-                                      ).tr(),
-                                    ),
-                                    SizedBox(
-                                      width: Get.width,
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceAround,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Column(
-                                            children: [
-                                              IconButton(
-                                                onPressed: () async {
-                                                  userProfileController
-                                                          .imageFile =
-                                                      await userProfileController
-                                                          .imageService(
-                                                              ImageSource
-                                                                  .camera);
-                                                  userProfileController
-                                                          .userFile =
-                                                      userProfileController
-                                                          .imageFile;
-                                                  userProfileController
-                                                          .profile =
-                                                      base64.encode(
-                                                          userProfileController
-                                                              .imageFile!
-                                                              .readAsBytesSync());
-                                                  userProfileController
-                                                      .update();
-                                                  Get.back();
-                                                },
-                                                icon: Icon(
-                                                  Icons.camera,
-                                                  size: 40,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                              Text('Camera',
-                                                      style: Get
-                                                          .textTheme.bodySmall)
-                                                  .tr()
-                                            ],
-                                          ),
-                                          Column(
-                                            children: [
-                                              IconButton(
-                                                onPressed: () async {
-                                                  userProfileController
-                                                          .imageFile =
-                                                      await userProfileController
-                                                          .imageService(
-                                                              ImageSource
-                                                                  .gallery);
-                                                  userProfileController
-                                                          .userFile =
-                                                      userProfileController
-                                                          .imageFile;
-                                                  userProfileController
-                                                          .profile =
-                                                      base64.encode(
-                                                          userProfileController
-                                                              .imageFile!
-                                                              .readAsBytesSync());
-                                                  userProfileController
-                                                      .update();
-                                                  Get.back();
-                                                },
-                                                icon: Icon(
-                                                  Icons.picture_in_picture,
-                                                  size: 40,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                              Text(
-                                                ' Gallery',
-                                                style: Get.textTheme.bodySmall,
-                                                textAlign: TextAlign.center,
-                                              ).tr()
-                                            ],
-                                          )
-                                        ],
-                                      ),
-                                    )
-                                  ],
-                                ));
-                          },
-                          child: Container(
-                              height: 40,
-                              width: 40,
-                              decoration: BoxDecoration(
-                                  shape: BoxShape.circle, color: Colors.white),
-                              child: Icon(
-                                Icons.cloud_upload,
-                                color: Get.theme.primaryColor,
-                              )),
-                        )),
+                    // Name
+                    TextFormField(
+                      controller: _nameCtrl,
+                      decoration: const InputDecoration(labelText: "Name"),
+                      textInputAction: TextInputAction.next,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? "Enter your name" : null,
+                    ),
+
+                    // Gender
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Text("Gender:", style: TextStyle(fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Radio<String>(
+                                value: 'Male',
+                                groupValue: _gender,
+                                onChanged: (v) => setState(() => _gender = v ?? 'Male'),
+                              ),
+                              const Text('Male'),
+                              const SizedBox(width: 16),
+                              Radio<String>(
+                                value: 'Female',
+                                groupValue: _gender,
+                                onChanged: (v) => setState(() => _gender = v ?? 'Female'),
+                              ),
+                              const Text('Female'),
+                              const SizedBox(width: 16),
+                              Radio<String>(
+                                value: 'Other',
+                                groupValue: _gender,
+                                onChanged: (v) => setState(() => _gender = v ?? 'Other'),
+                              ),
+                              const Text('Other'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Contact & Country code
+                    TextFormField(
+                      controller: _contactCtrl,
+                      decoration: const InputDecoration(labelText: "Contact Number"),
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    TextFormField(
+                      controller: _countryCodeCtrl,
+                      decoration: const InputDecoration(labelText: "Country Code (e.g. +91)"),
+                      textInputAction: TextInputAction.next,
+                    ),
+
+                    // Birth date
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _birthDateCtrl,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: "Birth Date (dd-MM-yyyy)",
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.date_range),
+                          onPressed: _pickDate,
+                        ),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? "Select birth date" : null,
+                    ),
+
+                    // Birth time
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _birthTimeCtrl,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: "Birth Time (e.g. 6:05 PM)",
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.access_time),
+                          onPressed: _pickTime,
+                        ),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? "Select birth time" : null,
+                    ),
+
+                    // Birth place
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _birthPlaceCtrl,
+                      decoration: const InputDecoration(labelText: "Place of Birth"),
+                      textInputAction: TextInputAction.next,
+                    ),
+
+                    // Addresses & location
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _addressLine1Ctrl,
+                      decoration: const InputDecoration(labelText: "Address Line 1"),
+                      textInputAction: TextInputAction.next,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? "Enter address" : null,
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _addressLine2Ctrl,
+                      decoration: const InputDecoration(labelText: "Address Line 2 (optional)"),
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _locationCtrl,
+                      decoration: const InputDecoration(labelText: "City, State, Country"),
+                      textInputAction: TextInputAction.next,
+                    ),
+
+                    // Pincode
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _pincodeCtrl,
+                      decoration: const InputDecoration(labelText: "Pincode"),
+                      keyboardType: TextInputType.number,
+                    ),
+
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: _submitting ? null : _submit,
+                        child: _submitting
+                            ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Text("Save"),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
-              SizedBox(height: 10),
-              userProfileController.splashController.currentUser!.email.toString()==""||
-                  userProfileController.splashController.currentUser!.email.toString()=="null"?
-                  SizedBox():
-              Center(
-                  child: Text(
-                      'email:- ${userProfileController.splashController.currentUser!.email}')),
-              userProfileController.splashController.currentUser!.contactNo==null?
-                  Container():
-              Center(
-                  child: Text(
-                      '${userProfileController.splashController.currentUser!.countryCode}-${userProfileController.splashController.currentUser!.contactNo}')),
-              SizedBox(height: 10),
-              TextFieldWidget(
-                controller: userProfileController.nameController,
-                focusNode: userProfileController.nameFocus,
-                labelText: 'Name',
-                keyboardType: TextInputType.name,
-                inputFormatter: [
-                  FilteringTextInputFormatter.allow(RegExp("[a-zA-Z ]")),
-                ],
-              ),
-              Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextFieldLabelWidget(
-                      label: 'Gender',
-                    ),
-                    Flexible(
-                      flex: 1,
-                      child: RadioListTile(
-                        title: Text(
-                          "Male",
-                          style: TextStyle(fontSize: 13),
-                        ).tr(),
-                        value: "Male",
-                        groupValue: userProfileController.gender,
-                        dense: true,
-                        activeColor: Get.theme.primaryColor,
-                        contentPadding: EdgeInsets.all(0.0),
-                        onChanged: (value) {
-                          userProfileController.updateGeneder(value);
-                        },
-                      ),
-                    ),
-                    Flexible(
-                      flex: 1,
-                      child: RadioListTile(
-                        title: Text("Female", style: TextStyle(fontSize: 13))
-                            .tr(),
-                        value: "Female",
-                        groupValue: userProfileController.gender,
-                        activeColor: Get.theme.primaryColor,
-                        contentPadding: EdgeInsets.all(0.0),
-                        onChanged: (value) {
-                          userProfileController.updateGeneder(value);
-                        },
-                      ),
-                    ),
-                    SizedBox(width: 78)
-                  ]),
-              InkWell(
-                onTap: () async {
-                  userProfileController.nameFocus.unfocus();
-                  var datePicked = await DatePicker.showSimpleDatePicker(
-                    context,
-                    initialDate: DateTime(1994),
-                    firstDate: DateTime(1960),
-                    lastDate: DateTime.now(),
-                    dateFormat: "dd-MM-yyyy",
-                    itemTextStyle: Get.theme.textTheme.titleMedium!.copyWith(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: 0,
-                        color: Colors.black),
-                    titleText: 'Select Birth Date',
-                    textColor: Get.theme.primaryColor,
-                  );
-                  if (datePicked != null) {
-                    userProfileController.dateController.text =
-                        formatDate(datePicked, [dd, '-', mm, '-', yyyy]);
-                    userProfileController.pickedDate = datePicked;
-                    userProfileController.update();
-                  } else {
-                    userProfileController.dateController.text =
-                        formatDate(DateTime(1994), [dd, '-', mm, '-', yyyy]);
-                    userProfileController.pickedDate = DateTime(1994);
-                    userProfileController.update();
-                  }
-                },
-                child: IgnorePointer(
-                  child: TextFieldWidget(
-                    controller: userProfileController.dateController,
-                    labelText: 'Date of Birth',
-                  ),
-                ),
-              ),
-              userProfileController.splashController.currentUser!.email.toString()==""||
-                  userProfileController.splashController.currentUser!.email.toString()=="null"?
-                  SizedBox():
-              TextFieldWidget(
-                controller: userProfileController.emailController,
-                labelText: 'Email',
-                focusNode: userProfileController.emailFocus,
-              ),
-              userProfileController.splashController.currentUser!.contactNo==null?SizedBox():TextFieldWidget(
-                controller: userProfileController.mobileController,
-                labelText: 'Contact Number',
-                //focusNode: userProfileController.emailFocus,
-              ),
-              InkWell(
-                onTap: () async {
-                  userProfileController.nameFocus.unfocus();
-                  final format = DateFormat("hh:mm a");
-                  final time = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay(hour: 12, minute: 30),
-                      builder: (context, child) {
-                        return Theme(
-                          data: ThemeData(
-                            colorScheme: ColorScheme.light(
-                              primary: Get.theme.primaryColor,
-                              onSurface: Colors.black,
-                            ),
-                          ),
-                          child: child ?? SizedBox(),
-                        );
-                      });
-                  String formatTimeOfDay(TimeOfDay tod) {
-                    final now = new DateTime.now();
-                    final dt = DateTime(
-                        now.year, now.month, now.day, tod.hour, tod.minute);
-                    final format = DateFormat.jm(); //"6:00 AM"
-                    return format.format(dt);
-                  }
+            ),
 
-                  if (time != null) {
-                    userProfileController.timeController.text =
-                        formatTimeOfDay(time);
-                  } else {
-                    userProfileController.timeController.text =
-                        formatTimeOfDay(TimeOfDay(hour: 12, minute: 30));
-                  }
-                },
-                child: IgnorePointer(
-                  child: TextFieldWidget(
-                    controller: userProfileController.timeController,
-                    labelText: 'Time of Birth',
-                  ),
+            if (_submitting)
+              const Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: LinearProgressIndicator(),
                 ),
               ),
-              InkWell(
-                onTap: () {
-                  userProfileController.nameFocus.unfocus();
-                  Get.to(() => PlaceOfBirthSearchScreen(
-                        flagId: 3,
-                      ));
-                },
-                child: IgnorePointer(
-                  child: TextFieldWidget(
-                    controller: userProfileController.placeBirthController,
-                    labelText: tr('Place of Birth'),
-                  ),
-                ),
-              ),
-              TextFieldWidget(
-                controller: userProfileController.currentAddressController,
-                labelText: 'Current Address',
-                focusNode: userProfileController.currentAddFocus,
-              ),
-              InkWell(
-                onTap: () {
-                  userProfileController.nameFocus.unfocus();
-                  userProfileController.currentAddFocus.unfocus();
-                  Get.to(() => PlaceOfBirthSearchScreen(
-                        flagId: 4,
-                      ));
-                },
-                child: IgnorePointer(
-                  child: TextFieldWidget(
-                    controller: userProfileController.addressController,
-                    labelText: 'City,State,Country',
-                  ),
-                ),
-              ),
-              TextFieldWidget(
-                inputFormatter: [FilteringTextInputFormatter.digitsOnly],
-                controller: userProfileController.pinController,
-                labelText: 'Pincode',
-                hintText: '',
-                maxlen: 6,
-                keyboardType: TextInputType.numberWithOptions(
-                    decimal: false, signed: true),
-              ),
-              SizedBox(
-                height: 70,
-              )
-            ],
-          );
-        }),
-      )),
-      bottomSheet:
-          GetBuilder<UserProfileController>(builder: (userProfileController) {
-        return CustomBottomButton(
-          title: 'Submit',
-          onTap: () async {
-            bool isvalid = userProfileController.isValidData();
-            if (!isvalid) {
-              global.showToast(
-                message: userProfileController.toastMessage,
-                textColor: global.textColor,
-                bgColor: global.toastBackGoundColor,
-              );
-            } else {
-              global.showOnlyLoaderDialog(context);
-              searchController.update();
-              await userProfileController
-                  .updateCurrentUser(global.sp!.getInt("currentUserId") ?? 0);
-              global.hideLoader();
-            }
-          },
-        );
-      }),
+          ],
+        ),
+      ),
     );
   }
 }
