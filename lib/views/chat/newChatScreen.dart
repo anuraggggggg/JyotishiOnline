@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../fastApi/fastapiservices.dart';
+import '../../fastApi/fastApiServices.dart';
 import '../../model/fastApiModel/newChatModel.dart';
 
 class CustomerChatPage extends StatefulWidget {
   final String astrologerUid;
-  final String roomId;          // required
-  final String myUserId;        // required
-  final String astrologerName;  // required
-  final String? token;          // optional
+  final String roomId;
+  final String myUserId;
+  final String astrologerName;
+  final String? token;
 
   const CustomerChatPage({
     Key? key,
@@ -29,51 +29,60 @@ class CustomerChatPage extends StatefulWidget {
 }
 
 class _CustomerChatPageState extends State<CustomerChatPage> {
-  // --- Services / controllers
   final FastAPIServices _api = FastAPIServices();
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  // --- Session
   WebSocket? _socket;
   bool _isConnected = false;
   bool _isLoading = true;
 
-  // --- Data
   final List<Map<String, dynamic>> _messages = <Map<String, dynamic>>[];
 
-  // --- Pagination
   static const int _pageSize = 20;
   int _currentPage = 1;
   bool _isFetchingMore = false;
   bool _hasMore = true;
 
-  // --- Realtime / background
   Timer? _reconnectTimer;
   Timer? _pollTimer;
   bool _isPolling = false;
   int _retries = 0;
   int _seq = 0;
 
-  // --- IDs for dedupe
-  final Set<String> _clientSeqSeen = <String>{};       // client_sequence_id
-  final Map<String, int> _clientSeqIndex = {};         // client_sequence_id → index in _messages
-  final Set<String> _historyIdsSeen = <String>{};      // server-side message ids (if provided)
+  // ⏱ Session timer
+  Timer? _sessionTimer;
+  int _secondsLeft = 600;
 
-  // --- Misc
+  final Set<String> _clientSeqSeen = <String>{};
+  final Map<String, int> _clientSeqIndex = {};
+  final Set<String> _historyIdsSeen = <String>{};
+
   late String _myUserId;
   late String _roomId;
   String? _token;
   DateTime? _latestSeenAt;
 
-  // --- Debug HUD
   int _wsFrameCount = 0;
   String _lastWsRaw = '';
+  DateTime _lastWsAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  // Theme colors
+  final Color _primaryColor = const Color(0xFFFFC31F); // App yellow
+  final Color _backgroundColor = Colors.white;
+  final Color _cardColor = Colors.grey.shade50;
+  final Color _textColor = Colors.black87;
+  final Color _hintColor = Colors.grey.shade600;
+  final Color _onlineColor = Colors.green;
+  final Color _offlineColor = Colors.grey;
 
   @override
   void initState() {
     super.initState();
     _initializeUserData();
+
+    // ⏱ start ticking immediately
+    _startSessionCountdown();
 
     _scrollController.addListener(() {
       if (_scrollController.position.pixels <=
@@ -86,17 +95,63 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     });
   }
 
+  // ⏱ Session timer that REBUILDS every second
+  void _startSessionCountdown() {
+    _sessionTimer?.cancel();
+    _secondsLeft = 60;
+
+    _sessionTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+
+      // Decrement first
+      _secondsLeft--;
+
+      // Always rebuild so the AppBar text updates
+      setState(() {});
+
+      // When it reaches zero, stop timer and end session after this frame
+      if (_secondsLeft <= 0) {
+        t.cancel();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _endSession();
+        });
+      }
+    });
+  }
+
+  // 🔚 End session: clean up and navigate back
+  Future<void> _endSession() async {
+    debugPrint('⏹ Session ended — navigating back');
+    try {
+      await _socket?.close();
+    } catch (_) {}
+    _socket = null;
+
+    _pollTimer?.cancel();
+    _reconnectTimer?.cancel();
+    _sessionTimer?.cancel();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Session ended')),
+    );
+
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _initializeUserData() async {
     debugPrint('🧠 Loading stored user data / wiring params...');
     final prefs = await SharedPreferences.getInstance();
 
-    _myUserId = widget.myUserId;
-    _roomId = widget.roomId;
+    _myUserId = widget.myUserId.trim();
+    _roomId = widget.roomId.trim();
     _token = widget.token ?? prefs.getString('accessToken');
-
-    debugPrint('✅ userId: $_myUserId');
-    debugPrint('✅ token: ${_token != null ? "LOADED" : "null"}');
-    debugPrint('✅ roomId: $_roomId');
 
     if (_myUserId.isEmpty || _roomId.isEmpty) {
       if (mounted) {
@@ -107,12 +162,12 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       return;
     }
 
-    await _loadChatHistory(); // initial history
+    await _loadChatHistory();
     if (!mounted) return;
 
     setState(() => _isLoading = false);
     _connectWebSocket();
-    _startPolling(); // safety net while WS connects
+    _startPolling();
   }
 
   // ---------------------------------------------------------------------------
@@ -124,13 +179,14 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     _isFetchingMore = true;
 
     try {
-      final allMessages = await _api.getChatHistory(widget.astrologerUid);
+      final List<ChatMessage> allMessages =
+      await _api.getChatHistory(widget.astrologerUid);
+
       if (allMessages.isEmpty) {
         setState(() => _hasMore = false);
         return;
       }
 
-      // paginate locally
       final totalMessages = allMessages.length;
       final totalPages = (totalMessages / _pageSize).ceil();
 
@@ -146,16 +202,20 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
         return;
       }
 
-      // map to local shape (+potential server id)
-      final formatted = chunk.map((msg) {
+      final formatted = chunk
+          .map((msg) {
         final createdIso = msg.createdAt.toIso8601String();
+        final roomId = (msg.roomId ?? '').toString();
         return <String, dynamic>{
           'sender_id': msg.senderId?.toString() ?? '',
-          'message'  : msg.content?.toString() ?? '',
+          'message': msg.content?.toString() ?? '',
           'created_at': createdIso,
           if (msg.id != null) 'server_id': msg.id.toString(),
+          if (roomId.isNotEmpty) 'room_id': roomId,
         };
-      }).toList();
+      })
+          .where((m) => (m['room_id'] == null) || (m['room_id'] == _roomId))
+          .toList();
 
       if (loadMore) {
         final oldOffset = _scrollController.offset;
@@ -167,7 +227,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           }
           _messages.sort((a, b) =>
               (DateTime.tryParse(a['created_at'] ?? '') ?? DateTime(0))
-                  .compareTo(DateTime.tryParse(b['created_at'] ?? '') ?? DateTime(0)));
+                  .compareTo(
+                  DateTime.tryParse(b['created_at'] ?? '') ?? DateTime(0)));
           _currentPage--;
         });
 
@@ -200,27 +261,30 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
 
   void _startPolling() {
     _pollTimer?.cancel();
-    if (_isConnected) return; // don’t poll if WS is up
-    _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) => _pollForUpdates());
+    _pollTimer =
+        Timer.periodic(const Duration(seconds: 1), (_) => _pollForUpdates());
   }
 
   Future<void> _pollForUpdates() async {
-    if (_isPolling || _isConnected) return;
+    if (_isPolling) return;
     _isPolling = true;
+
     try {
       final all = await _api.getChatHistory(widget.astrologerUid);
       if (all.isEmpty) return;
 
       final candidates = all.map((msg) {
         final id = msg.id?.toString();
-        if (id != null && _historyIdsSeen.contains(id)) {
-          return <String, dynamic>{}; // already seen
-        }
+        final roomId = (msg.roomId ?? '').toString();
+        if (roomId.isNotEmpty && roomId != _roomId) return <String, dynamic>{};
+        if (id != null && _historyIdsSeen.contains(id)) return <String, dynamic>{};
+
         return <String, dynamic>{
-          'sender_id' : msg.senderId?.toString() ?? '',
-          'message'   : msg.content?.toString() ?? '',
+          'sender_id': msg.senderId?.toString() ?? '',
+          'message': msg.content?.toString() ?? '',
           'created_at': msg.createdAt.toIso8601String(),
           if (id != null) 'server_id': id,
+          if (roomId.isNotEmpty) 'room_id': roomId,
         };
       }).where((m) => m.isNotEmpty).toList();
 
@@ -282,10 +346,6 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       setState(() => _isConnected = true);
       debugPrint('✅ WebSocket connected');
 
-      // stop polling now that we are online
-      _pollTimer?.cancel();
-
-      // join room
       _sendRaw({
         "action": "join",
         "type": "join",
@@ -301,6 +361,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
 
       _socket!.listen(
             (data) {
+          _lastWsAt = DateTime.now();
           try {
             _wsFrameCount++;
             _lastWsRaw = data is String ? data : utf8.decode(data as List<int>);
@@ -313,7 +374,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           debugPrint('⚠️ WebSocket error: $error');
           _handleDisconnect();
         },
-        cancelOnError: true,
+        cancelOnError: false,
       );
     } catch (e) {
       debugPrint('❌ WS connect failed: $e');
@@ -324,9 +385,10 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   void _handleDisconnect() {
     debugPrint('❌ WS disconnected');
     if (mounted) setState(() => _isConnected = false);
-    try { _socket?.close(); } catch (_) {}
+    try {
+      _socket?.close();
+    } catch (_) {}
     _socket = null;
-    _startPolling(); // poll while trying to reconnect
     _scheduleReconnect();
   }
 
@@ -342,12 +404,16 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   }
 
   // ---------------------------------------------------------------------------
-  // Message extraction / dedupe core
+  // Message handling
   // ---------------------------------------------------------------------------
 
   String? _extractClientSeqId(Map<String, dynamic> map) {
     for (final k in const [
-      'client_sequence_id', 'client_seq', 'cid', 'clientId', 'client_id'
+      'client_sequence_id',
+      'client_seq',
+      'cid',
+      'clientId',
+      'client_id'
     ]) {
       final v = map[k];
       if (v != null && v.toString().isNotEmpty) return v.toString();
@@ -376,26 +442,43 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
 
     if (node is Map) {
       final map = Map<String, dynamic>.from(node);
-      final content = (map['content'] ?? map['message'] ?? map['text'] ?? map['body']);
-      if (content != null && content.toString().trim().isNotEmpty) {
-        final created = (map['created_at'] ?? map['timestamp'] ?? map['time'])?.toString()
-            ?? DateTime.now().toIso8601String();
-        final out = <String, dynamic>{
-          'sender_id' : (map['sender_id'] ?? map['user_id'] ?? map['from'] ?? '').toString(),
-          'message'   : content.toString(),
-          'created_at': created,
-        };
-        final cid = _extractClientSeqId(map);
-        if (cid != null) out['client_sequence_id'] = cid;
-        if (map['id'] != null) out['server_id'] = map['id'].toString();
-        return out;
-      }
 
-      for (final k in const ['message', 'data', 'payload', 'detail', 'result', 'message_obj', 'event', 'record', 'value']) {
-        if (map.containsKey(k)) {
+      for (final k in const [
+        'message',
+        'data',
+        'payload',
+        'detail',
+        'result',
+        'message_obj',
+        'event',
+        'record',
+        'value'
+      ]) {
+        if (map.containsKey(k) && map[k] is Map) {
           final found = _extractMessage(map[k]);
           if (found != null) return found;
         }
+      }
+
+      final content =
+      (map['content'] ?? map['message'] ?? map['text'] ?? map['body']);
+      if (content != null && content.toString().trim().isNotEmpty) {
+        final created = (map['created_at'] ??
+            map['timestamp'] ??
+            map['time'] ??
+            DateTime.now().toIso8601String())
+            .toString();
+        final out = <String, dynamic>{
+          'sender_id':
+          (map['sender_id'] ?? map['user_id'] ?? map['from'] ?? '').toString(),
+          'message': content.toString(),
+          'created_at': created,
+        };
+        if (map['id'] != null) out['server_id'] = map['id'].toString();
+        if (map['room_id'] != null) out['room_id'] = map['room_id'].toString();
+        final cid = _extractClientSeqId(map);
+        if (cid != null) out['client_sequence_id'] = cid;
+        return out;
       }
     }
     return null;
@@ -408,9 +491,20 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
 
       final msg = _extractMessage(parsed);
       if (msg == null) {
-        if (parsed is Map && (parsed['type'] == 'pong' || parsed['type'] == 'ping')) return;
-        if (parsed is Map && (parsed['action'] == 'join' || parsed['event'] == 'joined')) return;
+        if (parsed is Map &&
+            (parsed['type'] == 'pong' ||
+                parsed['type'] == 'ping' ||
+                parsed['action'] == 'join' ||
+                parsed['event'] == 'joined')) {
+          return;
+        }
         debugPrint('ℹ️ WS frame had no message content, ignored.');
+        return;
+      }
+
+      final room = (msg['room_id'] ?? '').toString();
+      if (room.isNotEmpty && room != _roomId) {
+        debugPrint('↩️ Ignored message for other room: $room');
         return;
       }
 
@@ -427,12 +521,12 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     final cid = (m['client_sequence_id'] ?? '').toString();
     final sid = (m['server_id'] ?? '').toString();
 
-    // Replace optimistic bubble if same client id
     if (cid.isNotEmpty) {
       if (_clientSeqSeen.contains(cid)) {
         final idx = _clientSeqIndex[cid];
         if (idx != null && idx >= 0 && idx < _messages.length) {
-          _messages[idx]['created_at'] = m['created_at'] ?? _messages[idx]['created_at'];
+          _messages[idx]['created_at'] =
+              m['created_at'] ?? _messages[idx]['created_at'];
           if (sid.isNotEmpty) _messages[idx]['server_id'] = sid;
           return false;
         }
@@ -440,22 +534,26 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       }
     }
 
-    // Skip if server id already known (history/poll)
     if (sid.isNotEmpty && _historyIdsSeen.contains(sid)) {
       return false;
     }
 
-    // Fallback dedupe: same sender+text within 2s window
     final s = (m['sender_id'] ?? '').toString();
     final c = (m['message'] ?? '').toString().trim();
-    final t = DateTime.tryParse((m['created_at'] ?? '').toString()) ?? DateTime.now();
+    final t =
+        DateTime.tryParse((m['created_at'] ?? '').toString()) ?? DateTime.now();
 
-    for (var i = _messages.length - 1; i >= 0 && i >= _messages.length - 20; i--) {
+    for (var i = _messages.length - 1;
+    i >= 0 && i >= _messages.length - 20;
+    i--) {
       final mm = _messages[i];
       final ms = (mm['sender_id'] ?? '').toString();
       final mc = (mm['message'] ?? '').toString().trim();
-      final mt = DateTime.tryParse((mm['created_at'] ?? '').toString()) ?? DateTime(0);
-      if (ms == s && mc == c && (t.difference(mt).inMilliseconds).abs() <= 2000) {
+      final mt =
+          DateTime.tryParse((mm['created_at'] ?? '').toString()) ?? DateTime(0);
+      if (ms == s &&
+          mc == c &&
+          (t.difference(mt).inMilliseconds).abs() <= 2000) {
         return false;
       }
     }
@@ -489,8 +587,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   // ---------------------------------------------------------------------------
 
   void _sendRaw(Map<String, dynamic> map) {
-    if (!_isConnected || _socket == null) {
-      debugPrint('🚫 _sendRaw while disconnected');
+    if (_socket == null) {
+      debugPrint('🚫 _sendRaw while socket=null');
       return;
     }
     try {
@@ -512,7 +610,9 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       return;
     }
 
-    final clientId = 'c:${_myUserId}:${DateTime.now().millisecondsSinceEpoch}:${_seq++}';
+    final clientId =
+        'c:${_myUserId}:${DateTime.now().millisecondsSinceEpoch}:${_seq++}';
+    final nowIso = DateTime.now().toIso8601String();
 
     final payload = {
       "action": "send",
@@ -534,7 +634,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
         "role": "customer",
         "content": text,
         "client_sequence_id": clientId,
-        "created_at": DateTime.now().toIso8601String(),
+        "created_at": nowIso,
         "token": _token,
       }
     };
@@ -542,12 +642,12 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     debugPrint('➡️ WS SEND: ${jsonEncode(payload)}');
     _sendRaw(payload);
 
-    // optimistic bubble with the same client_sequence_id
     final local = <String, dynamic>{
       "sender_id": _myUserId,
       "message": text,
-      "created_at": DateTime.now().toIso8601String(),
+      "created_at": nowIso,
       "client_sequence_id": clientId,
+      "room_id": _roomId,
     };
     _addMessageIfNew(local);
 
@@ -578,117 +678,138 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
 
   @override
   void dispose() {
-    try { _socket?.close(); } catch (_) {}
+    try {
+      _socket?.close();
+    } catch (_) {}
     _reconnectTimer?.cancel();
     _pollTimer?.cancel();
+    _sessionTimer?.cancel(); // ⏱ stop the session timer
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
   // ---------------------------------------------------------------------------
-  // UI
+  // Enhanced UI with Theme Colors
   // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     final canSend = _isConnected && _socket != null;
 
+    // format countdown as M:SS
+    final String countdownStr =
+        '${(_secondsLeft ~/ 60)}:${(_secondsLeft % 60).toString().padLeft(2, '0')}';
+
     return Scaffold(
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        backgroundColor: _primaryColor,
+        elevation: 2,
+        shadowColor: _primaryColor.withOpacity(0.3),
+        title: Row(
           children: [
-            Text(
-              widget.astrologerName,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-              overflow: TextOverflow.ellipsis,
+            // Profile avatar circle
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: _primaryColor.withOpacity(0.2),
+                shape: BoxShape.circle,
+                border: Border.all(color: _primaryColor.withOpacity(0.5), width: 1.5),
+              ),
+              child: Icon(
+                Icons.person,
+                color: _primaryColor,
+                size: 20,
+              ),
             ),
-            Text(
-              _isConnected ? 'Online' : 'Offline',
-              style: const TextStyle(fontSize: 12),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.astrologerName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _isConnected ? _onlineColor : _offlineColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _isConnected ? 'Online' : 'Offline',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.9),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
-          Icon(
-            _isConnected ? Icons.circle : Icons.circle_outlined,
-            color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+          // ⏱ show countdown
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.timer, size: 16, color: Colors.white),
+                const SizedBox(width: 6),
+                Text(
+                  'Ends in $countdownStr',
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 12),
+          IconButton(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onPressed: () {},
+          ),
         ],
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildLoadingIndicator()
           : Column(
         children: [
           Expanded(
-            child: Stack(
-              children: [
-                ListView.builder(
-                  controller: _scrollController,
-                  itemCount: _messages.length + (_isFetchingMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (_isFetchingMore && index == 0) {
-                      return const Padding(
-                        padding: EdgeInsets.all(8),
-                        child: Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      );
-                    }
-
-                    final msg = _messages[_isFetchingMore ? index - 1 : index];
-                    final isMine = msg['sender_id']?.toString() == _myUserId;
-
-                    return Align(
-                      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: isMine
-                              ? Colors.deepPurpleAccent.withOpacity(0.8)
-                              : Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          (msg['message'] ?? '').toString(),
-                          style: TextStyle(
-                            color: isMine ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    _backgroundColor,
+                    _cardColor.withOpacity(0.3),
+                  ],
                 ),
-
-                // Tiny debug HUD (long-press to copy last WS frame)
-                // Positioned(
-                //   right: 8,
-                //   bottom: 64,
-                //   child: GestureDetector(
-                //     onLongPress: () {
-                //       Clipboard.setData(ClipboardData(text: _lastWsRaw));
-                //       ScaffoldMessenger.of(context).showSnackBar(
-                //         const SnackBar(content: Text('Copied last WS frame')),
-                //       );
-                //     },
-                //     child: Container(
-                //       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                //       decoration: BoxDecoration(
-                //         color: Colors.black54,
-                //         borderRadius: BorderRadius.circular(8),
-                //       ),
-                //       child: Text(
-                //         'WS:${_isConnected ? "✓" : "×"} #$_wsFrameCount',
-                //         style: const TextStyle(color: Colors.white, fontSize: 12),
-                //       ),
-                //     ),
-                //   ),
-                // ),
-              ],
+              ),
+              child: _buildMessageList(),
             ),
           ),
           _buildInputBox(canSend: canSend),
@@ -697,44 +818,272 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     );
   }
 
+  Widget _buildLoadingIndicator() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: _primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+              strokeWidth: 3,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading chat...',
+            style: TextStyle(
+              color: _textColor.withOpacity(0.7),
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageList() {
+    return Stack(
+      children: [
+        // Background pattern
+        Opacity(
+          opacity: 0.03,
+          child: Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/pattern.png'), // Add your pattern asset
+                repeat: ImageRepeat.repeat,
+              ),
+            ),
+          ),
+        ),
+
+        ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: _messages.length + (_isFetchingMore ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (_isFetchingMore && index == 0) {
+              return _buildLoadingMoreIndicator();
+            }
+
+            final msg = _messages[_isFetchingMore ? index - 1 : index];
+            final isMine = msg['sender_id']?.toString() == _myUserId;
+
+            return _buildMessageBubble(msg, isMine);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingMoreIndicator() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: _primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Loading older messages...',
+                style: TextStyle(
+                  color: _textColor.withOpacity(0.7),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(Map<String, dynamic> msg, bool isMine) {
+    final messageTime = DateTime.tryParse(msg['created_at'] ?? '');
+    final timeString = messageTime != null
+        ? '${messageTime.hour}:${messageTime.minute.toString().padLeft(2, '0')}'
+        : '';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+      child: Row(
+        mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          if (!isMine)
+            Container(
+              width: 32,
+              height: 32,
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: _primaryColor.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.person,
+                color: _primaryColor,
+                size: 16,
+              ),
+            ),
+
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isMine ? _primaryColor : _cardColor,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: isMine ? const Radius.circular(20) : const Radius.circular(4),
+                  bottomRight: isMine ? const Radius.circular(4) : const Radius.circular(20),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    (msg['message'] ?? '').toString(),
+                    style: TextStyle(
+                      color: isMine ? Colors.white : _textColor,
+                      fontSize: 15,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    timeString,
+                    style: TextStyle(
+                      color: isMine ? Colors.white.withOpacity(0.7) : _hintColor,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (isMine)
+            Container(
+              width: 32,
+              height: 32,
+              margin: const EdgeInsets.only(left: 8),
+              decoration: BoxDecoration(
+                color: _primaryColor.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.person,
+                color: _primaryColor,
+                size: 16,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputBox({required bool canSend}) {
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        color: Colors.grey.shade100,
-        child: Row(
-          children: [
-            Expanded(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _backgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
               child: TextField(
                 controller: _controller,
-                decoration: const InputDecoration(
-                  hintText: 'Type a message...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                maxLines: null,
+                textInputAction: TextInputAction.send,
+                decoration: InputDecoration(
+                  hintText: 'Type your message...',
+                  hintStyle: TextStyle(color: _hintColor),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
                   ),
                 ),
                 onSubmitted: (_) {
                   if (canSend) {
                     _sendMessage();
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Connecting… please wait')),
-                    );
                   }
                 },
               ),
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: Icon(
+          ),
+          const SizedBox(width: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: canSend ? _primaryColor : _primaryColor.withOpacity(0.3),
+              shape: BoxShape.circle,
+              boxShadow: canSend
+                  ? [
+                BoxShadow(
+                  color: _primaryColor.withOpacity(0.4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+                  : null,
+            ),
+            child: IconButton(
+              icon: const Icon(
                 Icons.send,
-                color: canSend ? Colors.deepPurple : Colors.grey,
+                color: Colors.white,
+                size: 20,
               ),
               onPressed: canSend ? _sendMessage : null,
-              tooltip: canSend ? 'Send' : 'Connecting…',
+              tooltip: canSend ? 'Send message' : 'Connecting...',
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
