@@ -926,6 +926,85 @@ class FastAPIServices {
     print("✅ _loadCredentials() completed -> _userId=$_userId, _accessToken=${_accessToken != null ? 'LOADED' : 'NULL'}");
   }
 
+  Future<CustomerDetail> updateCustomerDetailFromPath({
+    String? name,
+    String? contactNo,
+    String? birthDate,     // e.g. "2025-11-05"
+    String? birthTime,     // e.g. "14:30"
+    String? profile,
+    String? birthPlace,
+    String? addressLine1,
+    String? addressLine2,
+    String? location,
+    int?    pincode,
+    String? gender,
+    String? fcmToken,      // API field name is fcm_token (mapped below)
+    String? token,
+    String? expirationDate, // ISO8601 if sending datetime
+    String? countryCode,
+    String? profilePicPath, // local file path for profile_pic
+  }) async {
+    await _loadCredentials();
+    if (_accessToken == null) {
+      throw Exception("Not authenticated: missing access token");
+    }
+
+    final uri = Uri.parse(FastApiEndpoints.customerDetails);
+    debugPrint("🩹 [CUSTOMER DETAIL] → PATCH $uri");
+
+    final req = http.MultipartRequest('PATCH', uri)
+      ..headers['Authorization'] = 'Bearer $_accessToken'
+      ..headers['accept'] = 'application/json';
+
+    // Add only present fields (helper defined at top of your file)
+    req.addIfPresent('name', name);
+    req.addIfPresent('contactNo', contactNo);
+    req.addIfPresent('birthDate', birthDate);
+    req.addIfPresent('birthTime', birthTime);
+    req.addIfPresent('profile', profile);
+    req.addIfPresent('birthPlace', birthPlace);
+    req.addIfPresent('addressLine1', addressLine1);
+    req.addIfPresent('addressLine2', addressLine2);
+    req.addIfPresent('location', location);
+    if (pincode != null) req.fields['pincode'] = pincode.toString();
+    req.addIfPresent('gender', gender);
+    // API expects fcm_token in snake_case
+    req.addIfPresent('fcm_token', fcmToken);
+    req.addIfPresent('token', token);
+    req.addIfPresent('expirationDate', expirationDate);
+    req.addIfPresent('countryCode', countryCode);
+
+    // Optional file
+    if (profilePicPath != null && profilePicPath.isNotEmpty) {
+      final file = File(profilePicPath);
+      if (await file.exists()) {
+        debugPrint("🖼️ [CUSTOMER DETAIL] attaching profile_pic: $profilePicPath");
+        req.files.add(await http.MultipartFile.fromPath('profile_pic', profilePicPath));
+      } else {
+        throw Exception("profilePicPath not found: $profilePicPath");
+      }
+    } else {
+      debugPrint("🖼️ [CUSTOMER DETAIL] no profile_pic attached");
+    }
+
+    // Debug
+    debugPrint("📝 [CUSTOMER DETAIL] fields: ${req.fields.keys.toList()}");
+
+    final streamed = await req.send();
+    final res = await http.Response.fromStream(streamed);
+
+    debugPrint("✅ [CUSTOMER DETAIL PATCH] status=${res.statusCode}");
+    debugPrint("🧾 [CUSTOMER DETAIL PATCH] body=${res.body}");
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final Map<String, dynamic> data = jsonDecode(res.body);
+      return CustomerDetail.fromJson(data);
+    }
+
+    // Surface validation / backend errors verbosely
+    throw Exception("Update failed (${res.statusCode}): ${res.body}");
+  }
+
 
   bool _isTokenExpired(String token) {
     try {

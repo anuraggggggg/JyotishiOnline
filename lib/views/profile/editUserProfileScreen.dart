@@ -1,6 +1,8 @@
 // lib/pages/edit_customer_details_page.dart
-// A fresh, dependency-light page to create/update customer details via FastAPI.
-// Uses only: material, intl, image_picker (optional).
+// Create/Update customer details with FastAPI.
+// - Prefills fields from fetchCurrentUserDetails()
+// - PATCH updates via updateCustomerDetailFromPath()
+// - Optional image change
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -8,7 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../fastApi/fastApiServices.dart';
-
+import '../../model/fastApiModel/CustomerDetailModel.dart';
 
 class EditCustomerDetailsPage extends StatefulWidget {
   const EditCustomerDetailsPage({super.key});
@@ -23,18 +25,65 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
 
   final _nameCtrl = TextEditingController();
   final _contactCtrl = TextEditingController();
-  final _birthDateCtrl = TextEditingController();   // dd-MM-yyyy (UI)
-  final _birthTimeCtrl = TextEditingController();   // e.g. 6:05 PM (UI)
+  final _birthDateCtrl = TextEditingController(); // dd-MM-yyyy (UI)
+  final _birthTimeCtrl = TextEditingController(); // e.g. 6:05 PM (UI)
   final _birthPlaceCtrl = TextEditingController();
   final _addressLine1Ctrl = TextEditingController();
   final _addressLine2Ctrl = TextEditingController();
-  final _locationCtrl = TextEditingController();    // City,State,Country
+  final _locationCtrl = TextEditingController();  // City,State,Country
   final _pincodeCtrl = TextEditingController();
   final _countryCodeCtrl = TextEditingController();
 
   String _gender = 'Male'; // default
   File? _pickedImage;
+  String? _existingProfileImageUrl; // from server
+
+  bool _loading = true;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    try {
+      setState(() => _loading = true);
+      final svc = FastAPIServices();
+      final CustomerDetail current = await svc.fetchCurrentUserDetails();
+
+      // Prefill text fields safely
+      _nameCtrl.text         = current.name?.trim() ?? '';
+      _contactCtrl.text      = current.contactNo?.trim() ?? '';
+      _birthDateCtrl.text    = _fromApiDate(current.birthDate); // -> dd-MM-yyyy
+      _birthTimeCtrl.text    = _fromApiTime(current.birthTime); // -> h:mm a
+      _birthPlaceCtrl.text   = current.birthPlace?.trim() ?? '';
+      _addressLine1Ctrl.text = current.addressLine1?.trim() ?? '';
+      _addressLine2Ctrl.text = current.addressLine2?.trim() ?? '';
+      _locationCtrl.text     = current.location?.trim() ?? '';
+      _pincodeCtrl.text      = (current.pincode ?? '').toString();
+      _countryCodeCtrl.text  = current.countryCode?.trim() ?? '';
+
+      // Gender (normalize a bit)
+      final g = (current.gender ?? '').toLowerCase();
+      if (g == 'female') _gender = 'Female';
+      else if (g == 'other' || g == 'others' || g == 'non-binary') _gender = 'Other';
+      else _gender = 'Male';
+
+      // Profile image
+      _existingProfileImageUrl = current.profileImageUrl?.trim();
+    } catch (e, st) {
+      debugPrint("💥 [EditCustomer] Prefill failed: $e\n$st");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load your profile: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -52,6 +101,28 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
   }
 
   // ---------- Helpers ----------
+  // Convert yyyy-MM-dd -> dd-MM-yyyy for UI
+  String _fromApiDate(String? yMd) {
+    if (yMd == null || yMd.trim().isEmpty) return '';
+    try {
+      final d = DateFormat('yyyy-MM-dd').parse(yMd.trim());
+      return DateFormat('dd-MM-yyyy').format(d);
+    } catch (_) {
+      return yMd;
+    }
+  }
+
+  // Convert "HH:mm" -> "h:mm a" for UI
+  String _fromApiTime(String? hhmm) {
+    if (hhmm == null || hhmm.trim().isEmpty) return '';
+    try {
+      final t = DateFormat('HH:mm').parse(hhmm.trim());
+      return DateFormat.jm().format(t);
+    } catch (_) {
+      return hhmm;
+    }
+  }
+
   // Convert dd-MM-yyyy -> yyyy-MM-dd for API
   String? _toApiDate(String? ddMMyyyy) {
     if (ddMMyyyy == null || ddMMyyyy.trim().isEmpty) return null;
@@ -123,38 +194,39 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final name = _nameCtrl.text.trim();
-    final contact = _contactCtrl.text.trim();
-    final birthDateApi = _toApiDate(_birthDateCtrl.text.trim());
-    final birthTimeApi = _toApiTimeHHmm(_birthTimeCtrl.text.trim());
-    final birthPlace = _birthPlaceCtrl.text.trim();
-    final address1 = _addressLine1Ctrl.text.trim();
-    final address2 = _addressLine2Ctrl.text.trim();
-    final location = _locationCtrl.text.trim();
-    final pincode = _pincodeCtrl.text.trim();
+    final name        = _nameCtrl.text.trim();
+    final contact     = _contactCtrl.text.trim();
+    final birthDate   = _toApiDate(_birthDateCtrl.text.trim());
+    final birthTime   = _toApiTimeHHmm(_birthTimeCtrl.text.trim());
+    final birthPlace  = _birthPlaceCtrl.text.trim();
+    final address1    = _addressLine1Ctrl.text.trim();
+    final address2    = _addressLine2Ctrl.text.trim();
+    final location    = _locationCtrl.text.trim();
+    final pincodeTxt  = _pincodeCtrl.text.trim();
     final countryCode = _countryCodeCtrl.text.trim();
 
-    final int? pincodeInt = pincode.isEmpty ? null : int.tryParse(pincode);
+    final int? pincodeInt = pincodeTxt.isEmpty ? null : int.tryParse(pincodeTxt);
 
-    debugPrint("🧭 [EditCustomer] 🔵 Submitting:");
+    debugPrint("🧭 [EditCustomer] 🔵 Submitting PATCH:");
     debugPrint("  name=$name | gender=$_gender");
-    debugPrint("  birthDate(ui)=${_birthDateCtrl.text} -> api=$birthDateApi");
-    debugPrint("  birthTime(ui)=${_birthTimeCtrl.text} -> api=$birthTimeApi");
+    debugPrint("  birthDate(ui)=${_birthDateCtrl.text} -> api=$birthDate");
+    debugPrint("  birthTime(ui)=${_birthTimeCtrl.text} -> api=$birthTime");
     debugPrint("  birthPlace=$birthPlace");
     debugPrint("  addressLine1=$address1 | addressLine2=$address2");
     debugPrint("  location=$location | pincode=$pincodeInt | contact=$contact | countryCode=$countryCode");
-    debugPrint("  profilePic=${_pickedImage?.path ?? '(none)'}");
+    debugPrint("  profilePic=${_pickedImage?.path ?? '(unchanged)'}");
 
     setState(() => _submitting = true);
 
     try {
       final svc = FastAPIServices();
 
-      final result = await svc.createCustomerDetailFromPath(
+      // ✅ Use the PATCH function we added
+      final updated = await svc.updateCustomerDetailFromPath(
         name: name.isEmpty ? null : name,
         contactNo: contact.isEmpty ? null : contact,
-        birthDate: birthDateApi,
-        birthTime: birthTimeApi,
+        birthDate: birthDate,
+        birthTime: birthTime,
         birthPlace: birthPlace.isEmpty ? null : birthPlace,
         addressLine1: address1.isEmpty ? null : address1,
         addressLine2: address2.isEmpty ? null : address2,
@@ -162,10 +234,10 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
         pincode: pincodeInt,
         gender: _gender.isEmpty ? null : _gender,
         countryCode: countryCode.isEmpty ? null : countryCode,
-        profilePicPath: _pickedImage?.path,
+        profilePicPath: _pickedImage?.path, // only sent if picked
       );
 
-      debugPrint("✅ [EditCustomer] Success → ${result.toString()}");
+      debugPrint("✅ [EditCustomer] Updated → ${updated.toString()}");
       if (mounted) {
         _showSnack("Profile updated successfully", bg: Colors.green);
         Navigator.of(context).pop(true); // return success
@@ -187,7 +259,9 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
         title: const Text("Edit Profile"),
         centerTitle: true,
       ),
-      body: AbsorbPointer(
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : AbsorbPointer(
         absorbing: _submitting,
         child: Stack(
           children: [
@@ -197,15 +271,22 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Profile picture
+                    // Profile picture (existing or picked)
                     Center(
                       child: Stack(
                         children: [
                           CircleAvatar(
                             radius: 54,
                             backgroundColor: Colors.grey.shade200,
-                            backgroundImage: _pickedImage != null ? FileImage(_pickedImage!) : null,
-                            child: _pickedImage == null
+                            backgroundImage: _pickedImage != null
+                                ? FileImage(_pickedImage!)
+                                : (_existingProfileImageUrl != null &&
+                                _existingProfileImageUrl!.isNotEmpty)
+                                ? NetworkImage(_existingProfileImageUrl!) as ImageProvider
+                                : null,
+                            child: (_pickedImage == null &&
+                                (_existingProfileImageUrl == null ||
+                                    _existingProfileImageUrl!.isEmpty))
                                 ? const Icon(Icons.person, size: 54, color: Colors.grey)
                                 : null,
                           ),
