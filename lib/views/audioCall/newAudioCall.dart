@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 
-// If your file is named differently, adjust this import:
+// If your service file name differs, adjust this import.
+// This expects getVoiceAuthViaVideo(...) and VoiceCallerRole.
 import '../../fastApi/agora_audio_service.dart';
 
 class AudioCallPage extends StatefulWidget {
-  /// Pass the astrologer (other) user id here.
+  /// Pass the astrologer (other) user id here (same id you use for the video API).
   final String otherUserId;
 
   const AudioCallPage({super.key, required this.otherUserId});
@@ -23,12 +24,17 @@ class _AudioCallPageState extends State<AudioCallPage> {
   String _appId = '';
   String _channel = '';
   String _token = '';   // may be empty when App Certificate is disabled
-  String _account = ''; // Agora user account from backend
+  String _account = ''; // Agora user account from backend (must match token)
 
   bool _loading = true;
   bool _joined = false;
   bool _muted = false;
   bool _speakerOn = true;
+
+  // ---------- 10-minute session timer ----------
+  static const _sessionLength = Duration(minutes: 10);
+  Duration _remaining = _sessionLength;
+  Timer? _ticker;
 
   void _d(Object msg) => debugPrint('🎧 [CustomerVC] $msg');
 
@@ -36,6 +42,45 @@ class _AudioCallPageState extends State<AudioCallPage> {
   void initState() {
     super.initState();
     _bootstrap();
+  }
+
+  @override
+  void dispose() {
+    _stopTicker();
+    () async {
+      _d('Disposing engine…');
+      try { await _engine.leaveChannel(); } catch (_) {}
+      try { await _engine.release(); } catch (_) {}
+    }();
+    super.dispose();
+  }
+
+  // Format mm:ss
+  String get _clock {
+    final m = _remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = _remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  void _startTicker() {
+    _stopTicker();
+    _remaining = _sessionLength;
+    _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      final next = _remaining - const Duration(seconds: 1);
+      if (next <= Duration.zero) {
+        setState(() => _remaining = Duration.zero);
+        _d('⏱️ Session time over → ending call');
+        _endSession(); // auto-end
+      } else {
+        setState(() => _remaining = next);
+      }
+    });
+  }
+
+  void _stopTicker() {
+    _ticker?.cancel();
+    _ticker = null;
   }
 
   Future<void> _bootstrap() async {
@@ -54,18 +99,22 @@ class _AudioCallPageState extends State<AudioCallPage> {
       }
       _d('Microphone permission ✅');
 
-      // 2) Fetch voice auth (appID, channelName, voice_token?, user, timer)
-      _d('Fetching voice token from API for other_user_id=$incoming…');
-      final auth = await AgoraVoiceService.getVoiceToken(otherUserId: incoming);
+      // 2) Fetch voice auth **using your VIDEO TOKEN API**
+      // We pick the correct token/account for the CUSTOMER side.
+      _d('Fetching *video-based* voice auth for astroId=$incoming…');
+      final auth = await AgoraVoiceService.getVoiceAuthViaVideo(
+        astroId: incoming,
+        role: VoiceCallerRole.customer,
+      );
 
       _appId = auth.appId;
       _channel = auth.channelName;
-      _token = auth.token ?? ''; // keep empty string if no token
-      _account = auth.account;
+      _token = auth.token;     // required string for joinChannelWithUserAccount
+      _account = auth.account; // the exact userAccount that token targets
 
       _d('Auth OK → appId=$_appId | channel=$_channel | account=$_account | ttl=${auth.ttl}s');
-      if (_appId.isEmpty || _channel.isEmpty || _account.isEmpty) {
-        throw 'Missing voice auth (appId/channel/account)';
+      if (_appId.isEmpty || _channel.isEmpty || _token.isEmpty || _account.isEmpty) {
+        throw 'Missing join fields (appId/channel/token/account). Check your video-token API response.';
       }
 
       // 3) Init Agora
@@ -80,7 +129,7 @@ class _AudioCallPageState extends State<AudioCallPage> {
       await _engine.disableVideo();
       _d('ChannelProfile=Communication, audio ✅, video ❌');
 
-      // Set default route BEFORE join (this doesn’t flip speaker immediately)
+      // Pre-route to speaker by default; actual speaker flip after join to avoid -3
       await _engine.setDefaultAudioRouteToSpeakerphone(true);
       _speakerOn = true;
       _d('Default route set to speaker ✅');
@@ -96,7 +145,10 @@ class _AudioCallPageState extends State<AudioCallPage> {
             _d('Joined ${connection.channelId} in ${elapsed}ms');
             setState(() => _joined = true);
 
-            // Flip speaker AFTER join; -3 occurs if you call this too early.
+            // Start 10-min countdown when we are in the channel
+            _startTicker();
+
+            // Flip speaker AFTER join; retry once if -3 occurs.
             Future<void> trySpeaker() async {
               try {
                 await _engine.setEnableSpeakerphone(true);
@@ -113,7 +165,6 @@ class _AudioCallPageState extends State<AudioCallPage> {
               }
             }
 
-            // Nudge a tick later to let audio stack settle
             Future.delayed(const Duration(milliseconds: 100), trySpeaker);
           },
 
@@ -127,6 +178,7 @@ class _AudioCallPageState extends State<AudioCallPage> {
 
           onLeaveChannel: (RtcConnection connection, RtcStats stats) {
             _d('Left channel. stats=${stats.toJson()}');
+            _stopTicker();
             setState(() => _joined = false);
           },
 
@@ -145,7 +197,7 @@ class _AudioCallPageState extends State<AudioCallPage> {
             for (final s in speakers) {
               _d('VOLUME uid=${s.uid} vol=${s.volume} vad=${s.vad}');
             }
-            _d('TotalVolume=$totalVolume | SpeakerCount=$speakerNumber');
+            // _d('TotalVolume=$totalVolume | SpeakerCount=$speakerNumber');
           },
 
           onRemoteAudioStateChanged: (RtcConnection connection, int remoteUid,
@@ -154,21 +206,23 @@ class _AudioCallPageState extends State<AudioCallPage> {
           },
 
           onTokenPrivilegeWillExpire: (RtcConnection connection, String token) {
-            _d('Token will expire soon');
+            _d('Token will expire soon (refresh via video API if needed)');
           },
         ),
       );
 
-      // 5) Register & join
+      // 5) Register & join (userAccount-based)
       _d('Registering local user account "$_account"…');
       await _engine.registerLocalUserAccount(appId: _appId, userAccount: _account);
       _d('registerLocalUserAccount ✅');
 
-      final safeToken = _token; // keep as "" when you have no token
-      _d('Joining channel "$_channel" (token: ${safeToken.isEmpty ? 'EMPTY' : 'PRESENT'})…');
+      final previewToken = _token.length > 12
+          ? '${_token.substring(0, 6)}…${_token.substring(_token.length - 6)}'
+          : _token;
+      _d('Joining channel "$_channel" (token: $previewToken)…');
 
       await _engine.joinChannelWithUserAccount(
-        token: safeToken,
+        token: _token,
         channelId: _channel,
         userAccount: _account,
         options: const ChannelMediaOptions(
@@ -192,29 +246,14 @@ class _AudioCallPageState extends State<AudioCallPage> {
     }
   }
 
-  Future<void> _leave() async {
-    _d('Leaving channel…');
-    try {
-      await _engine.leaveChannel();
-    } catch (e) {
-      _d('leaveChannel error: $e');
-    }
-    if (mounted) Navigator.pop(context);
+  Future<void> _endSession() async {
+    _d('Ending session…');
+    _stopTicker();
+    try { await _engine.leaveChannel(); } catch (e) { _d('leave error: $e'); }
+    if (mounted) Navigator.pop(context, true); // return to request page
   }
 
-  @override
-  void dispose() {
-    () async {
-      _d('Disposing engine…');
-      try {
-        await _engine.leaveChannel();
-      } catch (_) {}
-      try {
-        await _engine.release();
-      } catch (_) {}
-    }();
-    super.dispose();
-  }
+  Future<void> _leave() => _endSession();
 
   Future<void> _toggleMute() async {
     _muted = !_muted;
@@ -225,7 +264,6 @@ class _AudioCallPageState extends State<AudioCallPage> {
 
   Future<void> _setSpeaker(bool on) async {
     _speakerOn = on;
-    // Keep default route toward speaker; flip speaker after join.
     try {
       await _engine.setEnableSpeakerphone(_speakerOn);
     } catch (e) {
@@ -240,15 +278,37 @@ class _AudioCallPageState extends State<AudioCallPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Audio Call')),
+      appBar: AppBar(
+        title: const Text('Audio Call'),
+        actions: [
+          // Countdown in the app bar for clear visibility
+          if (!_loading)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              child: Text(
+                _clock,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.phone_in_talk, size: 80, color: Colors.blueAccent),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(_joined ? 'Connected • $_channel' : 'Connecting…'),
+          const SizedBox(height: 6),
+          // Large timer display
+          Text(
+            _clock,
+            style: const TextStyle(
+              fontSize: 28,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
