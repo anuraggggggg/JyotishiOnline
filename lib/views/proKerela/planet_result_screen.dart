@@ -1,28 +1,21 @@
 import 'dart:io';
-import 'dart:typed_data'; // For font loading
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle; // For font loading
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw; // PDF widgets
+import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../model/proKerla/planetPositionModel.dart'; // Ensure this path is correct
+import '../../model/proKerla/planetPositionModel.dart';
 
 class PlanetResultScreen extends StatelessWidget {
   final PlanetPositionModel planetData;
 
   const PlanetResultScreen({Key? key, required this.planetData}) : super(key: key);
 
-  // Define colors for the PDF, mirroring your Flutter UI colors
+  // UI colors (Flutter side)
   static const Color cosmicBlue = Color(0xFF1A2B42);
   static const Color celestialGold = Color(0xFFD4AF37);
-  static const Color stardustWhite = Color(0xFFF0F0F0);
-  static const Color indigo800 = Color(0xFF1A237E); // Equivalent to Colors.indigo.shade800
-  static const Color purple600 = Color(0xFF8E24AA); // Equivalent to Colors.purple.shade600
-  static const Color grey600 = Color(0xFF757575); // Equivalent to Colors.grey.shade600
-  static const Color indigo700 = Color(0xFF283593); // Equivalent to Colors.indigo.shade700
-  static const Color orange100 = Color(0xFFFFF3E0); // Equivalent to Colors.orange.shade100
-  static const Color deepOrange = Color(0xFFFF5722); // Equivalent to Colors.deepOrange
 
   @override
   Widget build(BuildContext context) {
@@ -68,11 +61,8 @@ class PlanetResultScreen extends StatelessWidget {
                     offset: const Offset(0, 4),
                   ),
                 ],
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white,
-                    Colors.blue.shade50,
-                  ],
+                gradient: const LinearGradient(
+                  colors: [Colors.white, Color(0xFFE3F2FD)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -82,7 +72,7 @@ class PlanetResultScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Planet name with icon
+                    // Header row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -95,7 +85,7 @@ class PlanetResultScreen extends StatelessWidget {
                                 child: Text(
                                   planet.name,
                                   style: TextStyle(
-                                    fontSize: 20, // Reduced from 22
+                                    fontSize: 20,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.indigo.shade800,
                                   ),
@@ -106,56 +96,45 @@ class PlanetResultScreen extends StatelessWidget {
                           ),
                         ),
                         if (planet.isRetrograde)
-                          Flexible(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(Icons.sync_alt, color: Colors.deepOrange, size: 16),
-                                  SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      'Retrograde',
-                                      style: TextStyle(
-                                        color: Colors.deepOrange,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12, // Reduced font size
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.sync_alt, color: Colors.deepOrange, size: 16),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Retrograde',
+                                  style: TextStyle(
+                                    color: Colors.deepOrange,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                       ],
                     ),
                     const SizedBox(height: 12),
-
-                    // Divider with decoration
-                    Divider(
-                      height: 1,
-                      color: Colors.grey.shade300,
-                      thickness: 1,
-                    ),
+                    Divider(height: 1, color: Colors.grey.shade300, thickness: 1),
                     const SizedBox(height: 12),
 
-                    // Planet details in a grid with reduced spacing
+                    // Details grid
                     GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisCount: 2,
-                      childAspectRatio: 2.5, // Reduced from 3
-                      crossAxisSpacing: 6, // Reduced from 8
-                      mainAxisSpacing: 6, // Reduced from 8
+                      childAspectRatio: 2.5,
+                      crossAxisSpacing: 6,
+                      mainAxisSpacing: 6,
                       children: [
-                        _buildDetailItem('Longitude', planet.longitude.toString()),
-                        _buildDetailItem('Degree', planet.degree.toString()),
+                        _buildDetailItem('Longitude', planet.longitude.toStringAsFixed(2)),
+                        _buildDetailItem('Degree', planet.degree.toStringAsFixed(2)),
                         _buildDetailItem('Position', planet.position.toString()),
                         _buildDetailItem('Rasi', '${planet.rasi.name} (${planet.rasi.lord.name})'),
                       ],
@@ -173,8 +152,8 @@ class PlanetResultScreen extends StatelessWidget {
         },
         label: const Text('Download PDF'),
         icon: const Icon(Icons.picture_as_pdf),
-        backgroundColor: celestialGold, // Using celestialGold for consistency
-        foregroundColor: cosmicBlue, // Using cosmicBlue for consistency
+        backgroundColor: celestialGold,
+        foregroundColor: cosmicBlue,
       ),
     );
   }
@@ -183,21 +162,11 @@ class PlanetResultScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13, // Reduced from 14
-            color: Colors.grey.shade600,
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
         const SizedBox(height: 2),
         Text(
           value,
-          style: TextStyle(
-            fontSize: 15, // Reduced from 16
-            fontWeight: FontWeight.w500,
-            color: Colors.indigo.shade700,
-          ),
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.indigo.shade700),
         ),
       ],
     );
@@ -230,65 +199,85 @@ class PlanetResultScreen extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: colorMap[planetName]?.withOpacity(0.2),
+      decoration: const BoxDecoration(
         shape: BoxShape.circle,
       ),
       child: Icon(
         iconMap[planetName] ?? Icons.help_outline,
         color: colorMap[planetName],
-        size: 22, // Reduced from 24
+        size: 22,
       ),
     );
   }
 
-  // --- PDF Generation Logic ---
+  // ---------------- PDF Generation ----------------
+
   Future<void> _generateAndSharePdf(BuildContext context) async {
     try {
       final pdf = pw.Document();
 
-      // Convert your static colors to PdfColor for PDF styling
-      final PdfColor pdfIndigo800 = PdfColor.fromInt(indigo800.value);
-      final PdfColor pdfPurple600 = PdfColor.fromInt(purple600.value);
-      final PdfColor pdfWhite = PdfColors.white;
-      final PdfColor pdfBlue50 = PdfColor.fromInt(Colors.blue.shade50.value);
-      final PdfColor pdfGrey600 = PdfColor.fromInt(grey600.value);
-      final PdfColor pdfIndigo700 = PdfColor.fromInt(indigo700.value);
-      final PdfColor pdfOrange100 = PdfColor.fromInt(orange100.value);
-      final PdfColor pdfDeepOrange = PdfColor.fromInt(deepOrange.value);
+      // Load a font that supports Malayalam (and Latin) — use it as the BASE font
+      final ByteData mal = await rootBundle.load('assets/fonts/NotoSansMalayalam-Regular.ttf');
+      final pw.Font baseFont = pw.Font.ttf(mal);
 
-      // Load Material Icons font
+      // Optional: If you want Latin-only fallback for safety (not using fontFallback API),
+      // you could also load NotoSans-Regular and just ignore it or switch manually if needed.
+      // final pw.Font latin = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSans-Regular.ttf'));
+
+      // Load Material Icons from your pubspec path
       pw.Font? materialIconsFont;
       try {
-        final ByteData fontData = await rootBundle.load('fonts/MaterialIcons-Regular.ttf');
-        materialIconsFont = pw.Font.ttf(fontData);
+        final ByteData iconData = await rootBundle.load('assets/fonts/materialicons-regular.otf');
+        materialIconsFont = pw.Font.ttf(iconData);
       } catch (e) {
-        debugPrint('Failed to load MaterialIcons font for PDF: $e. Falling back to default.');
-        materialIconsFont = pw.Font.helvetica(); // Fallback
+        // Fallback to Helvetica if Material Icons fail (icons will be plain text)
+        materialIconsFont = pw.Font.helvetica();
       }
 
-      final ByteData imageBytes = await rootBundle.load('assets/images/finalLogo.png');
-      final pw.MemoryImage logoImage = pw.MemoryImage(imageBytes.buffer.asUint8List());
+      // Load logo (optional)
+      pw.MemoryImage? logoImage;
+      try {
+        final ByteData imageBytes = await rootBundle.load('assets/images/finalLogo.png');
+        logoImage = pw.MemoryImage(imageBytes.buffer.asUint8List());
+      } catch (_) {
+        logoImage = null;
+      }
+
+      // Build a theme that uses Malayalam-capable font everywhere
+      final theme = pw.ThemeData.withFont(
+        base: baseFont,
+        bold: baseFont,
+        italic: baseFont,
+        boldItalic: baseFont,
+      );
+
+      // Helpful PDF-side colors
+      final PdfColor pdfIndigo800 = PdfColor.fromInt(Colors.indigo.shade800.value);
+      final PdfColor pdfBlue50 = PdfColor.fromInt(const Color(0xFFE3F2FD).value);
+      final PdfColor pdfGrey200 = PdfColor.fromInt(Colors.grey.shade200.value);
+      final PdfColor pdfGrey300 = PdfColor.fromInt(Colors.grey.shade300.value);
+      final PdfColor pdfIndigo700 = PdfColor.fromInt(Colors.indigo.shade700.value);
+      final PdfColor pdfDeepOrange = PdfColor.fromInt(Colors.deepOrange.value);
+      final PdfColor pdfOrange100 = PdfColor.fromInt(Colors.orange.shade100.value);
 
       pdf.addPage(
         pw.MultiPage(
+          theme: theme,
           pageFormat: PdfPageFormat.a4.copyWith(
             marginBottom: 1.5 * PdfPageFormat.cm,
             marginTop: 1.5 * PdfPageFormat.cm,
             marginLeft: 2.0 * PdfPageFormat.cm,
             marginRight: 2.0 * PdfPageFormat.cm,
           ),
-          build: (pw.Context pwContext) {
-            List<pw.Widget> content = [];
+          build: (_) {
+            final widgets = <pw.Widget>[];
 
-            content.add(
-              pw.Center(
-                child: pw.Image(logoImage, height: 40, width: 40), // Adjust size as needed
-              ),
-            );
-            content.add(pw.SizedBox(height: 15));
+            if (logoImage != null) {
+              widgets.add(pw.Center(child: pw.Image(logoImage!, height: 40, width: 40)));
+              widgets.add(pw.SizedBox(height: 15));
+            }
 
-            content.add(
+            widgets.add(
               pw.Center(
                 child: pw.Text(
                   'Planet Positions Report',
@@ -296,138 +285,123 @@ class PlanetResultScreen extends StatelessWidget {
                     fontSize: 24,
                     fontWeight: pw.FontWeight.bold,
                     color: pdfIndigo800,
-                    font: pw.Font.helveticaBold(),
                   ),
                 ),
               ),
             );
-            content.add(pw.SizedBox(height: 20));
+            widgets.add(pw.SizedBox(height: 20));
 
             for (final planet in planetData.planetPositions) {
-              content.add(
+              widgets.add(
                 pw.Container(
                   decoration: pw.BoxDecoration(
                     borderRadius: pw.BorderRadius.circular(12),
-                    border: pw.Border.all(color: PdfColors.grey200, width: 0.5), // Subtle border
+                    border: pw.Border.all(color: pdfGrey200, width: 0.5),
                     gradient: pw.LinearGradient(
-                      colors: [
-                        pdfWhite,
-                        pdfBlue50,
-                      ],
+                      colors: [PdfColors.white, pdfBlue50],
                       begin: pw.Alignment.topLeft,
                       end: pw.Alignment.bottomRight,
                     ),
                   ),
                   padding: const pw.EdgeInsets.all(16),
-                  margin: const pw.EdgeInsets.only(bottom: 12), // Spacing between planet cards
+                  margin: const pw.EdgeInsets.only(bottom: 12),
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      // Planet name with icon
+                      // Header row
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Flexible(
-                            child: pw.Row(
-                              children: [
-                                _getPdfPlanetIcon(planet.name, materialIconsFont),
-                                pw.SizedBox(width: 12),
-                                pw.Flexible(
-                                  child: pw.Text(
-                                    planet.name,
-                                    style: pw.TextStyle(
-                                      fontSize: 18, // Adjusted for PDF
-                                      fontWeight: pw.FontWeight.bold,
-                                      color: pdfIndigo800,
-                                      font: pw.Font.helveticaBold(),
-                                    ),
-                                  ),
+                          pw.Row(
+                            children: [
+                              _pdfPlanetIcon(planet.name, materialIconsFont, pdfIndigo800),
+                              pw.SizedBox(width: 12),
+                              pw.Text(
+                                planet.name, // Malayalam names render correctly with baseFont
+                                style: pw.TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: pdfIndigo800,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                           if (planet.isRetrograde)
-                            pw.Flexible(
-                              child: pw.Container(
-                                padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: pw.BoxDecoration(
-                                  color: pdfOrange100,
-                                  borderRadius: pw.BorderRadius.circular(12),
-                                ),
-                                child: pw.Row(
-                                  mainAxisSize: pw.MainAxisSize.min,
-                                  children: [
-                                    pw.Icon(pw.IconData(Icons.sync_alt.codePoint), color: pdfDeepOrange, size: 14, font: materialIconsFont),
-                                    pw.SizedBox(width: 4),
-                                    pw.Flexible(
-                                      child: pw.Text(
-                                        'Retrograde',
-                                        style: pw.TextStyle(
-                                          color: pdfDeepOrange,
-                                          fontWeight: pw.FontWeight.bold, // Use bold for emphasis
-                                          fontSize: 10, // Adjusted for PDF
-                                          font: pw.Font.helvetica(),
-                                        ),
-                                      ),
+                            pw.Container(
+                              padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: pw.BoxDecoration(
+                                color: pdfOrange100,
+                                borderRadius: pw.BorderRadius.circular(12),
+                              ),
+                              child: pw.Row(
+                                mainAxisSize: pw.MainAxisSize.min,
+                                children: [
+                                  pw.Icon(
+                                    pw.IconData(Icons.sync_alt.codePoint),
+                                    color: pdfDeepOrange,
+                                    size: 14,
+                                    font: materialIconsFont,
+                                  ),
+                                  pw.SizedBox(width: 4),
+                                  pw.Text(
+                                    'Retrograde',
+                                    style: pw.TextStyle(
+                                      color: pdfDeepOrange,
+                                      fontWeight: pw.FontWeight.bold,
+                                      fontSize: 10,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
                         ],
                       ),
                       pw.SizedBox(height: 12),
 
-                      // Divider
-                      pw.Divider(
-                        height: 1,
-                        color: PdfColors.grey300,
-                        thickness: 1,
-                      ),
+                      pw.Divider(height: 1, color: pdfGrey300, thickness: 1),
                       pw.SizedBox(height: 12),
 
-                      // Planet details in a table for better alignment in PDF
+                      // Details table
                       pw.Table.fromTextArray(
                         headers: ['Property', 'Value'],
                         data: <List<String>>[
-                          ['Longitude', planet.longitude.toStringAsFixed(2)], // Format to 2 decimal places
+                          ['Longitude', planet.longitude.toStringAsFixed(2)],
                           ['Degree', planet.degree.toStringAsFixed(2)],
                           ['Position', planet.position.toString()],
+                          // Malayalam rasi/lord names render fine now:
                           ['Rasi', '${planet.rasi.name} (${planet.rasi.lord.name})'],
                         ],
-                        border: null, // No border for the table itself
-                        headerStyle: pw.TextStyle(
+                        border: null,
+                        headerStyle:  pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 12,
-                          color: pdfGrey600,
-                          font: pw.Font.helveticaBold(),
+                          color: PdfColors.grey600,
                         ),
                         cellStyle: pw.TextStyle(
                           fontSize: 12,
                           color: pdfIndigo700,
-                          font: pw.Font.helvetica(),
                         ),
-                        columnWidths: {
-                          0: const pw.FlexColumnWidth(1), // Property column
-                          1: const pw.FlexColumnWidth(2), // Value column
+                        columnWidths: const {
+                          0: pw.FlexColumnWidth(1),
+                          1: pw.FlexColumnWidth(2),
                         },
                         cellPadding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 0),
-                        headerDecoration: const pw.BoxDecoration(color: PdfColors.white), // No header background
-                        rowDecoration: const pw.BoxDecoration(color: PdfColors.white), // No row background
+                        headerDecoration: const pw.BoxDecoration(color: PdfColors.white),
+                        rowDecoration: const pw.BoxDecoration(color: PdfColors.white),
                       ),
                     ],
                   ),
                 ),
               );
             }
-            return content;
+
+            return widgets;
           },
         ),
       );
 
-      // Save and share the PDF
-      final output = await getTemporaryDirectory();
-      final file = File('${output.path}/planet_positions.pdf');
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/planet_positions.pdf');
       await file.writeAsBytes(await pdf.save());
 
       if (context.mounted) {
@@ -437,14 +411,14 @@ class PlanetResultScreen extends StatelessWidget {
       debugPrint('Error generating PDF: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error generating PDF: ${e.toString()}')),
+          SnackBar(content: Text('Error generating PDF: $e')),
         );
       }
     }
   }
 
-  // Helper function to get PDF-compatible planet icon
-  pw.Widget _getPdfPlanetIcon(String planetName, pw.Font? materialIconsFont) {
+  // Simpler PDF icon (no background shade/transparent needed)
+  pw.Widget _pdfPlanetIcon(String planetName, pw.Font? materialIconsFont, PdfColor fallbackColor) {
     final iconMap = {
       'Sun': Icons.wb_sunny,
       'Moon': Icons.nightlight_round,
@@ -457,28 +431,31 @@ class PlanetResultScreen extends StatelessWidget {
       'Ketu': Icons.flash_on,
     };
 
-    final colorMap = {
-      'Sun': PdfColors.amber,
-      'Moon': PdfColors.blue,
-      'Mars': PdfColors.red,
-      'Mercury': PdfColors.green,
-      'Jupiter': PdfColors.orange,
-      'Venus': PdfColors.pink,
-      'Saturn': PdfColors.indigo,
-      'Rahu': PdfColors.grey,
-      'Ketu': PdfColors.purple,
+    // map to PdfColor using Flutter Colors
+    final Map<String, PdfColor> pdfColorMap = {
+      'Sun': PdfColor.fromInt(Colors.amber.value),
+      'Moon': PdfColor.fromInt(Colors.blue.value),
+      'Mars': PdfColor.fromInt(Colors.red.value),
+      'Mercury': PdfColor.fromInt(Colors.green.value),
+      'Jupiter': PdfColor.fromInt(Colors.orange.value),
+      'Venus': PdfColor.fromInt(Colors.pink.value),
+      'Saturn': PdfColor.fromInt(Colors.indigo.value),
+      'Rahu': PdfColor.fromInt(Colors.grey.value),
+      'Ketu': PdfColor.fromInt(Colors.purple.value),
     };
 
+    final PdfColor color = pdfColorMap[planetName] ?? fallbackColor;
+
     return pw.Container(
-      padding: const pw.EdgeInsets.all(6),
+      padding: const pw.EdgeInsets.all(4),
       decoration: pw.BoxDecoration(
-        color: colorMap[planetName]?.shade(200), // Using shade for lighter background
         shape: pw.BoxShape.circle,
+        border: pw.Border.all(color: PdfColors.grey300, width: 1),
       ),
       child: pw.Icon(
         pw.IconData(iconMap[planetName]?.codePoint ?? Icons.help_outline.codePoint),
-        color: colorMap[planetName],
-        size: 20, // Adjusted size for PDF
+        color: color,
+        size: 18,
         font: materialIconsFont,
       ),
     );

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
-import 'package:AstrowayCustomer/apiManager/endpoints.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../model/proKerla/InauspiciousModel.dart';
 import '../model/proKerla/LoveCompatibilityModel.dart';
 import '../model/proKerla/auspicious_period_model.dart';
@@ -11,25 +13,35 @@ import '../model/proKerla/detailedKundliModel.dart';
 import '../model/proKerla/muhuratModel.dart';
 import '../model/proKerla/panchangModel.dart';
 import '../model/proKerla/planetPositionModel.dart';
+import 'package:AstrowayCustomer/apiManager/endpoints.dart';
 
-// Assuming this is defined somewhere, e.g., in endpoints.dart
-// static const String baseAstrologyUrl = 'https://api.prokerala.com/v2/astrology';
-
+/// ApiService for ProKerala Astrology API with:
+/// - Cached OAuth token with expiry persistence
+/// - Single-flight token refresh (avoids parallel refresh storms)
+/// - UTF-8 safe decoding for all responses
+/// - 401/403 retry once after refresh
+/// - 429 (rate limit) exponential backoff (max 3 retries)
+/// - Safer helpers and endpoint fixes
 class ApiService {
-  final String clientId = '0eb707a4-c19e-4cd3-ab59-c45a022eeceb';
-  final String clientSecret = 'orckG5duJhLrrxZEGsXKcFnJiK07JXRm8cTBVZXT';
-
-  String? _accessToken;
-  DateTime? _tokenExpiry;
-
   ApiService() {
     _loadTokenFromPrefs();
   }
 
+  // ⚠️ Consider moving these to secure storage/remote config.
+  final String clientId = '9acbfdad-3eba-497f-b50e-e77fe0ee5dce';
+  final String clientSecret = 'xs8NMZPZw2OMA1c0whXA2ceYssEvKYZJCLwD1uIQ';
+
+  String? _accessToken;
+  DateTime? _tokenExpiry;
+
+  // Single-flight guard for token refreshes
+  Future<String>? _refreshing;
+
+  // ===== Token persistence =====
   Future<void> _loadTokenFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    _accessToken = prefs.getString('access_token');
-    final expiryMillis = prefs.getInt('token_expiry');
+    _accessToken = prefs.getString('pk_access_token');
+    final expiryMillis = prefs.getInt('pk_token_expiry');
     if (expiryMillis != null) {
       _tokenExpiry = DateTime.fromMillisecondsSinceEpoch(expiryMillis);
     }
@@ -37,116 +49,148 @@ class ApiService {
 
   Future<void> _saveTokenToPrefs(String token, int expiresInSeconds) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('access_token', token);
+    await prefs.setString('pk_access_token', token);
     final expiry = DateTime.now().add(Duration(seconds: expiresInSeconds));
-    await prefs.setInt('token_expiry', expiry.millisecondsSinceEpoch);
+    await prefs.setInt('pk_token_expiry', expiry.millisecondsSinceEpoch);
     _accessToken = token;
     _tokenExpiry = expiry;
   }
 
-  Future<String> fetchAccessToken() async {
+  bool get _tokenIsValid =>
+      _accessToken != null &&
+          _tokenExpiry != null &&
+          DateTime.now().isBefore(_tokenExpiry!.subtract(const Duration(seconds: 15))); // 15s skew
+
+  Future<String> _fetchAccessToken() async {
     final url = Uri.parse('https://api.prokerala.com/token');
 
-    final response = await http.post(
+    final resp = await http
+        .post(
       url,
-      headers: {
+      headers: const {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
       },
       body: {
         'grant_type': 'client_credentials',
         'client_id': clientId,
         'client_secret': clientSecret,
       },
-    );
+    )
+        .timeout(const Duration(seconds: 20));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
       final token = data['access_token'] as String?;
-      final expiresIn = data['expires_in'] as int? ?? 3600;
-      if (token != null) {
-        await _saveTokenToPrefs(token, expiresIn);
-        return token;
-      } else {
+      final expiresIn = (data['expires_in'] as int?) ?? 3600;
+      if (token == null) {
         throw Exception('Access token missing in response');
       }
-    } else {
-      throw Exception('Failed to fetch access token: ${response.statusCode}');
+      await _saveTokenToPrefs(token, expiresIn);
+      return token;
     }
+
+    throw Exception('Failed to fetch access token: ${resp.statusCode} ${resp.body}');
   }
 
   Future<String> _getValidAccessToken() async {
-    if (_accessToken != null && _tokenExpiry != null) {
-      if (DateTime.now().isBefore(_tokenExpiry!)) {
-        // Token still valid
-        return _accessToken!;
-      }
+    if (_tokenIsValid) return _accessToken!;
+    // ensure only one refresh happens
+    _refreshing ??= _fetchAccessToken();
+    try {
+      return await _refreshing!;
+    } finally {
+      _refreshing = null; // clear for next time
     }
-    // Token missing or expired, fetch new one
-    return await fetchAccessToken();
   }
 
-  Future<T> _getWithAuthRetry<T>(
-    Uri uri,
-    T Function(Map<String, dynamic> json) fromJson, {
-    bool expectDataKey = true,
-  }) async {
-    String token = await _getValidAccessToken();
+  // ===== Generic GET with auth, UTF-8 decode, and retries =====
+  Future<Map<String, dynamic>> _authedGetJson(
+      Uri uri, {
+        int retry = 0,
+      }) async {
+    final token = await _getValidAccessToken();
 
-    // First attempt
-    http.Response response = await http.get(
-      uri,
-      headers: {
-        'Accept': 'application/json', // Good practice
-        'Authorization': 'Bearer $token',
-      },
-    );
-
-    // Retry on 401/403
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      token = await fetchAccessToken(); // Fetch new token
-      response = await http.get(
+    http.Response resp;
+    try {
+      resp = await http
+          .get(
         uri,
         headers: {
-          'Accept': 'application/json', // Good practice
+          'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      )
+          .timeout(const Duration(seconds: 25));
+    } on TimeoutException {
+      throw Exception('Request timeout: ${uri.path}');
     }
 
-    // --- CRITICAL CHANGE HERE: UTF-8 DECODING ---
-    final String decodedBody = utf8.decode(response.bodyBytes);
-    // FOR DEBUGGING: Print the raw bytes and the decoded string
-    print("--- Raw Response Bytes from API ---");
-    print(response.bodyBytes);
-    print("--- Decoded Response Body (UTF-8) ---");
-    print(decodedBody);
-    // --- END CRITICAL CHANGE ---
-
-    final decodedJson = jsonDecode(decodedBody) as Map<String, dynamic>;
-    print(
-        '${uri.path} Response (${response.statusCode}): $decodedJson'); // This will now show Hindi
-
-    if (response.statusCode == 200) {
-      if (expectDataKey) {
-        final data = decodedJson['data'];
-        if (data != null && data is Map<String, dynamic>) {
-          return fromJson(data);
-        } else {
-          // Fallback: pass entire decoded if 'data' key missing or not a Map
-          // This ensures fromJson still gets a Map<String, dynamic>
-          return fromJson(decodedJson);
-        }
-      } else {
-        // No 'data' key expected, pass the whole decoded JSON map
-        return fromJson(decodedJson);
+    // Handle common error classes
+    if (resp.statusCode == 401 || resp.statusCode == 403) {
+      if (retry > 0) {
+        throw Exception('Unauthorized after refresh for ${uri.path}');
       }
-    } else {
-      throw Exception(
-        'Failed to load data from ${uri.path}: ${response.statusCode} - ${decodedJson['message'] ?? ''}',
-      );
+      // force refresh and retry once
+      await _fetchAccessToken();
+      return _authedGetJson(uri, retry: retry + 1);
     }
+
+    if (resp.statusCode == 429) {
+      if (retry >= 3) {
+        throw Exception('Rate limited (429) repeatedly for ${uri.path}');
+      }
+      final delayMs = 500 * (1 << retry); // 500, 1000, 2000
+      await Future.delayed(Duration(milliseconds: delayMs));
+      return _authedGetJson(uri, retry: retry + 1);
+    }
+
+    // Decode always with UTF-8 so Hindi etc. display correctly
+    final decodedBody = utf8.decode(resp.bodyBytes);
+
+    // Log (optional)
+    // print('↪ ${uri.path} [${resp.statusCode}] => $decodedBody');
+
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      // Try to surface server message if any
+      try {
+        final err = jsonDecode(decodedBody) as Map<String, dynamic>;
+        throw Exception('HTTP ${resp.statusCode} ${uri.path}: ${err['message'] ?? decodedBody}');
+      } catch (_) {
+        throw Exception('HTTP ${resp.statusCode} ${uri.path}: $decodedBody');
+      }
+    }
+
+    final jsonMap = jsonDecode(decodedBody);
+    if (jsonMap is Map<String, dynamic>) return jsonMap;
+    throw Exception('Unexpected JSON type from ${uri.path}: ${jsonMap.runtimeType}');
   }
 
+  /// Wrapper that optionally unwraps a `data` key and maps to model.
+  Future<T> _getWithAuthRetry<T>(
+      Uri uri,
+      T Function(Map<String, dynamic> json) fromJson, {
+        bool expectDataKey = true,
+      }) async {
+    final root = await _authedGetJson(uri);
+    final payload = expectDataKey
+        ? (root['data'] is Map<String, dynamic> ? root['data'] as Map<String, dynamic> : root)
+        : root;
+    return fromJson(payload);
+  }
+
+  // ===== Helpers =====
+  static String toIso8601WithTimezone(DateTime dateTime) {
+    final tz = dateTime.timeZoneOffset;
+    final sign = tz.isNegative ? '-' : '+';
+    String two(int n) => n.abs().toString().padLeft(2, '0');
+    final hh = two(tz.inHours);
+    final mm = two(tz.inMinutes.remainder(60));
+    final base = dateTime.toIso8601String().split('.').first; // drop millis for API consistency
+    return '$base$sign$hh:$mm';
+  }
+
+  // ===== Endpoints =====
   Future<AuspiciousPeriodModel> fetchAuspiciousPeriods({
     required int ayanamsa,
     required double latitude,
@@ -154,21 +198,16 @@ class ApiService {
     required DateTime datetime,
     required String language,
   }) async {
-    final queryParameters = {
-      'ayanamsa': ayanamsa.toString(),
-      'coordinates':
-          '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}',
+    final uri = Uri.parse(ApiEndpoints.auspiciousPeriods).replace(queryParameters: {
+      'ayanamsa': '$ayanamsa',
+      'coordinates': '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}',
       'datetime': toIso8601WithTimezone(datetime),
-      'la': language, // Note: using 'la' for language here
-    };
-
-    final uri = Uri.parse(ApiEndpoints.auspiciousPeriods).replace(
-      queryParameters: queryParameters,
-    );
+      'la': language,
+    });
 
     return _getWithAuthRetry<AuspiciousPeriodModel>(
       uri,
-      (json) => AuspiciousPeriodModel.fromJson(json),
+          (json) => AuspiciousPeriodModel.fromJson(json),
     );
   }
 
@@ -179,22 +218,16 @@ class ApiService {
     required DateTime datetime,
     required String language,
   }) async {
-    final queryParameters = {
-      'ayanamsa': ayanamsa.toString(),
-      'coordinates':
-          '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}',
+    final uri = Uri.parse(ApiEndpoints.inauspiciousPeriods).replace(queryParameters: {
+      'ayanamsa': '$ayanamsa',
+      'coordinates': '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}',
       'datetime': toIso8601WithTimezone(datetime),
-      'la': language, // Note: using 'la' for language here
-    };
-
-    final uri = Uri.parse(ApiEndpoints.auspiciousPeriods).replace(
-      // Should this be inauspiciousPeriods?
-      queryParameters: queryParameters,
-    );
+      'la': language,
+    });
 
     return _getWithAuthRetry<InauspiciousPeriodModel>(
       uri,
-      (json) => InauspiciousPeriodModel.fromJson(json),
+          (json) => InauspiciousPeriodModel.fromJson(json),
     );
   }
 
@@ -205,19 +238,17 @@ class ApiService {
     required DateTime datetime,
     required String language,
   }) async {
-    final queryParameters = {
-      'ayanamsa': ayanamsa.toString(),
-      'coordinates':
-          '${latitude.toStringAsFixed(2)},${longitude.toStringAsFixed(2)}',
+    final uri = Uri.parse(ApiEndpoints.panchang).replace(queryParameters: {
+      'ayanamsa': '$ayanamsa',
+      'coordinates': '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}',
       'datetime': toIso8601WithTimezone(datetime),
-      'la': language, // Using 'language' here
-    };
-
-    final uri = Uri.parse(ApiEndpoints.panchang)
-        .replace(queryParameters: queryParameters);
+      'la': language,
+    });
 
     return _getWithAuthRetry<DetailedPanchangModel>(
-        uri, (json) => DetailedPanchangModel.fromJson(json));
+      uri,
+          (json) => DetailedPanchangModel.fromJson(json),
+    );
   }
 
   Future<InauspiciousModel> fetchInauspiciousPeriod({
@@ -227,19 +258,17 @@ class ApiService {
     required DateTime datetime,
     required String language,
   }) async {
-    final queryParameters = {
-      'ayanamsa': ayanamsa.toString(),
-      'coordinates':
-          '${latitude.toStringAsFixed(2)},${longitude.toStringAsFixed(2)}',
+    final uri = Uri.parse(ApiEndpoints.inauspiciousPeriods).replace(queryParameters: {
+      'ayanamsa': '$ayanamsa',
+      'coordinates': '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}',
       'datetime': toIso8601WithTimezone(datetime),
-      'la': language, // Using 'language' here
-    };
-
-    final uri = Uri.parse(ApiEndpoints.inauspiciousPeriods)
-        .replace(queryParameters: queryParameters);
+      'la': language,
+    });
 
     return _getWithAuthRetry<InauspiciousModel>(
-        uri, (json) => InauspiciousModel.fromJson(json));
+      uri,
+          (json) => InauspiciousModel.fromJson(json),
+    );
   }
 
   Future<PlanetPositionModel> fetchPlanetPosition({
@@ -250,57 +279,122 @@ class ApiService {
     required String language,
     String? planets,
   }) async {
-    final queryParameters = {
-      'ayanamsa': ayanamsa.toString(),
-      'coordinates':
-          '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}',
-      'datetime': toIso8601WithTimezone(datetime),
-      'la': language, // Note: using 'la' for language here
-    };
+    // ---- Debug: input validation + logging ----
+    final _sw = Stopwatch()..start();
+    final supportedLangs = const {'en', 'hi', 'ta', 'te', 'ml'};
+    final lang = supportedLangs.contains(language) ? language : 'en';
 
-    if (planets != null && planets.isNotEmpty) {
-      queryParameters['planets'] = planets;
+    if (language != lang) {
+      debugPrint('⚠️ [Planet] Unsupported language "$language". '
+          'Falling back to "$lang"');
+    }
+    if (ayanamsa < 1 || ayanamsa > 20) {
+      debugPrint('⚠️ [Planet] Ayanamsa out of expected range (1–20): $ayanamsa');
     }
 
-    final uri = Uri.parse(ApiEndpoints.planetPosition)
-        .replace(queryParameters: queryParameters);
+    final iso = toIso8601WithTimezone(datetime); // e.g. 2004-02-12T15:19:21+05:30
+    final qp = <String, String>{
+      'ayanamsa': '$ayanamsa',
+      'coordinates':
+      '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}',
+      'datetime': iso,
+      'la': lang,
+    };
+    if (planets != null && planets.isNotEmpty) qp['planets'] = planets;
 
-    print("🌍 Full URI: $uri");
+    final uri =
+    Uri.parse(ApiEndpoints.planetPosition).replace(queryParameters: qp);
 
-    return _getWithAuthRetry<PlanetPositionModel>(
-      uri,
-      (json) {
-        print("✅ Raw JSON: $json");
+    debugPrint('➡️ [Planet] GET $uri');
+    debugPrint('   • ayanamsa=$ayanamsa  '
+        'coords=${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}');
+    debugPrint('   • datetime(raw)=$datetime  datetime(iso)=$iso');
+    if (planets != null && planets.isNotEmpty) {
+      debugPrint('   • planets=$planets');
+    }
+    debugPrint('   • language=$lang');
 
-        // If json is a List, wrap it in a Map
-        // This logic should ideally be handled in PlanetPositionModel.fromJson itself,
-        // but keeping it here as per your original code.
-        if (json is List) {
-          json = {'planet_position': json};
+    try {
+      final root = await _authedGetJson(uri);
+
+      // ---- Debug: shape and quick peek ----
+      debugPrint('⬅️ [Planet] Response received in ${_sw.elapsedMilliseconds} ms');
+      debugPrint('   • root runtimeType: ${root.runtimeType}');
+      if (root is Map<String, dynamic>) {
+        final keys = root.keys.take(8).join(', ');
+        debugPrint('   • root keys: $keys');
+        if (root.containsKey('data')) {
+          debugPrint('   • found "data" key -> unwrapping');
         }
+      } else if (root is List) {
+        debugPrint('   • root list length: ${root.length}');
+      }
 
-        return PlanetPositionModel.fromJson(json);
-      },
-    );
+      // ---- Normalize payload (unwrap common shapes) ----
+      dynamic payload = root;
+
+      // Some backends nest useful payload in "data"
+      if (payload is Map<String, dynamic> && payload['data'] != null) {
+        payload = payload['data'];
+      }
+
+      // Expected: { "planet_position": [ ... ] }
+      if (payload is Map<String, dynamic> &&
+          payload['planet_position'] is List) {
+        final len = (payload['planet_position'] as List).length;
+        debugPrint('✅ [Planet] planet_position list length: $len');
+        _sw.stop();
+        return PlanetPositionModel.fromJson(payload);
+      }
+
+      // Sometimes: bare list at root (treat as planet_position)
+      if (payload is List) {
+        debugPrint('✅ [Planet] Bare list payload, wrapping as planet_position '
+            '(length=${payload.length})');
+        _sw.stop();
+        return PlanetPositionModel.fromJson({'planet_position': payload});
+      }
+
+      // Try a few alternative keys if provider changes envelopes
+      if (payload is Map<String, dynamic>) {
+        for (final k in const ['positions', 'result', 'response']) {
+          if (payload[k] is List) {
+            final len = (payload[k] as List).length;
+            debugPrint('ℹ️ [Planet] Found list under "$k" (len=$len), '
+                'wrapping as planet_position');
+            _sw.stop();
+            return PlanetPositionModel.fromJson(
+                {'planet_position': payload[k]});
+          }
+        }
+      }
+
+      // As a last resort, emit the payload to help debugging then attempt parse
+      debugPrint('❓ [Planet] Unexpected payload shape; attempting model parse…');
+      _sw.stop();
+      return PlanetPositionModel.fromJson(
+          payload is Map<String, dynamic> ? payload : {'planet_position': payload});
+    } catch (e, st) {
+      _sw.stop();
+      debugPrint('❌ [Planet] Request failed after '
+          '${_sw.elapsedMilliseconds} ms: $e');
+      debugPrint('🪵 [Planet] Stacktrace:\n$st');
+      rethrow;
+    }
   }
-
-  // adjust path if different
 
   Future<DailyPredictionModel> fetchDailyPrediction({
     required DateTime datetime,
     required String sign,
   }) async {
-    final queryParameters = {
+    final uri = Uri.parse(ApiEndpoints.dailyHoroscope).replace(queryParameters: {
       'datetime': toIso8601WithTimezone(datetime),
       'sign': sign.toLowerCase(),
-    };
-
-    final uri = Uri.parse(ApiEndpoints.dailyHoroscope)
-        .replace(queryParameters: queryParameters);
+    });
 
     return _getWithAuthRetry<DailyPredictionModel>(
       uri,
-      (json) => DailyPredictionModel.fromJson(json),
+          (json) => DailyPredictionModel.fromJson(json),
     );
   }
 
@@ -311,41 +405,21 @@ class ApiService {
     required DateTime datetime,
     required String language,
   }) async {
-    final queryParameters = {
-      'ayanamsa': ayanamsa.toString(),
-      'coordinates':
-          '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}',
+    final uri = Uri.parse(ApiEndpoints.detailedKundli).replace(queryParameters: {
+      'ayanamsa': '$ayanamsa',
+      'coordinates': '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}',
       'datetime': toIso8601WithTimezone(datetime),
-      'la': language, // Using 'language' here
-    };
-
-    final uri = Uri.parse(ApiEndpoints.detailedKundli)
-        .replace(queryParameters: queryParameters);
+      'la': language,
+    });
 
     try {
-      print("📡 Requesting Kundli from: $uri");
-
       return await _getWithAuthRetry<KundliModel>(
         uri,
-        (json) {
-          try {
-            // Note: The `json` here will already be the correctly decoded Map
-            // from _getWithAuthRetry. So, "Raw JSON Response" will show Hindi.
-            print("📥 Raw JSON Response: $json");
-            final parsed = KundliModel.fromJson(json);
-            print("✅ Parsed KundliModel: ${parsed.toJson()}");
-            return parsed;
-          } catch (e, st) {
-            print("❌ Error while parsing KundliModel: $e");
-            print("🪵 Stacktrace: $st");
-            throw Exception("Failed to parse KundliModel: $e");
-          }
-        },
-        expectDataKey: false, // Important: disable 'data' key extraction here
+            (json) => KundliModel.fromJson(json),
+        expectDataKey: false, // API returns object at root
       );
-    } catch (e, st) {
-      print("❌ API request failed: $e");
-      print("🪵 Stacktrace: $st");
+    } catch (e) {
+      // print('Kundli error: $e');
       return null;
     }
   }
@@ -355,68 +429,37 @@ class ApiService {
     required String signTwo,
     required DateTime dateTime,
   }) async {
-    final queryParameters = {
+    final uri = Uri.parse(ApiEndpoints.loveCompatibility).replace(queryParameters: {
       'datetime': toIso8601WithTimezone(dateTime),
       'sign_one': signOne.toLowerCase(),
       'sign_two': signTwo.toLowerCase(),
-    };
-
-    final uri = Uri.parse(ApiEndpoints.loveCompatibility)
-        .replace(queryParameters: queryParameters);
+    });
 
     try {
       return await _getWithAuthRetry<LoveCompatibilityModel>(
         uri,
-        (json) => LoveCompatibilityModel.fromJson(json),
-        expectDataKey:
-            false, // Use false if the API returns data at root, adjust if needed
+            (json) => LoveCompatibilityModel.fromJson(json),
+        expectDataKey: false,
       );
     } catch (e) {
-      print('❌ Error fetching love compatibility: $e');
       return null;
     }
   }
 
-  /// Fetches the “Birthday Number” for a given date.
   Future<BirthdayNumberModel?> getBirthdayNumber({
     required DateTime dateTime,
   }) async {
-    // 1. Build query parameters, encoding the ISO8601 datetime so "+" becomes "%2B"
-    final queryParameters = {
+    final uri = Uri.parse(ApiEndpoints.birthdayNumber).replace(queryParameters: {
       'datetime': toIso8601WithTimezone(dateTime),
-    };
-
-    // 2. Construct the full URI
-    //    (Make sure ApiEndpoints.birthdayNumber is defined, see note below.)
-    final uri = Uri.parse(ApiEndpoints.birthdayNumber)
-        .replace(queryParameters: queryParameters);
+    });
 
     try {
-      // 3. Use _getWithAuthRetry<T> to handle token + 401/403 retry logic.
-      //    We rely on the default expectDataKey: true, so `fromJson` receives
-      //    the contents of `"data"`, i.e. { "birthday_number": { … } }.
       return await _getWithAuthRetry<BirthdayNumberModel>(
         uri,
-        (json) => BirthdayNumberModel.fromJson(json),
-        // expectDataKey is true by default, so no need to explicitly add it here.
+            (json) => BirthdayNumberModel.fromJson(json),
       );
     } catch (e) {
-      print('❌ Error fetching birthday number: $e');
       return null;
     }
   }
-}
-
-String toIso8601WithTimezone(DateTime dateTime) {
-  final tzOffset = dateTime.timeZoneOffset;
-  final sign = tzOffset.isNegative ? '-' : '+';
-
-  String twoDigits(int n) => n.abs().toString().padLeft(2, '0');
-
-  final hours = twoDigits(tzOffset.inHours);
-  final minutes = twoDigits(tzOffset.inMinutes.remainder(60));
-
-  final basicIso = dateTime.toIso8601String().split('.').first;
-
-  return '$basicIso$sign$hours:$minutes';
 }

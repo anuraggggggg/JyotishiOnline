@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "946296603847",
-    "project_id": "jyotishi-ef7e6",
-    "storage_bucket": "jyotishi-ef7e6.firebasestorage.app"
+    "project_number": "265914497225",
+    "project_id": "jyotishi-customer",
+    "storage_bucket": "jyotishi-customer.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:946296603847:android:e73de62e01562c31b06ae2",
+        "mobilesdk_app_id": "1:265914497225:android:f89bb48633ce35e45f7518",
         "android_client_info": {
           "package_name": "com.astrowaydiploy.user"
         }
@@ -15,26 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCXbdAXDCEn1GdDkWHfO6FInEbwv29zZVE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:946296603847:android:a428a78352a74a99b06ae2",
-        "android_client_info": {
-          "package_name": "com.astrowaydiploy.user"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyCXbdAXDCEn1GdDkWHfO6FInEbwv29zZVE"
+          "current_key": "AIzaSyCkeo_LasL_iabr92j36B0xh1c85LnMRqU"
         }
       ],
       "services": {

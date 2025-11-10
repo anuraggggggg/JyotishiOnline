@@ -10,8 +10,6 @@ import 'package:AstrowayCustomer/views/proKerela/planet_result_screen.dart';
 import '../../fastApi/fastApiServices.dart';
 import '../../model/fastApiModel/currentUserWalletModel.dart';
 import '../../utils/services/location_service.dart';
-import '../../utils/global.dart'
-    as global; // Add this import if 'global' is defined here
 
 class PlanetInputScreen extends StatefulWidget {
   const PlanetInputScreen({Key? key}) : super(key: key);
@@ -23,8 +21,8 @@ class PlanetInputScreen extends StatefulWidget {
 class _PlanetInputScreenState extends State<PlanetInputScreen> {
   final PlanetController controller = Get.put(PlanetController());
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _ayanamsaController =
-      TextEditingController(text: '1');
+
+  // Replaced the free-text ayanamsa with a dropdown.
   final TextEditingController _placeController = TextEditingController();
   final TextEditingController _datetimeController = TextEditingController();
 
@@ -38,6 +36,7 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
   List<LocationSuggestion> _suggestions = [];
   CurrentUserWalletModel? _wallet;
 
+  // Theme
   static const Color cosmicBlue = Color(0xFF1A2B42);
   static const Color celestialGold = Color(0xFFD4AF37);
   static const Color stardustWhite = Color(0xFFF0F0F0);
@@ -45,6 +44,23 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
   static const Color darkAccent = Color(0xFF2C3E50);
   static const Color mediumAccent = Color(0xFF34495E);
   static const Color warningRed = Color(0xFFE57373);
+
+  // Supported languages for `la` param (Prokerala)
+  static const List<Map<String, String>> languages = [
+    {'value': 'en', 'label': 'English'},
+    {'value': 'hi', 'label': 'Hindi'},
+    {'value': 'ta', 'label': 'Tamil'},
+    {'value': 'te', 'label': 'Telugu'},
+    {'value': 'ml', 'label': 'Malayalam'},
+  ];
+
+  // Ayanamsa options (exact values)
+  static const List<Map<String, dynamic>> ayanamsaOptions = [
+    {'value': 1, 'label': 'Lahiri (1)'},
+    {'value': 3, 'label': 'Raman (3)'},
+    {'value': 5, 'label': 'KP (5)'},
+  ];
+  int _selectedAyanamsa = 1; // default Lahiri
 
   @override
   void initState() {
@@ -54,11 +70,7 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
     _placeFocusNode.addListener(() {
       if (!_placeFocusNode.hasFocus) {
         Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted) {
-            setState(() {
-              _suggestions.clear();
-            });
-          }
+          if (mounted) setState(() => _suggestions.clear());
         });
       }
     });
@@ -66,7 +78,6 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
 
   @override
   void dispose() {
-    _ayanamsaController.dispose();
     _placeController.dispose();
     _datetimeController.dispose();
     _placeFocusNode.dispose();
@@ -77,8 +88,8 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
   void _updateDateTimeController(DateTime dateTime) {
     setState(() {
       selectedDateTime = dateTime;
-      _datetimeController.text = DateFormat("MMM dd, yyyy - hh:mm a")
-          .format(dateTime); // Corrected format
+      _datetimeController.text =
+          DateFormat("MMM dd, yyyy - hh:mm a").format(dateTime);
     });
   }
 
@@ -88,8 +99,25 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
       initialDate: selectedDateTime ?? DateTime.now(),
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: celestialGold,
+            onPrimary: cosmicBlue,
+            surface: stardustWhite,
+            onSurface: cosmicBlue,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (date != null) {
+      final time = await showTimePicker(
+        context: context,
+        initialTime:
+        TimeOfDay.fromDateTime(selectedDateTime ?? DateTime.now()),
+        builder: (context, child) => Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: celestialGold,
@@ -97,54 +125,14 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
               surface: stardustWhite,
               onSurface: cosmicBlue,
             ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(foregroundColor: cosmicBlue),
-            ),
-            dialogTheme: DialogTheme(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-                side: const BorderSide(color: celestialGold, width: 1.5),
-              ),
-              backgroundColor: stardustWhite,
-            ),
           ),
           child: child!,
-        );
-      },
-    );
-
-    if (date != null) {
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(selectedDateTime ?? DateTime.now()),
-        builder: (context, child) {
-          return Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(
-                primary: celestialGold,
-                onPrimary: cosmicBlue,
-                surface: stardustWhite,
-                onSurface: cosmicBlue,
-              ),
-              textButtonTheme: TextButtonThemeData(
-                style: TextButton.styleFrom(foregroundColor: cosmicBlue),
-              ),
-              dialogTheme: DialogTheme(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  side: const BorderSide(color: celestialGold, width: 1.5),
-                ),
-                backgroundColor: stardustWhite,
-              ),
-            ),
-            child: child!,
-          );
-        },
+        ),
       );
 
       if (time != null) {
         final fullDateTime =
-            DateTime(date.year, date.month, date.day, time.hour, time.minute);
+        DateTime(date.year, date.month, date.day, time.hour, time.minute);
         _updateDateTimeController(fullDateTime);
       }
     }
@@ -171,65 +159,131 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
       focusNode: focusNode,
       onChanged: enableSuggestions
           ? (value) {
-              if (_debounce?.isActive ?? false) _debounce!.cancel();
-
-              _debounce = Timer(const Duration(milliseconds: 500), () async {
-                if (value.isEmpty) {
-                  onSuggestionsUpdated?.call([]);
-                  _latitude = null;
-                  _longitude = null;
-                  return;
-                }
-                try {
-                  final result =
-                      await LocationService.fetchCitySuggestions(value);
-                  onSuggestionsUpdated?.call(result);
-                } catch (e) {
-                  print('Error fetching suggestions: $e');
-                  onSuggestionsUpdated?.call([]);
-                }
-              });
-            }
+        if (_debounce?.isActive ?? false) _debounce!.cancel();
+        _debounce = Timer(const Duration(milliseconds: 500), () async {
+          if (value.isEmpty) {
+            onSuggestionsUpdated?.call([]);
+            _latitude = null;
+            _longitude = null;
+            return;
+          }
+          try {
+            final result = await LocationService.fetchCitySuggestions(value);
+            onSuggestionsUpdated?.call(result);
+          } catch (_) {
+            onSuggestionsUpdated?.call([]);
+          }
+        });
+      }
           : null,
       style: GoogleFonts.poppins(color: stardustWhite, fontSize: 16),
       decoration: InputDecoration(
         labelText: labelText,
-        labelStyle: GoogleFonts.poppins(
-            color: lunarSilver, fontWeight: FontWeight.w500),
+        labelStyle:
+        GoogleFonts.poppins(color: lunarSilver, fontWeight: FontWeight.w500),
         prefixIcon: Icon(icon, color: celestialGold.withOpacity(0.9), size: 24),
         suffixIcon: suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              BorderSide(color: celestialGold.withOpacity(0.6), width: 1.2),
+          BorderSide(color: celestialGold.withOpacity(0.6), width: 1.2),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              BorderSide(color: celestialGold.withOpacity(0.6), width: 1.2),
+          BorderSide(color: celestialGold.withOpacity(0.6), width: 1.2),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: celestialGold, width: 2.5),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: celestialGold, width: 2.5),
         ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: warningRed, width: 1.2),
+        errorBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: warningRed, width: 1.2),
         ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: warningRed, width: 2.5),
+        focusedErrorBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: warningRed, width: 2.5),
         ),
         filled: true,
         fillColor: cosmicBlue.withOpacity(0.7),
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 18, horizontal: 15),
+        const EdgeInsets.symmetric(vertical: 18, horizontal: 15),
       ),
       validator: validator,
     );
   }
 
-  void _showSnackbar(String title, String message, Color backgroundColor) {
+  Widget _buildLangDropdown() {
+    return Obx(() => DropdownButtonFormField<String>(
+      value: controller.selectedLanguage.value,
+      items: languages
+          .map((e) => DropdownMenuItem<String>(
+        value: e['value'],
+        child: Text(e['label']!,
+            style: GoogleFonts.poppins(color: stardustWhite)),
+      ))
+          .toList(),
+      onChanged: (val) => controller.selectedLanguage.value = val ?? 'en',
+      decoration: InputDecoration(
+        labelText: 'Language',
+        labelStyle: GoogleFonts.poppins(
+            color: lunarSilver, fontWeight: FontWeight.w500),
+        prefixIcon: const Icon(Icons.language, color: celestialGold),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+          BorderSide(color: celestialGold.withOpacity(0.6), width: 1.2),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: celestialGold, width: 2.5),
+        ),
+        filled: true,
+        fillColor: cosmicBlue.withOpacity(0.7),
+      ),
+      dropdownColor: cosmicBlue.withOpacity(0.95),
+    ));
+  }
+
+  Widget _buildAyanamsaDropdown() {
+    return DropdownButtonFormField<int>(
+      value: _selectedAyanamsa,
+      items: ayanamsaOptions
+          .map((opt) => DropdownMenuItem<int>(
+        value: opt['value'] as int,
+        child: Text(
+          opt['label'] as String,
+          style: GoogleFonts.poppins(color: stardustWhite),
+        ),
+      ))
+          .toList(),
+      onChanged: (val) => setState(() => _selectedAyanamsa = val ?? 1),
+      validator: (val) => val == null ? 'Required' : null,
+      decoration: InputDecoration(
+        labelText: 'Ayanamsa',
+        helperText: 'Lahiri = 1, Raman = 3, KP = 5',
+        helperStyle: GoogleFonts.poppins(color: lunarSilver, fontSize: 12),
+        labelStyle:
+        GoogleFonts.poppins(color: lunarSilver, fontWeight: FontWeight.w500),
+        prefixIcon: const Icon(Icons.auto_awesome, color: celestialGold),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+          BorderSide(color: celestialGold.withOpacity(0.6), width: 1.2),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: celestialGold, width: 2.5),
+        ),
+        filled: true,
+        fillColor: cosmicBlue.withOpacity(0.7),
+      ),
+      dropdownColor: cosmicBlue.withOpacity(0.95),
+    );
+  }
+
+  void _snack(String title, String message, Color backgroundColor) {
     Get.snackbar(
       title,
       message,
@@ -239,11 +293,12 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
       margin: const EdgeInsets.all(15),
       borderRadius: 12,
       icon: Icon(
-          backgroundColor == warningRed
-              ? Icons.error_outline
-              : Icons.check_circle_outline,
-          color: stardustWhite,
-          size: 28),
+        backgroundColor == warningRed
+            ? Icons.error_outline
+            : Icons.check_circle_outline,
+        color: stardustWhite,
+        size: 28,
+      ),
       snackStyle: SnackStyle.FLOATING,
       duration: const Duration(seconds: 3),
       barBlur: 5,
@@ -254,138 +309,100 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
     FocusScope.of(context).unfocus();
     const int planetPositionPrice = 599;
 
-    if (_formKey.currentState!.validate() && selectedDateTime != null) {
-      controller.isLoading(true);
+    if (!(_formKey.currentState?.validate() ?? false) ||
+        selectedDateTime == null) {
+      _snack('Required',
+          'Please select date & time and fill all required fields.',
+          warningRed);
+      return;
+    }
 
-      try {
-        // 1️⃣ Fetch wallet balance
-        final wallet = await FastAPIServices().fetchCurrentWallet();
-        if (wallet == null) {
-          _showSnackbar(
-            'Wallet Error',
+    controller.isLoading(true);
+    try {
+      // 1) Wallet
+      final wallet = await FastAPIServices().fetchCurrentWallet();
+      if (wallet == null) {
+        _snack('Wallet Error',
             'Unable to fetch wallet balance. Please try again.',
-            warningRed,
-          );
-          controller.isLoading(false);
-          return;
-        }
-
-        // 2️⃣ Check balance
-        if (wallet.amount < planetPositionPrice) {
-          final shortfall = planetPositionPrice - wallet.amount;
-          _showSnackbar(
+            warningRed);
+        return;
+      }
+      if (wallet.amount < planetPositionPrice) {
+        final shortfall = planetPositionPrice - wallet.amount;
+        _snack(
             'Insufficient Balance',
             'You need ₹${shortfall.toStringAsFixed(2)} more to access Planet Positions. Please recharge your wallet.',
-            warningRed,
-          );
-          controller.isLoading(false);
+            warningRed);
+        return;
+      }
+
+      // 2) Ensure coordinates
+      if (_latitude == null || _longitude == null) {
+        if (_placeController.text.trim().isEmpty) {
+          _snack('Location Error', 'City/Place name is required.', warningRed);
           return;
         }
-
-        // 3️⃣ Geocode if Lat/Lng are missing
-        if (_latitude == null || _longitude == null) {
-          if (_placeController.text.trim().isEmpty) {
-            _showSnackbar('Location Error', 'City/Place name is required.', warningRed);
-            controller.isLoading(false);
-            return;
-          }
-
-          try {
-            final locations = await locationFromAddress(_placeController.text.trim());
-            if (locations.isNotEmpty) {
-              _latitude = locations.first.latitude;
-              _longitude = locations.first.longitude;
-              _showSnackbar(
-                'Location Found',
-                'Successfully found coordinates for ${_placeController.text.trim()}',
-                celestialGold,
-              );
-            } else {
-              _showSnackbar(
-                'Location Error',
+        try {
+          final locations =
+          await locationFromAddress(_placeController.text.trim());
+          if (locations.isNotEmpty) {
+            _latitude = locations.first.latitude;
+            _longitude = locations.first.longitude;
+            _snack('Location Found',
+                'Found coordinates for ${_placeController.text.trim()}',
+                celestialGold);
+          } else {
+            _snack('Location Error',
                 'No precise coordinates found. Enter a valid city/town.',
-                warningRed,
-              );
-              controller.isLoading(false);
-              return;
-            }
-          } catch (e) {
-            _showSnackbar(
-              'Location Error',
-              'Failed to geocode: $e',
-              warningRed,
-            );
-            controller.isLoading(false);
+                warningRed);
             return;
           }
-        }
-
-        // 4️⃣ Deduct using debit API
-        final updatedWallet = await FastAPIServices().debitWallet(planetPositionPrice);
-
-        if (updatedWallet == null) {
-          _showSnackbar(
-            'Payment Failed',
-            'Could not deduct from wallet. Try again.',
-            warningRed,
-          );
-          controller.isLoading(false);
+        } catch (e) {
+          _snack('Location Error', 'Failed to geocode: $e', warningRed);
           return;
         }
+      }
 
-        // 5️⃣ Success
-        _showSnackbar(
+      // 3) Debit
+      final updatedWallet =
+      await FastAPIServices().debitWallet(planetPositionPrice);
+      if (updatedWallet == null) {
+        _snack('Payment Failed',
+            'Could not deduct from wallet. Try again.', warningRed);
+        return;
+      }
+      _snack(
           'Payment Successful',
           '₹${planetPositionPrice.toStringAsFixed(2)} deducted from your wallet for Planet Position.',
-          celestialGold,
-        );
+          celestialGold);
+      setState(() => _wallet = updatedWallet);
 
-        setState(() {
-          _wallet = updatedWallet;
-        });
+      // 4) Fetch Planet Positions
+      await controller.getPlanetPositions(
+        ayanamsa: _selectedAyanamsa, // 1 Lahiri, 3 Raman, 5 KP
+        latitude: _latitude!,
+        longitude: _longitude!,
+        datetime: selectedDateTime!,
+        language: controller.selectedLanguage.value,
+      );
 
-        // 6️⃣ Fetch Planet Positions
-        await controller.getPlanetPositions(
-          ayanamsa: int.parse(_ayanamsaController.text),
-          latitude: _latitude!,
-          longitude: _longitude!,
-          datetime: selectedDateTime!,
-        );
-
-        final planetData = controller.planetResponse.value;
-        if (planetData != null && planetData.planetPositions.isNotEmpty) {
-          Get.to(() => PlanetResultScreen(planetData: planetData));
-        } else {
-          _showSnackbar(
+      final planetData = controller.planetResponse.value;
+      if (planetData != null && planetData.planetPositions.isNotEmpty) {
+        Get.to(() => PlanetResultScreen(planetData: planetData));
+      } else {
+        _snack(
             'No Data',
             controller.errorMessage.value.isNotEmpty
                 ? controller.errorMessage.value
                 : 'No planet positions found. Please check your inputs.',
-            warningRed,
-          );
-        }
-      } catch (e) {
-        _showSnackbar('Unexpected Error', 'Please try again.', warningRed);
-      } finally {
-        controller.isLoading(false);
+            warningRed);
       }
-    } else {
-      if (selectedDateTime == null) {
-        _showSnackbar(
-          'Required',
-          'Please select date & time to proceed.',
-          warningRed,
-        );
-      } else {
-        _showSnackbar(
-          'Input Error',
-          'Please fill all required fields correctly.',
-          warningRed,
-        );
-      }
+    } catch (_) {
+      _snack('Unexpected Error', 'Please try again.', warningRed);
+    } finally {
+      controller.isLoading(false);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -395,15 +412,12 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(
-          "Planet Position Calculator",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w700,
-            color: stardustWhite,
-            fontSize: 22,
-            letterSpacing: 1.2,
-          ),
-        ),
+        title: Text('Planet Position Calculator',
+            style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w700,
+                color: stardustWhite,
+                fontSize: 22,
+                letterSpacing: 1.2)),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -416,17 +430,13 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              cosmicBlue,
-              darkAccent,
-              mediumAccent,
-            ],
+            colors: [cosmicBlue, darkAccent, mediumAccent],
             stops: [0.1, 0.5, 0.9],
           ),
         ),
         child: SingleChildScrollView(
           padding:
-              EdgeInsets.only(left: 25, right: 25, bottom: 25, top: topPadding),
+          EdgeInsets.only(left: 25, right: 25, bottom: 25, top: topPadding),
           child: Column(
             children: [
               Card(
@@ -444,59 +454,41 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          "Enter Calculation Details",
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: celestialGold,
-                            letterSpacing: 1.2,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 4,
-                                offset: const Offset(1, 1),
-                              ),
-                            ],
-                          ),
-                        ),
+                        Text('Enter Calculation Details',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: celestialGold,
+                                letterSpacing: 1.2)),
                         const SizedBox(height: 30),
-                        _buildThemedTextFormField(
-                          controller: _ayanamsaController,
-                          labelText: "Ayanamsa (1-20)",
-                          icon: Icons.auto_awesome,
-                          keyboardType: TextInputType.number,
-                          validator: (val) {
-                            if (val == null || val.isEmpty) return "Required";
-                            if (int.tryParse(val) == null ||
-                                int.parse(val) < 1 ||
-                                int.parse(val) > 20) {
-                              return "Enter a number between 1 and 20";
-                            }
-                            return null;
-                          },
-                        ),
+
+                        // Ayanamsa dropdown (required)
+                        _buildAyanamsaDropdown(),
                         const SizedBox(height: 20),
+
+                        // Language dropdown
+                        _buildLangDropdown(),
+                        const SizedBox(height: 20),
+
+                        // City with suggestions
                         StatefulBuilder(
                           builder: (context, setStateSB) {
                             return Column(
                               children: [
                                 _buildThemedTextFormField(
                                   controller: _placeController,
-                                  labelText: "City/Place Name",
+                                  labelText: 'City/Place Name',
                                   icon: Icons.location_on,
-                                  validator: (val) =>
-                                      val == null || val.trim().isEmpty
-                                          ? "Location is required"
-                                          : null,
+                                  validator: (val) => val == null ||
+                                      val.trim().isEmpty
+                                      ? 'Location is required'
+                                      : null,
                                   enableSuggestions: true,
                                   focusNode: _placeFocusNode,
-                                  onSuggestionsUpdated: (newSuggestions) {
-                                    setStateSB(() {
-                                      _suggestions = newSuggestions;
-                                    });
-                                  },
+                                  onSuggestionsUpdated: (newSuggestions) =>
+                                      setStateSB(
+                                              () => _suggestions = newSuggestions),
                                 ),
                                 if (_suggestions.isNotEmpty &&
                                     _placeFocusNode.hasFocus)
@@ -506,20 +498,20 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
                                           color:
-                                              celestialGold.withOpacity(0.4)),
+                                          celestialGold.withOpacity(0.4)),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.3),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 4),
-                                        ),
+                                            color:
+                                            Colors.black.withOpacity(0.3),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4))
                                       ],
                                     ),
                                     margin: const EdgeInsets.only(top: 8),
                                     constraints: BoxConstraints(
                                         maxHeight:
-                                            MediaQuery.of(context).size.height *
-                                                0.35),
+                                        MediaQuery.of(context).size.height *
+                                            0.35),
                                     child: ListView.builder(
                                       shrinkWrap: true,
                                       padding: EdgeInsets.zero,
@@ -527,17 +519,15 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
                                       itemBuilder: (context, index) {
                                         final item = _suggestions[index];
                                         return ListTile(
-                                          title: Text(
-                                            item.displayName,
-                                            style: GoogleFonts.poppins(
-                                                color: stardustWhite,
-                                                fontSize: 15),
-                                          ),
+                                          title: Text(item.displayName,
+                                              style: GoogleFonts.poppins(
+                                                  color: stardustWhite,
+                                                  fontSize: 15)),
                                           trailing: Icon(
                                               Icons.arrow_forward_ios,
                                               size: 16,
-                                              color:
-                                                  lunarSilver.withOpacity(0.7)),
+                                              color: lunarSilver
+                                                  .withOpacity(0.7)),
                                           onTap: () {
                                             _placeController.text =
                                                 item.displayName;
@@ -546,9 +536,9 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
                                             _longitude =
                                                 double.tryParse(item.lon);
                                             setStateSB(
-                                                () => _suggestions.clear());
+                                                    () => _suggestions.clear());
                                             _placeFocusNode.unfocus();
-                                            _showSnackbar(
+                                            _snack(
                                                 'Location Selected',
                                                 'Selected: ${item.displayName}',
                                                 celestialGold);
@@ -562,86 +552,78 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
                           },
                         ),
                         const SizedBox(height: 20),
+
+                        // Date & Time
                         _buildThemedTextFormField(
                           controller: _datetimeController,
-                          labelText: "Date & Time",
+                          labelText: 'Date & Time',
                           icon: Icons.calendar_today,
                           readOnly: true,
                           onTap: _pickDateTime,
                           suffixIcon: IconButton(
-                            icon: const Icon(Icons.edit,
-                                color: lunarSilver, size: 24),
-                            onPressed: _pickDateTime,
-                          ),
-                          validator: (val) => val == null || val.isEmpty
-                              ? "Select a date & time"
+                              icon: const Icon(Icons.edit,
+                                  color: lunarSilver, size: 24),
+                              onPressed: _pickDateTime),
+                          validator: (val) =>
+                          val == null || val.isEmpty
+                              ? 'Select a date & time'
                               : null,
                         ),
                         const SizedBox(height: 30),
-                        Obx(() {
-                          return SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: controller.isLoading.value ? null : _submit,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: celestialGold,
-                                foregroundColor: cosmicBlue,
-                                padding: const EdgeInsets.symmetric(vertical: 18),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 8,
-                                shadowColor: celestialGold.withOpacity(0.5),
-                              ),
-                              child: controller.isLoading.value
-                                  ? Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const SizedBox(
+
+                        // Submit
+                        Obx(() => SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: controller.isLoading.value
+                                ? null
+                                : _submit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: celestialGold,
+                              foregroundColor: cosmicBlue,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 18),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                  BorderRadius.circular(12)),
+                              elevation: 8,
+                              shadowColor:
+                              celestialGold.withOpacity(0.5),
+                            ),
+                            child: controller.isLoading.value
+                                ? Row(
+                              mainAxisAlignment:
+                              MainAxisAlignment.center,
+                              children: const [
+                                SizedBox(
                                     width: 24,
                                     height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 3,
-                                      color: cosmicBlue,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 15),
-                                  Text(
-                                    "Calculating...",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 18,
-                                      color: cosmicBlue,
-                                    ),
-                                  ),
-                                ],
-                              )
-                                  : Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    "Calculate Planet Positions",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: cosmicBlue,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "₹599 + GST",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: cosmicBlue,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                    child:
+                                    CircularProgressIndicator(
+                                        strokeWidth: 3,
+                                        color: cosmicBlue)),
+                                SizedBox(width: 15),
+                                Text('Calculating...'),
+                              ],
                             )
-                          );
-                        })
-
-
+                                : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Calculate Planet Positions',
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: cosmicBlue)),
+                                const SizedBox(height: 4),
+                                Text('₹599 + GST',
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: cosmicBlue)),
+                              ],
+                            ),
+                          ),
+                        )),
                       ],
                     ),
                   ),
@@ -649,26 +631,20 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
               ),
               const SizedBox(height: 30),
               Text(
-                "Note: This calculation uses advanced astrological algorithms to determine planetary positions based on your provided details.",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  color: lunarSilver,
-                  fontStyle: FontStyle.italic,
-                  fontSize: 14,
-                ),
-              ),
-              // NEW ADDITION: NASA Note
-              const SizedBox(height: 10), // Some spacing
+                  'Note: This calculation uses advanced astrological algorithms to determine planetary positions based on your provided details.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                      color: lunarSilver,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 14)),
+              const SizedBox(height: 10),
               Text(
-                "Additional Note: The planetary position data utilized in this calculation is sourced from NASA's highly accurate astronomical algorithms.",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  color:
-                      lunarSilver.withOpacity(0.8), // Slightly less prominent
-                  fontStyle: FontStyle.italic,
-                  fontSize: 13, // Slightly smaller font size
-                ),
-              ),
+                  'Additional Note: The planetary position data utilized in this calculation is sourced from NASA\'s highly accurate astronomical algorithms.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                      color: lunarSilver.withOpacity(0.8),
+                      fontStyle: FontStyle.italic,
+                      fontSize: 13)),
             ],
           ),
         ),

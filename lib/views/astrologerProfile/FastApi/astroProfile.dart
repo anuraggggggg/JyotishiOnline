@@ -18,6 +18,8 @@ class AstrologerDetailPage extends StatefulWidget {
 
 class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
   late Future<Astrologer> astrologerFuture;
+
+  /// We keep this as 10 to represent one billing block, but we DO NOT multiply price by this anymore.
   final int _defaultDurationMins = 10;
 
   // Optional debug holders
@@ -250,8 +252,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             icon: Icons.attach_money_outlined,
             child: Column(
               children: [
-                _buildProfileRow('Audio Call', _rateOrNA(astrologer.audioCallCharge, suffix: '/min')),
-                _buildProfileRow('Video Call', _rateOrNA(astrologer.videoCallCharge, suffix: '/min')),
+                _buildProfileRow('Audio Call', _rateOrNA(astrologer.audioCallCharge, suffix: '/10 min')), // ⬅️ changed
+                _buildProfileRow('Video Call', _rateOrNA(astrologer.videoCallCharge, suffix: '/10 min')), // ⬅️ changed
                 _buildProfileRow('Chat', _rateOrNA(astrologer.chatCharge, suffix: '/message')),
                 if (astrologer.monthlyEarning != null && astrologer.monthlyEarning!.isNotEmpty)
                   _buildProfileRow('Monthly Earnings', '₹ ${astrologer.monthlyEarning}'),
@@ -281,7 +283,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               icon: Icons.audiotrack,
               title: 'Audio Call',
               subtitle: 'Clear voice consultation',
-              price: _priceLabel(astrologer.audioCallCharge, '/min'),
+              price: _priceLabel(astrologer.audioCallCharge, '/10 min'), // ⬅️ changed
               features: ['Best for quick guidance', 'Uninterrupted connection'],
               disabled: !hasAudio,
               onTap: () => _showCallRequestDialog(astrologer, 'Audio'),
@@ -291,7 +293,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               icon: Icons.videocam,
               title: 'Video Call',
               subtitle: 'Face-to-face consultation',
-              price: _priceLabel(astrologer.videoCallCharge, '/min'),
+              price: _priceLabel(astrologer.videoCallCharge, '/10 min'), // ⬅️ changed
               features: ['Better understanding', 'Screen sharing'],
               disabled: !hasVideo,
               onTap: () => _showCallRequestDialog(astrologer, 'Video'),
@@ -387,9 +389,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 4))]),
       child: Row(
         children: [
-          Expanded(child: _buildFAB(icon: Icons.audiotrack, label: 'Audio Call', price: _priceLabel(astrologer.audioCallCharge, '/min'), onPressed: hasAudio ? () => _showCallRequestDialog(astrologer, 'Audio') : null, color: Colors.blue)),
+          Expanded(child: _buildFAB(icon: Icons.audiotrack, label: 'Audio Call', price: _priceLabel(astrologer.audioCallCharge, '/10 min'), onPressed: hasAudio ? () => _showCallRequestDialog(astrologer, 'Audio') : null, color: Colors.blue)), // ⬅️ changed
           const SizedBox(width: 12),
-          Expanded(child: _buildFAB(icon: Icons.videocam, label: 'Video Call', price: _priceLabel(astrologer.videoCallCharge, '/min'), onPressed: hasVideo ? () => _showCallRequestDialog(astrologer, 'Video') : null, color: Colors.green)),
+          Expanded(child: _buildFAB(icon: Icons.videocam, label: 'Video Call', price: _priceLabel(astrologer.videoCallCharge, '/10 min'), onPressed: hasVideo ? () => _showCallRequestDialog(astrologer, 'Video') : null, color: Colors.green)), // ⬅️ changed
           const SizedBox(width: 12),
           Expanded(child: _buildFAB(icon: Icons.chat, label: 'Chat', price: _priceLabel(astrologer.chatCharge, '/message'), onPressed: hasChat ? () => _showCallRequestDialog(astrologer, 'Chat') : null, color: Colors.orange)),
         ],
@@ -491,9 +493,10 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
         ? astrologer.videoCallCharge
         : astrologer.chatCharge;
 
-    final bool pricedPerMinute = isAudio || isVideo;
+    // For audio/video we bill per 10-minute block at `rate`. Chat is per message.
+    final bool pricedPerTenMinBlock = isAudio || isVideo;
 
-    _d("🟡 openSheet type=$callType (pricedPerMinute=$pricedPerMinute) rate=$rate");
+    _d("🟡 openSheet type=$callType (per10min=$pricedPerTenMinBlock) rate=$rate");
 
     showModalBottomSheet(
       context: pageContext,
@@ -515,17 +518,23 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                 Text('with ${astrologer.name}', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
                 const SizedBox(height: 24),
 
-                // Amount card
+                // Amount card — debit ONE 10-min block for audio/video (no multiplication)
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: appColor.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: appColor.withOpacity(0.1))),
+                  decoration: BoxDecoration(
+                    color: appColor.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: appColor.withOpacity(0.1)),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(pricedPerMinute ? 'Total Amount (${_defaultDurationMins} min)' : 'Amount (per message)',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
                       Text(
-                        pricedPerMinute ? '₹ ${(rate * _defaultDurationMins).toStringAsFixed(0)}' : '₹ ${rate.toStringAsFixed(0)}',
+                        pricedPerTenMinBlock ? 'Amount to Debit (10 min)' : 'Amount',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                      ),
+                      Text(
+                        '₹ ${rate.toStringAsFixed(0)}',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: appColor),
                       ),
                     ],
@@ -543,7 +552,10 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                       padding: EdgeInsets.symmetric(vertical: 2),
                       child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
                     )
-                        : const Text("Send Request", style: TextStyle(color: Colors.white)),
+                        : Text(
+                      pricedPerTenMinBlock ? "Pay & Start (10 min)" : "Pay & Start",
+                      style: const TextStyle(color: Colors.white),
+                    ),
                     onPressed: _isProcessing
                         ? null
                         : () async {
@@ -569,10 +581,11 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                         }
                         _d("✅ mappedSessionType=$mappedSessionType");
 
-                        // Calculate amount
-                        final double rawAmount = pricedPerMinute ? (rate * _defaultDurationMins) : rate;
-                        final int amountToCharge = rawAmount.ceil();
-                        _d("💰 amount calc: rate=$rate mins=$_defaultDurationMins pricedPerMinute=$pricedPerMinute → charge=₹$amountToCharge");
+                        // 🔑 Debit exactly 1 block for audio/video; chat as given
+                        final double rawAmount = rate; // NO MULTIPLICATION
+                        final int amountToCharge = rawAmount.round(); // e.g., 250
+
+                        _d("💰 amount calc: rate=$rate per ${pricedPerTenMinBlock ? '10min' : 'message'} → charge=₹$amountToCharge");
 
                         if (amountToCharge <= 0) {
                           _d("⛔ amountToCharge<=0 → abort");

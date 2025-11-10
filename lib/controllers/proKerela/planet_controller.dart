@@ -1,64 +1,86 @@
-// planet_controller.dart
 import 'package:get/get.dart';
 
 import '../../apiManager/apiServices.dart';
 import '../../model/proKerla/planetPositionModel.dart';
 
+/// GetX controller for Prokerala Planet Position feature.
+/// - Holds loading/error/data state
+/// - Keeps selected language observable (en/hi/ta/te/ml)
+/// - Calls ApiService.fetchPlanetPosition with all required params
 class PlanetController extends GetxController {
-  var isLoading = false.obs;
-  var planetResponse = Rxn<PlanetPositionModel>();
-  var errorMessage =
-      ''.obs; // <--- ADD THIS LINE: Defines the observable for error messages
+  final ApiService _api = ApiService();
 
+  /// UI/state
+  final isLoading = false.obs;
+  final errorMessage = ''.obs;
+  final planetResponse = Rxn<PlanetPositionModel>();
+
+  /// Language used for `la` param. Supported: en, hi, ta, te, ml
+  final selectedLanguage = 'en'.obs;
+
+  /// Optional: set language safely (falls back to 'en' if not supported)
+  void setLanguage(String lang) {
+    const supported = {'en', 'hi', 'ta', 'te', 'ml'};
+    selectedLanguage.value = supported.contains(lang) ? lang : 'en';
+  }
+
+  /// Clears current data & errors (useful when user edits inputs)
+  void reset() {
+    errorMessage.value = '';
+    planetResponse.value = null;
+  }
+
+  /// Fetch planet positions from Prokerala API.
+  ///
+  /// ayanamsa:
+  ///   1 → Lahiri, 3 → Raman, 5 → KP (per Prokerala docs)
+  /// coordinates:
+  ///   latitude, longitude
+  /// datetime:
+  ///   full DateTime; ApiService will encode as ISO8601 with zone
+  /// language:
+  ///   en/hi/ta/te/ml (default from [selectedLanguage])
+  /// planets:
+  ///   optional comma-separated planet id list, e.g. "0,1,100,102"
   Future<void> getPlanetPositions({
     required int ayanamsa,
     required double latitude,
     required double longitude,
     required DateTime datetime,
-    String language = 'en',
+    String? language,
     String? planets,
   }) async {
     try {
-      isLoading(true);
-      errorMessage.value =
-          ''; // <--- CLEAR previous error message at the start of a new attempt
+      isLoading.value = true;
+      errorMessage.value = '';
 
-      final response = await ApiService().fetchPlanetPosition(
+      // Guard ayanamsa range (keep wide to match your UI; Prokerala commonly uses 1,3,5)
+      if (ayanamsa < 1 || ayanamsa > 20) {
+        throw ArgumentError('Ayanamsa must be between 1 and 20.');
+      }
+
+      final result = await _api.fetchPlanetPosition(
         ayanamsa: ayanamsa,
         latitude: latitude,
         longitude: longitude,
         datetime: datetime,
-        language: language,
+        language: (language ?? selectedLanguage.value),
         planets: planets,
       );
 
-      // It's good practice to check if the response itself is valid/not-null,
-      // and if it contains meaningful data (e.g., planetPositions is not empty).
-      // Your model might have a 'status' field too, similar to DetailedKundliModel.
-      // Assuming planetPositions is the primary indicator of success for this API.
-      if (response != null && response.planetPositions.isNotEmpty) {
-        print(
-            "✅ API response parsed: ${response.planetPositions.length} planets found.");
-        planetResponse.value = response;
-      } else {
-        // Handle cases where API call was successful but returned no data or an empty list
+      if (result.planetPositions.isEmpty) {
+        planetResponse.value = null;
         errorMessage.value =
-            'No planet position data received for the given inputs. Please verify the details.';
-        planetResponse.value = null; // Clear any old data
-        print(
-            "⚠️ API response received, but no planet positions found or response was null.");
+        'No planet positions found for the given inputs. Please check place/date/time.';
+        return;
       }
+
+      planetResponse.value = result;
     } catch (e) {
-      // <--- CATCH and SET the error message here
-      errorMessage.value = 'Failed to fetch planet positions: ${e.toString()}';
-      planetResponse.value = null; // Ensure data is cleared on error
-      print("❌ Error fetching planet positions: $e");
-      // No rethrow needed if you are handling the error by setting errorMessage.
-      // Rethrowing would just propagate the error up, possibly crashing the UI
-      // if not caught there, and would prevent the 'finally' block from running
-      // if the error is caught at a higher level without an explicit rethrow.
+      planetResponse.value = null;
+      errorMessage.value = 'Failed to fetch planet positions: $e';
     } finally {
-      isLoading(false); // Always stop loading
+      isLoading.value = false;
     }
   }
 }

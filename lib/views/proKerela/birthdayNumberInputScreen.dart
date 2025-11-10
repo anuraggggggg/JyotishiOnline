@@ -93,7 +93,7 @@ class _BirthdayNumberInputScreenState extends State<BirthdayNumberInputScreen> {
   }
 
   void _submit() async {
-    const int birthdayNumberPrice = 599;
+    const int birthdayNumberPrice = 100;
 
     try {
       // 1️⃣ Fetch wallet balance
