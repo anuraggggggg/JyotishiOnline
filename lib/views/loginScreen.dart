@@ -11,6 +11,7 @@ import 'package:AstrowayCustomer/utils/images.dart';
 import 'package:AstrowayCustomer/views/loginWithEmailScreen.dart';
 import 'package:AstrowayCustomer/views/verifyPhoneScreen.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/gestures.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,6 +19,8 @@ import 'package:get/get.dart';
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
+
+import 'newSignUp.dart';
 
 class LoginScreen extends StatefulWidget {
   LoginScreen({Key? key}) : super(key: key);
@@ -362,7 +365,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                             color: Colors
                                                 .blue, // or your desired color
                                           ),
-                                        ),
+    recognizer: TapGestureRecognizer()
+    ..onTap = () {
+      Get.to(() => const SignupWithEmailScreen());
+    }),
                                       ],
                                     ),
                                   ),

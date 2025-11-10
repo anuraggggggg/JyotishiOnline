@@ -3,6 +3,7 @@ import 'package:AstrowayCustomer/model/fastApiModel/currentUserWalletModel.dart'
 import 'package:AstrowayCustomer/theme/appTheme.dart';
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class RechargeWalletScreen extends StatefulWidget {
   @override
@@ -29,35 +30,28 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
     _fetchAllData();
   }
 
-  /// 🔹 Fetch Wallet Balance + All Wallet Details
   void _fetchAllData() async {
     try {
       final wallet = await FastAPIServices().fetchCurrentWallet();
       setState(() {
         _wallet = wallet;
       });
-
-      final wallets = await FastAPIServices().getAllWalletDetails();
-      for (var w in wallets) {
-        debugPrint("Wallet: $w");
-      }
     } catch (e) {
       debugPrint("❌ Error fetching wallet data: $e");
     }
   }
 
-  /// 🔹 Razorpay Checkout
   void _openCheckout() {
     if (_selectedAmount == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select an amount")),
+        SnackBar(content: Text("Please select an amount".tr())),
       );
       return;
     }
 
     var options = {
-      'key': 'rzp_live_OgYPmBDL7Q7dZS', // TODO: replace with your Razorpay key
-      'amount': _selectedAmount! * 100, // in paise
+      'key': 'rzp_live_OgYPmBDL7Q7dZS',
+      'amount': _selectedAmount! * 100,
       'name': 'Wallet Recharge',
       'description': 'Adding money to wallet',
       'prefill': {
@@ -76,18 +70,16 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
     }
   }
 
-  /// 🔹 On Payment Success → Update Wallet in Backend
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     if (_selectedAmount != null) {
       try {
-        // Call backend API to credit wallet
-        final updatedWallet = await FastAPIServices().creditWallet(_selectedAmount!);
+        final updatedWallet =
+        await FastAPIServices().creditWallet(_selectedAmount!);
 
         setState(() {
           _wallet = updatedWallet;
         });
 
-        // 🎉 Show a success dialog
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -113,7 +105,6 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Success Icon
                     Container(
                       width: 80,
                       height: 80,
@@ -127,24 +118,18 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                         size: 60,
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Title
-                    const Text(
-                      "Payment Successful!",
-                      style: TextStyle(
+                    Text(
+                      "Payment Successful!".tr(),
+                      style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Content
                     Text(
-                      "₹$_selectedAmount has been added to your wallet",
+                      "₹$_selectedAmount ${'has been added to your wallet'.tr()}",
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 16,
@@ -152,18 +137,16 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                         height: 1.4,
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
-                    // Transaction ID
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.grey[50],
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        "Transaction ID: ${response.paymentId}",
+                        "${'Transaction ID'.tr()}: ${response.paymentId}",
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[700],
@@ -171,16 +154,13 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
-                    // OK Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.of(context).pop(); // close dialog
-                          Navigator.of(context).pop(true); // optional: go back
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pop(true);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: appYellow,
@@ -191,9 +171,9 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          "OK",
-                          style: TextStyle(
+                        child: Text(
+                          "OK".tr(),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -209,24 +189,21 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
       } catch (e) {
         debugPrint("❌ Error updating wallet: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to update wallet balance")),
+          SnackBar(content: Text("Failed to update wallet balance".tr())),
         );
       }
     }
   }
 
-
-  /// 🔹 Payment Error
   void _handlePaymentError(PaymentFailureResponse response) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("❌ Payment Failed: ${response.message}")),
+      SnackBar(content: Text("Payment Failed".tr())),
     );
   }
 
-  /// 🔹 External Wallet
   void _handleExternalWallet(ExternalWalletResponse response) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("External Wallet Selected: ${response.walletName}")),
+      SnackBar(content: Text("External Wallet Selected".tr())),
     );
   }
 
@@ -242,9 +219,9 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: const Text(
-          "Recharge Wallet",
-          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+        title: Text(
+          "Recharge Wallet".tr(),
+          style: const TextStyle(color: textColor, fontWeight: FontWeight.bold),
         ),
         backgroundColor: appYellow,
         iconTheme: const IconThemeData(color: textColor),
@@ -256,7 +233,6 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🔹 Header Section
             Expanded(
               child: SingleChildScrollView(
                 child: Container(
@@ -272,15 +248,15 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                   ),
                   child: Column(
                     children: [
-                      const Text(
-                        "Current Wallet Balance",
-                        style: TextStyle(fontSize: 16, color: textColor),
+                      Text(
+                        "Current Wallet Balance".tr(),
+                        style: const TextStyle(fontSize: 16, color: textColor),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         _wallet != null
                             ? "₹${_wallet!.amount}"
-                            : "Loading...",
+                            : "Loading...".tr(),
                         style: const TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
@@ -294,46 +270,48 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                           color: Colors.white.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.info_outline,
-                                color: textColor, size: 18),
-                            SizedBox(width: 8),
-                            Text(
-                              "Recharge now to enjoy seamless services",
-                              style: TextStyle(color: textColor),
+                            const Icon(Icons.info_outline, color: textColor, size: 18),
+                            const SizedBox(width: 8),
+                            Flexible( // 👈 wrap Text with Flexible
+                              child: Text(
+                                "Recharge now to enjoy seamless services".tr(),
+                                style: const TextStyle(color: textColor),
+                                overflow: TextOverflow.ellipsis, // 👈 will now show “...”
+                                maxLines: 1,
+                                softWrap: false,
+                              ),
                             ),
                           ],
                         ),
                       ),
+
                     ],
                   ),
                 ),
               ),
             ),
 
-            // 🔹 Amount Selection
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Select Amount",
-                    style: TextStyle(
+                  Text(
+                    "Select Amount".tr(),
+                    style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: textColor),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    "Choose from popular amounts or enter a custom amount",
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  Text(
+                    "Choose from popular amounts or enter a custom amount".tr(),
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                   const SizedBox(height: 20),
-
-                  // 🔹 Predefined Amounts
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -364,14 +342,6 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                               isSelected ? appYellow : Colors.grey[300]!,
                               width: 1.5,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                spreadRadius: 1,
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -404,48 +374,12 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                       );
                     },
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // 🔹 Custom Amount Field
-                  // const Text(
-                  //   "Or enter custom amount",
-                  //   style: TextStyle(
-                  //       fontSize: 16,
-                  //       fontWeight: FontWeight.w600,
-                  //       color: textColor),
-                  // ),
-                  // const SizedBox(height: 12),
-                  // TextField(
-                  //   controller: _customAmountController,
-                  //   keyboardType: TextInputType.number,
-                  //   decoration: InputDecoration(
-                  //     prefixIcon: const Icon(Icons.currency_rupee, size: 20),
-                  //     hintText: "Enter amount",
-                  //     border: OutlineInputBorder(
-                  //       borderRadius: BorderRadius.circular(12),
-                  //       borderSide: BorderSide(color: Colors.grey[300]!),
-                  //     ),
-                  //     focusedBorder: OutlineInputBorder(
-                  //       borderRadius: BorderRadius.circular(12),
-                  //       borderSide: BorderSide(color: appYellow, width: 1.5),
-                  //     ),
-                  //   ),
-                  //   onChanged: (value) {
-                  //     if (value.isNotEmpty) {
-                  //       setState(() {
-                  //         _selectedAmount = int.tryParse(value);
-                  //       });
-                  //     }
-                  //   },
-                  // ),
                 ],
               ),
             ),
 
             const Spacer(),
 
-            // 🔹 Proceed Button
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -467,8 +401,8 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text("Amount to pay:",
-                              style: TextStyle(
+                          Text("Amount to pay:".tr(),
+                              style: const TextStyle(
                                   fontSize: 16, color: Colors.black54)),
                           Text(
                             "₹$_selectedAmount",
@@ -492,16 +426,17 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                       elevation: 0,
                     ),
                     onPressed: _openCheckout,
-                    child: const Text(
-                      "Proceed to Payment",
-                      style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    child: Text(
+                      "Proceed to Payment".tr(),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    "Secure payment powered by Razorpay",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  Text(
+                    "Secure payment powered by Razorpay".tr(),
+                    style:
+                    const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),

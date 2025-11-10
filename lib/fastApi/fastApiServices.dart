@@ -165,6 +165,111 @@ class FastAPIServices {
 
 
 
+  /// 🔹 Signup With Details (multipart/form-data)
+  /// Creates User, CustomerDetail, and UserWallet in a single request.
+  Future<Map<String, dynamic>?> signupWithDetails({
+    required String name,
+    required String contactNo,
+    required String countryCode,
+    required String email,
+    required String password,
+    required int pincode,
+    String? birthDate,
+    String? birthTime,
+    String? birthPlace,
+    String? addressLine1,
+    String? addressLine2,
+    String? location,
+    String? gender,
+    String? profile,
+    String? fcmToken,
+    String? token,
+    String? profilePicPath, // optional local file path for image
+  }) async {
+    final url = Uri.parse(FastApiEndpoints.signupWithDetails);
+
+    try {
+      final request = http.MultipartRequest('POST', url)
+        ..headers['accept'] = 'application/json';
+
+      // ✅ Required fields
+      request.fields['name'] = name;
+      request.fields['contactNo'] = contactNo;
+      request.fields['countryCode'] = countryCode;
+      request.fields['email'] = email;
+      request.fields['password'] = password;
+      request.fields['pincode'] = pincode.toString();
+
+      // ✅ Optional fields
+      if (birthDate != null) request.fields['birthDate'] = birthDate;
+      if (birthTime != null) request.fields['birthTime'] = birthTime;
+      if (birthPlace != null) request.fields['birthPlace'] = birthPlace;
+      if (addressLine1 != null) request.fields['addressLine1'] = addressLine1;
+      if (addressLine2 != null) request.fields['addressLine2'] = addressLine2;
+      if (location != null) request.fields['location'] = location;
+      if (gender != null) request.fields['gender'] = gender;
+      if (profile != null) request.fields['profile'] = profile;
+      if (fcmToken != null) request.fields['fcm_token'] = fcmToken;
+      if (token != null) request.fields['token'] = token;
+
+      // ✅ Optional image upload
+      if (profilePicPath != null && profilePicPath.isNotEmpty) {
+        final file = File(profilePicPath);
+        if (await file.exists()) {
+          request.files.add(await http.MultipartFile.fromPath('profile_pic', profilePicPath));
+          debugPrint("🖼️ Profile picture attached: $profilePicPath");
+        } else {
+          debugPrint("⚠️ Profile picture not found at path: $profilePicPath");
+        }
+      }
+
+      debugPrint("🚀 Sending signup request → $url");
+      debugPrint("🧾 Fields: ${request.fields}");
+
+      // Send request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      debugPrint("📡 Response Status: ${response.statusCode}");
+      debugPrint("📦 Response Body: ${response.body}");
+
+      // ✅ Handle success
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+
+        // Automatically save credentials if token is returned
+        if (data is Map && data.containsKey("access_token")) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString("access_token", data["access_token"]);
+          if (data["user"]?["id"] != null) {
+            await prefs.setString("user_id", data["user"]["id"].toString());
+          }
+          debugPrint("🔐 Credentials saved locally after signup!");
+        }
+
+        debugPrint("✅ Signup Successful!");
+        return data;
+      } else {
+        debugPrint("❌ Signup Failed (${response.statusCode}) → ${response.body}");
+        try {
+          final error = jsonDecode(response.body);
+          return {"error": true, "message": error["detail"] ?? "Signup failed"};
+        } catch (_) {
+          return {"error": true, "message": "Unexpected error occurred"};
+        }
+      }
+    } catch (e) {
+      debugPrint("💥 Signup Exception: $e");
+      return {"error": true, "message": e.toString()};
+    }
+  }
+
+
+
+
+
+
+
 
   // ---------------- FETCH CUSTOMER NOTIFICATIONS ----------------
   // Helper to load credentials

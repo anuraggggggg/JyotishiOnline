@@ -5,6 +5,8 @@ import 'package:AstrowayCustomer/theme/appTheme.dart';
 import 'package:AstrowayCustomer/views/homeScreen.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 
+import 'newSignUp.dart';
+
 class LoginWithEmailScreen extends StatefulWidget {
   const LoginWithEmailScreen({super.key});
 
@@ -135,7 +137,7 @@ class _LoginWithEmailScreenState extends State<LoginWithEmailScreen> {
                       const SizedBox(height: 16),
 
                       TextButton(
-                        onPressed: () => Get.to(() => LoginScreen()),
+                        onPressed: () => Get.to(() => SignupWithEmailScreen()),
                         child: const Text(
                           "Don't have an account? Sign Up",
                           style: TextStyle(color: Colors.blue),

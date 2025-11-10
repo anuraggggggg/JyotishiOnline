@@ -160,4 +160,12 @@ class FastApiEndpoints {
       "$fastApiBaseUrl/api/v1/admin/admin/users/"; // Append user_id + "/payments"
   static const String adminGetAllPayments =
       "$fastApiBaseUrl/api/v1/admin/admin/payments";
+
+
+
+  /// 🔹 Signup With Full Details (creates User, CustomerDetail & Wallet)
+  static const String signupWithDetails =
+      "$fastApiBaseUrl/api/v1/user-signup-with-details";
+
+
 }

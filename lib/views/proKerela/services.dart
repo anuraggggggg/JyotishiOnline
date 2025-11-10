@@ -14,41 +14,35 @@ import 'package:google_fonts/google_fonts.dart';
 class AstrologyServicesPage extends StatelessWidget {
   final List<Map<String, dynamic>> services = [
     {
-      'title': 'Daily Panchang',
-      'icon': Icons.wb_sunny,
-      "subtitletitleinMalayam": "ദൈനംദിന പഞ്ചാംഗം",
+      'title': 'Daily\nHoroscope',
+      'icon': Icons.calendar_month,
       'price': 100,
     },
     {
-      'title': 'Detailed Kundli',
+      'title': 'Detailed\nKundli',
       'icon': Icons.auto_stories,
-      "subtitletitleinMalayam": "വിശദമായ കുണ്ഡലി",
       'price': 599,
     },
     {
-      "title": "Daily Horoscope",
-      "icon": Icons.calendar_month,
-      "subtitletitleinMalayam": "ദൈനംദിന ജാതകം",
+      'title': 'Daily\nPrediction',
+      'icon': Icons.wb_sunny,
       'price': 100,
     },
     {
-      "title": "Planet Position",
-      "icon": Icons.star_outline,
-      "subtitletitleinMalayam": "ഗ്രഹങ്ങളുടെ സ്ഥാനം",
+      'title': 'Planet\nPosition',
+      'icon': Icons.star_outline,
       'price': 599,
     },
     {
-      "title": "Love Compatibility",
-      "icon": Icons.favorite_rounded,
-      "subtitletitleinMalayam": "പ്രണയ അനുയോജ്യത",
+      'title': 'Love\nCompatibility',
+      'icon': Icons.favorite_rounded,
       'price': 599,
     },
     {
-      "title": "Numerology",
-      "icon": Icons.numbers,
-      "subtitletitleinMalayam": "സംഖ്യാശാസ്ത്രം",
+      'title': 'Birthday\nNumber',
+      'icon': Icons.numbers,
       'price': 100,
-    }
+    },
   ];
 
   @override
@@ -71,7 +65,7 @@ class AstrologyServicesPage extends StatelessWidget {
             fontSize: 24,
             letterSpacing: 1.2,
           ),
-        ),
+        ).tr(),
         backgroundColor: cosmicBlue,
         elevation: 0,
         iconTheme: const IconThemeData(color: stardustWhite, size: 28),
@@ -96,31 +90,31 @@ class AstrologyServicesPage extends StatelessWidget {
               crossAxisCount: 2,
               mainAxisSpacing: 25,
               crossAxisSpacing: 25,
-              // *** KEY CHANGE HERE: Make cards taller to prevent overflow ***
-              childAspectRatio:
-                  0.75, // Decreased from 0.85 to give more vertical space
+              childAspectRatio: 0.75,
             ),
             itemBuilder: (context, index) {
               final service = services[index];
               return GestureDetector(
                 onTap: () {
-                  if (service['title'] == 'Daily Panchang') {
+                  final title = service['title'];
+
+                  if (title == 'Daily\nPrediction') {
                     Get.to(() => DailyPanchangScreen());
-                  } else if (service['title'] == 'Detailed Kundli') {
+                  } else if (title == 'Detailed\nKundli') {
                     Get.to(() => KundliInputScreen());
-                  } else if (service['title'] == 'Daily Horoscope') {
+                  } else if (title == 'Daily\nHoroscope') {
                     Get.to(() => DailyPredictionInputScreen());
-                  } else if (service['title'] == "Planet Position") {
+                  } else if (title == 'Planet\nPosition') {
                     Get.to(() => PlanetInputScreen());
-                  } else if (service['title'] == "Love Compatibility") {
+                  } else if (title == 'Love\nCompatibility') {
                     Get.to(() => LoveCompatibilityInputScreen());
-                  } else if (service["title"] == "Numerology") {
+                  } else if (title == 'Birthday\nNumber') {
                     Get.to(() => BirthdayNumberInputScreen());
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                          content:
-                              Text('"${service['title']}" is coming soon!')),
+                        content: Text('"${service['title']}" is coming soon!'),
+                      ),
                     );
                   }
                 },
@@ -140,51 +134,27 @@ class AstrologyServicesPage extends StatelessWidget {
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      // You can also add `crossAxisAlignment: CrossAxisAlignment.stretch` if you want content to fill horizontally more
                       children: [
                         Icon(
                           service['icon'],
-                          size:
-                              50, // Slightly reduced icon size for more breathing room
+                          size: 50,
                           color: celestialGold,
                         ),
-                        const SizedBox(height: 12), // Adjusted spacing
+                        const SizedBox(height: 12),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: Text(
                             service['title'].toString(),
                             textAlign: TextAlign.center,
                             style: GoogleFonts.poppins(
-                              fontSize:
-                                  15, // Slightly reduced font size for main title
+                              fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: stardustWhite,
                               letterSpacing: 0.5,
                             ),
-                          ),
+                          ).tr(),
                         ),
-                        if (service['subtitletitleinMalayam'] != null)
-                          Column(
-                            children: [
-                              const SizedBox(height: 3), // Adjusted spacing
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8.0),
-                                child: Text(
-                                  service['subtitletitleinMalayam'].toString(),
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.poppins(
-                                    fontSize:
-                                        11, // Slightly reduced font size for subtitle
-                                    fontWeight: FontWeight.w500,
-                                    color: lunarSilver,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        const SizedBox(height: 12), // Spacing before price
+                        const SizedBox(height: 12),
                         if (service['price'] != null)
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -194,8 +164,9 @@ class AstrologyServicesPage extends StatelessWidget {
                               color: celestialGold.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                  color: celestialGold.withOpacity(0.4),
-                                  width: 0.8),
+                                color: celestialGold.withOpacity(0.4),
+                                width: 0.8,
+                              ),
                             ),
                             child: Column(
                               children: [
