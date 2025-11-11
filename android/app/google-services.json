@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "920965747099",
-    "project_id": "new-jyotishi-user",
-    "storage_bucket": "new-jyotishi-user.firebasestorage.app"
+    "project_number": "595491914581",
+    "project_id": "jyotishi-user",
+    "storage_bucket": "jyotishi-user.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:920965747099:android:6e5f5dff0ad8275de7513e",
+        "mobilesdk_app_id": "1:595491914581:android:96a42c72a7ad8f0020a5dc",
         "android_client_info": {
-          "package_name": "com.astrowaydiploy.user"
+          "package_name": "com.jyotishi.user"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBfubQ5X7z_VMxRHs5PURDBpZBsq0oeWyw"
+          "current_key": "AIzaSyBJIbMAZeSJGpGSL4GZYDAflHm3mcHhiqQ"
         }
       ],
       "services": {

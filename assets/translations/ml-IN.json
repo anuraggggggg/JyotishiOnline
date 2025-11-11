@@ -44,7 +44,9 @@
   "Please select an amount": "ദയവായി ഒരു തുക തിരഞ്ഞെടുക്കുക",
   "Current Wallet Balance": "നിലവിലെ വാലറ്റ് ബാലൻസ്",
   "Loading...": "ലോഡുചെയ്യുന്നു...",
-  "Recharge now to enjoy seamless services": "നിരന്തര സേവനങ്ങൾ ആസ്വദിക്കാൻ ഇപ്പോൾ റീചാർജ് ചെയ്യൂ"
-
-
+  "Recharge now to enjoy seamless services": "നിരന്തര സേവനങ്ങൾ ആസ്വദിക്കാൻ ഇപ്പോൾ റീചാർജ് ചെയ്യൂ",
+  "Disclaimer": "മുന്നറിയിപ്പ്",
+  "The platform will not be held responsible for any financial transactions conducted outside the platform with the astrologer.": "പ്ലാറ്റ്‌ഫോമിന് പുറത്തായി ജ്യോതിഷിയുമായി നടത്തുന്ന സാമ്പത്തിക ഇടപാടുകൾക്ക് ഈ പ്ലാറ്റ്‌ഫോം ഉത്തരവാദിയല്ല.",
+  "Cancel": "റദ്ദാക്കുക",
+  "I Accept": "ഞാൻ അംഗീകരിക്കുന്നു"
 }

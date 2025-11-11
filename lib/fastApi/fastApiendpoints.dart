@@ -83,7 +83,7 @@ class FastApiEndpoints {
   // ---------------- CURRENT USER DETAILS ----------------
 
   static String currentUserDetails(String userId) =>
-      "$fastApiBaseUrl/api/v1/customerdetails/$userId";
+      "$fastApiBaseUrl/api/v1/customerdetails/get-by-userid/$userId";
 
   static const String signupStep1 = "$fastApiBaseUrl/api/v1/users/signup/step1";
 

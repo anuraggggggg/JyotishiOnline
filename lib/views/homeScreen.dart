@@ -73,6 +73,7 @@ import '../controllers/chatController.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/splashController.dart';
 import '../controllers/walletController.dart';
+import '../model/fastApiModel/CustomerDetailModel.dart';
 import '../model/fastApiModel/astrologerProfileModel.dart';
 import '../theme/appTheme.dart';
 import '../utils/fonts.dart';
@@ -111,7 +112,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final chatController = Get.find<ChatController>();
   CurrentUserWalletModel? _wallet;
   UserModel? userDetails;
+  // String? userName;
+  CustomerDetail? _customerDetail;
   String? userName;
+  String? profileImageUrl;
+  bool _isLoadingUser = true;
 
   // AppEventsLogger logger = AppEventsLogger.newLogger(this);
   @override
@@ -122,7 +127,9 @@ class _HomeScreenState extends State<HomeScreen> {
     FastAPIServices().getAllWalletDetails();
     FastAPIServices().fetchCurrentWallet();
     FastAPIServices().fetchAllAstrologers();
-    _loadUserName();
+    FastAPIServices().fetchCurrentUserDetails();
+    _fetchUserProfile();
+    // _loadUserName();
 
     _fetchAllData();
 
@@ -131,12 +138,12 @@ class _HomeScreenState extends State<HomeScreen> {
             .getAstrologers());
   }
 
-  Future<void> _loadUserName() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      userName = prefs.getString("user_name"); // read the saved name
-    });
-  }
+  // Future<void> _loadUserName() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   setState(() {
+  //     userName = prefs.getString("user_name"); // read the saved name
+  //   });
+  // }
 
   void _fetchAllData() async {
     final wallet = await FastAPIServices().fetchCurrentWallet();
@@ -182,7 +189,9 @@ class _HomeScreenState extends State<HomeScreen> {
           elevation: 0,
           // backgroundColor: Colors.grey,
           title: Text(
-            userName == null ? "User..." : "Hi $userName",
+            _isLoadingUser
+                ? "Loading..."
+                : "Hi ${_customerDetail?.name ?? 'User'}",
             style: Get.theme.primaryTextTheme.titleLarge!.copyWith(
               fontSize: kIsWeb
                   ? MediaQuery.of(context).size.width * 0.027
@@ -191,6 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // color: appColor,
             ),
           ),
+
 
           iconTheme: IconThemeData(
             color: Colors.white,
@@ -215,19 +225,35 @@ class _HomeScreenState extends State<HomeScreen> {
                     alignment: Alignment.center,
                     children: [
                       CircleAvatar(
-                          radius: 20,
-                          backgroundImage: NetworkImage(
-                              "${global.imgBaseurl}${splashController.currentUser?.profile}")),
+                        radius: 20,
+                        backgroundColor: Colors.grey.shade200,
+                        backgroundImage: (_isLoadingUser)
+                            ? null
+                            : (_customerDetail?.profileImageUrl != null &&
+                            _customerDetail!.profileImageUrl!.isNotEmpty)
+                            ? NetworkImage(_customerDetail!.profileImageUrl!)
+                            : const AssetImage('assets/images/default_user.png')
+                        as ImageProvider,
+                        child: (_isLoadingUser)
+                            ? const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        )
+                            : (_customerDetail?.profileImageUrl == null ||
+                            _customerDetail!.profileImageUrl!.isEmpty)
+                            ? const Icon(Icons.person, color: Colors.grey)
+                            : null,
+                      ),
                       Positioned(
                         right: 2,
                         bottom: 4,
                         child: Container(
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: Colors.white,
                             shape: BoxShape.circle,
                           ),
-                          padding: EdgeInsets.all(2),
-                          child: Icon(
+                          padding: const EdgeInsets.all(2),
+                          child: const Icon(
                             Icons.menu,
                             size: 12,
                             color: Colors.black,
@@ -4935,7 +4961,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Get.back();
   }
+
+  Future<void> _fetchUserProfile() async {
+    try {
+      setState(() => _isLoadingUser = true);
+
+      final customer = await FastAPIServices().fetchCurrentUserDetails();
+
+      setState(() {
+        _customerDetail = customer;
+        userName = customer.name ?? "User";
+        profileImageUrl = customer.profileImageUrl;
+      });
+    } catch (e) {
+      print("❌ Error fetching user details: $e");
+    } finally {
+      setState(() => _isLoadingUser = false);
+    }
+  }
+
 }
+
 
 Widget _buildAstroTile(GetAllAstrologerModel astrologer) {
   final rawImagePath = (astrologer.profileImage ?? '').trim();
