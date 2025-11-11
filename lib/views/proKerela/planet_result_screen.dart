@@ -216,23 +216,13 @@ class PlanetResultScreen extends StatelessWidget {
     try {
       final pdf = pw.Document();
 
-      // Load a font that supports Malayalam (and Latin) — use it as the BASE font
+      // Load a font that supports Malayalam (and Latin) — base font
       final ByteData mal = await rootBundle.load('assets/fonts/NotoSansMalayalam-Regular.ttf');
       final pw.Font baseFont = pw.Font.ttf(mal);
 
-      // Optional: If you want Latin-only fallback for safety (not using fontFallback API),
-      // you could also load NotoSans-Regular and just ignore it or switch manually if needed.
-      // final pw.Font latin = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSans-Regular.ttf'));
-
-      // Load Material Icons from your pubspec path
-      pw.Font? materialIconsFont;
-      try {
-        final ByteData iconData = await rootBundle.load('assets/fonts/materialicons-regular.otf');
-        materialIconsFont = pw.Font.ttf(iconData);
-      } catch (e) {
-        // Fallback to Helvetica if Material Icons fail (icons will be plain text)
-        materialIconsFont = pw.Font.helvetica();
-      }
+      // Emoji font for all emojis/symbols
+      final ByteData emoji = await rootBundle.load('assets/fonts/NotoColorEmoji.ttf');
+      final pw.Font emojiFont = pw.Font.ttf(emoji);
 
       // Load logo (optional)
       pw.MemoryImage? logoImage;
@@ -243,7 +233,7 @@ class PlanetResultScreen extends StatelessWidget {
         logoImage = null;
       }
 
-      // Build a theme that uses Malayalam-capable font everywhere
+      // Build a theme that uses Malayalam-capable font everywhere, with emoji fallback
       final theme = pw.ThemeData.withFont(
         base: baseFont,
         bold: baseFont,
@@ -259,6 +249,32 @@ class PlanetResultScreen extends StatelessWidget {
       final PdfColor pdfIndigo700 = PdfColor.fromInt(Colors.indigo.shade700.value);
       final PdfColor pdfDeepOrange = PdfColor.fromInt(Colors.deepOrange.value);
       final PdfColor pdfOrange100 = PdfColor.fromInt(Colors.orange.shade100.value);
+
+      // Emoji for planets (avoids Material Icons in PDF)
+      String _planetEmoji(String name) {
+        switch (name) {
+          case 'Sun':
+            return '☀️';
+          case 'Moon':
+            return '🌙';
+          case 'Mars':
+            return '🔥';
+          case 'Mercury':
+            return '☿️';
+          case 'Jupiter':
+            return '⭐';
+          case 'Venus':
+            return '💖';
+          case 'Saturn':
+            return '🪐';
+          case 'Rahu':
+            return '☁️';
+          case 'Ketu':
+            return '⚡';
+          default:
+            return '🔹';
+        }
+      }
 
       pdf.addPage(
         pw.MultiPage(
@@ -285,6 +301,8 @@ class PlanetResultScreen extends StatelessWidget {
                     fontSize: 24,
                     fontWeight: pw.FontWeight.bold,
                     color: pdfIndigo800,
+                    font: baseFont,
+                    fontFallback: [emojiFont, pw.Font.helvetica()],
                   ),
                 ),
               ),
@@ -314,14 +332,30 @@ class PlanetResultScreen extends StatelessWidget {
                         children: [
                           pw.Row(
                             children: [
-                              _pdfPlanetIcon(planet.name, materialIconsFont, pdfIndigo800),
+                              // Emoji icon (uses emoji font)
+                              pw.Container(
+                                padding: const pw.EdgeInsets.all(4),
+                                decoration: pw.BoxDecoration(
+                                  shape: pw.BoxShape.circle,
+                                  border: pw.Border.all(color: PdfColors.grey300, width: 1),
+                                ),
+                                child: pw.Text(
+                                  _planetEmoji(planet.name),
+                                  style: pw.TextStyle(
+                                    font: emojiFont,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
                               pw.SizedBox(width: 12),
                               pw.Text(
-                                planet.name, // Malayalam names render correctly with baseFont
+                                planet.name,
                                 style: pw.TextStyle(
                                   fontSize: 18,
                                   fontWeight: pw.FontWeight.bold,
                                   color: pdfIndigo800,
+                                  font: baseFont,
+                                  fontFallback: [emojiFont, pw.Font.helvetica()],
                                 ),
                               ),
                             ],
@@ -336,11 +370,14 @@ class PlanetResultScreen extends StatelessWidget {
                               child: pw.Row(
                                 mainAxisSize: pw.MainAxisSize.min,
                                 children: [
-                                  pw.Icon(
-                                    pw.IconData(Icons.sync_alt.codePoint),
-                                    color: pdfDeepOrange,
-                                    size: 14,
-                                    font: materialIconsFont,
+                                  pw.Text(
+                                    '↺', // simple symbol to avoid material icon
+                                    style: pw.TextStyle(
+                                      font: baseFont,
+                                      fontSize: 12,
+                                      color: pdfDeepOrange,
+                                      fontFallback: [emojiFont, pw.Font.helvetica()],
+                                    ),
                                   ),
                                   pw.SizedBox(width: 4),
                                   pw.Text(
@@ -349,6 +386,8 @@ class PlanetResultScreen extends StatelessWidget {
                                       color: pdfDeepOrange,
                                       fontWeight: pw.FontWeight.bold,
                                       fontSize: 10,
+                                      font: baseFont,
+                                      fontFallback: [emojiFont, pw.Font.helvetica()],
                                     ),
                                   ),
                                 ],
@@ -363,23 +402,29 @@ class PlanetResultScreen extends StatelessWidget {
 
                       // Details table
                       pw.Table.fromTextArray(
-                        headers: ['Property', 'Value'],
+                        headers: [
+                          'Property',
+                          'Value',
+                        ],
                         data: <List<String>>[
                           ['Longitude', planet.longitude.toStringAsFixed(2)],
                           ['Degree', planet.degree.toStringAsFixed(2)],
                           ['Position', planet.position.toString()],
-                          // Malayalam rasi/lord names render fine now:
                           ['Rasi', '${planet.rasi.name} (${planet.rasi.lord.name})'],
                         ],
                         border: null,
-                        headerStyle:  pw.TextStyle(
+                        headerStyle: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 12,
                           color: PdfColors.grey600,
+                          font: baseFont,
+                          fontFallback: [emojiFont, pw.Font.helvetica()],
                         ),
                         cellStyle: pw.TextStyle(
                           fontSize: 12,
                           color: pdfIndigo700,
+                          font: baseFont,
+                          fontFallback: [emojiFont, pw.Font.helvetica()],
                         ),
                         columnWidths: const {
                           0: pw.FlexColumnWidth(1),
@@ -415,49 +460,5 @@ class PlanetResultScreen extends StatelessWidget {
         );
       }
     }
-  }
-
-  // Simpler PDF icon (no background shade/transparent needed)
-  pw.Widget _pdfPlanetIcon(String planetName, pw.Font? materialIconsFont, PdfColor fallbackColor) {
-    final iconMap = {
-      'Sun': Icons.wb_sunny,
-      'Moon': Icons.nightlight_round,
-      'Mars': Icons.fireplace,
-      'Mercury': Icons.waves,
-      'Jupiter': Icons.star,
-      'Venus': Icons.favorite,
-      'Saturn': Icons.ac_unit,
-      'Rahu': Icons.cloud,
-      'Ketu': Icons.flash_on,
-    };
-
-    // map to PdfColor using Flutter Colors
-    final Map<String, PdfColor> pdfColorMap = {
-      'Sun': PdfColor.fromInt(Colors.amber.value),
-      'Moon': PdfColor.fromInt(Colors.blue.value),
-      'Mars': PdfColor.fromInt(Colors.red.value),
-      'Mercury': PdfColor.fromInt(Colors.green.value),
-      'Jupiter': PdfColor.fromInt(Colors.orange.value),
-      'Venus': PdfColor.fromInt(Colors.pink.value),
-      'Saturn': PdfColor.fromInt(Colors.indigo.value),
-      'Rahu': PdfColor.fromInt(Colors.grey.value),
-      'Ketu': PdfColor.fromInt(Colors.purple.value),
-    };
-
-    final PdfColor color = pdfColorMap[planetName] ?? fallbackColor;
-
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(4),
-      decoration: pw.BoxDecoration(
-        shape: pw.BoxShape.circle,
-        border: pw.Border.all(color: PdfColors.grey300, width: 1),
-      ),
-      child: pw.Icon(
-        pw.IconData(iconMap[planetName]?.codePoint ?? Icons.help_outline.codePoint),
-        color: color,
-        size: 18,
-        font: materialIconsFont,
-      ),
-    );
   }
 }

@@ -44,7 +44,7 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
   void _openCheckout() {
     if (_selectedAmount == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please select an amount".tr())),
+        SnackBar(content: Text("Please select an amount")),
       );
       return;
     }
@@ -120,7 +120,7 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      "Payment Successful!".tr(),
+                      "Payment Successful!",
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -129,7 +129,7 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      "₹$_selectedAmount ${'has been added to your wallet'.tr()}",
+                      "₹$_selectedAmount ${'has been added to your wallet'}",
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 16,
@@ -146,7 +146,7 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        "${'Transaction ID'.tr()}: ${response.paymentId}",
+                        "${'Transaction ID'}: ${response.paymentId}",
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[700],
@@ -172,7 +172,7 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                           elevation: 0,
                         ),
                         child: Text(
-                          "OK".tr(),
+                          "OK",
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -189,7 +189,7 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
       } catch (e) {
         debugPrint("❌ Error updating wallet: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to update wallet balance".tr())),
+          SnackBar(content: Text("Failed to update wallet balance")),
         );
       }
     }
@@ -197,13 +197,13 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
 
   void _handlePaymentError(PaymentFailureResponse response) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Payment Failed".tr())),
+      SnackBar(content: Text("Payment Failed")),
     );
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("External Wallet Selected".tr())),
+      SnackBar(content: Text("External Wallet Selected")),
     );
   }
 
@@ -220,7 +220,7 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(
-          "Recharge Wallet".tr(),
+          "Recharge Wallet",
           style: const TextStyle(color: textColor, fontWeight: FontWeight.bold),
         ),
         backgroundColor: appYellow,
@@ -249,14 +249,14 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                   child: Column(
                     children: [
                       Text(
-                        "Current Wallet Balance".tr(),
+                        "Current Wallet Balance",
                         style: const TextStyle(fontSize: 16, color: textColor),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         _wallet != null
                             ? "₹${_wallet!.amount}"
-                            : "Loading...".tr(),
+                            : "Loading...",
                         style: const TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,

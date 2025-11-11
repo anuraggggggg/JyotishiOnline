@@ -529,6 +529,103 @@ class FastAPIServices {
     }
   }
 
+  /// ✅ PATCH /api/v1/customerdetails/{user_id}
+  /// Multipart update for customer detail with optional profile_pic.
+  Future<CustomerDetail> patchCustomerDetailByUserId({
+    required String userId,
+
+    String? name,
+    String? contactNo,
+    String? birthDate,     // accepts "yyyy-MM-dd" or "yyyy/MM/dd"
+    String? birthTime,     // "HH:mm"
+    String? profile,
+    String? birthPlace,
+    String? addressLine1,
+    String? addressLine2,
+    String? location,
+    int?    pincode,
+    String? gender,
+    String? fcmToken,      // API field name: fcm_token
+    String? token,
+    String? expirationDate, // ISO8601 if you send it
+    String? countryCode,
+
+    /// Local file path to image, e.g. from ImagePicker().path
+    String? profilePicPath,
+  }) async {
+    await _loadCredentials();
+    if (_accessToken == null || _accessToken!.isEmpty) {
+      throw Exception("Not authenticated: missing access token");
+    }
+
+    // ── Build .../api/v1/customerdetails/{user_id} robustly
+    final base = FastApiEndpoints.customerDetails.replaceAll(RegExp(r'/+$'), '');
+    final id   = userId.startsWith('/') ? userId.substring(1) : userId;
+    final uri  = Uri.parse('$base/$id');
+    debugPrint("🩹 [CUSTOMER DETAIL] → PATCH $uri");
+
+    // Build multipart request
+    final req = http.MultipartRequest('PATCH', uri)
+      ..headers['Authorization'] = 'Bearer $_accessToken'
+      ..headers['accept'] = 'application/json';
+
+    // Normalise birthDate if user passed with slashes (1999/11/21 -> 1999-11-21)
+    String? _normaliseDate(String? d) {
+      if (d == null || d.trim().isEmpty) return null;
+      final s = d.trim();
+      return s.contains('/') ? s.replaceAll('/', '-') : s;
+    }
+
+    // Add only provided fields
+    req.addIfPresent('name', name);
+    req.addIfPresent('contactNo', contactNo);
+    req.addIfPresent('birthDate', _normaliseDate(birthDate));
+    req.addIfPresent('birthTime', birthTime);
+    req.addIfPresent('profile', profile);
+    req.addIfPresent('birthPlace', birthPlace);
+    req.addIfPresent('addressLine1', addressLine1);
+    req.addIfPresent('addressLine2', addressLine2);
+    req.addIfPresent('location', location);
+    if (pincode != null) req.fields['pincode'] = pincode.toString();
+    req.addIfPresent('gender', gender);
+    req.addIfPresent('fcm_token', fcmToken); // snake_case per API
+    req.addIfPresent('token', token);
+    req.addIfPresent('expirationDate', expirationDate);
+    req.addIfPresent('countryCode', countryCode);
+
+    // Optional file
+    if (profilePicPath != null && profilePicPath.isNotEmpty) {
+      final file = File(profilePicPath);
+      if (await file.exists()) {
+        debugPrint("🖼️ attaching profile_pic: $profilePicPath");
+        req.files.add(await http.MultipartFile.fromPath('profile_pic', profilePicPath));
+      } else {
+        throw Exception("profilePicPath not found: $profilePicPath");
+      }
+    } else {
+      debugPrint("🖼️ no profile_pic attached");
+    }
+
+    debugPrint("📝 fields being sent: ${req.fields}");
+
+    // Send
+    final streamed = await req.send();
+    final res = await http.Response.fromStream(streamed);
+
+    debugPrint("✅ [PATCH customer] status=${res.statusCode}");
+    debugPrint("🧾 [PATCH customer] body=${res.body}");
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final Map<String, dynamic> data = jsonDecode(res.body);
+      return CustomerDetail.fromJson(data);
+    }
+
+    // Bubble up server validation/trace
+    throw Exception("Update failed (${res.statusCode}): ${res.body}");
+  }
+
+
+
 
 
 
