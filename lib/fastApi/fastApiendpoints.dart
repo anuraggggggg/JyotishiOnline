@@ -168,4 +168,8 @@ class FastApiEndpoints {
       "$fastApiBaseUrl/api/v1/user-signup-with-details";
 
 
+  static const String sendAstrologerNotification =
+      "$fastApiBaseUrl/Astrologer_notification/send-notification";
+
+
 }

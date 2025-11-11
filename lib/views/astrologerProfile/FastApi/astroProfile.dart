@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:AstrowayCustomer/controllers/bottomNavigationController.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../../../fastApi/fastApiServices.dart';
 import '../../../model/fastApiModel/astrologerProfileModel.dart';
@@ -56,35 +55,75 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(
-            "Disclaimer",
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ).tr(),
+          title: const Text("Disclaimer", style: TextStyle(fontWeight: FontWeight.bold)).tr(),
           content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "The platform will not be held responsible for any financial transactions conducted outside the platform with the astrologer.",
-                  style: const TextStyle(fontSize: 14, height: 1.5),
-                ).tr(),
-              ],
-            ),
+            child: Text(
+              "The platform will not be held responsible for any financial transactions conducted outside the platform with the astrologer.",
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ).tr(),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text("Cancel"),
+              child: const Text("Cancel").tr(),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(backgroundColor: appColor),
-              child: Text("I Accept", style: const TextStyle(color: Colors.white)),
+              child: const Text("I Accept", style: TextStyle(color: Colors.white)).tr(),
             ),
           ],
         );
       },
     ).then((value) => value ?? false);
+  }
+
+  // 🚀 Send Push Notification via FastAPI
+  Future<void> _sendAstrologerNotification(Astrologer astrologer, String type) async {
+    try {
+      final api = FastAPIServices();
+      String title, body, screen;
+
+      switch (type.toLowerCase()) {
+        case 'audio':
+          title = "Incoming Audio Call 📞";
+          body = "A client wants to start an audio consultation with you.";
+          screen = "AudioCallScreen";
+          break;
+        case 'video':
+          title = "Incoming Video Call 🎥";
+          body = "A client wants to start a video consultation with you.";
+          screen = "VideoCallScreen";
+          break;
+        default:
+          title = "New Chat Request 💬";
+          body = "A client wants to start a chat consultation with you.";
+          screen = "ChatScreen";
+      }
+
+      final payload = {
+        "client_name": "Astroway User",
+        "timestamp": DateTime.now().toIso8601String(),
+        "call_type": type,
+      };
+
+      _d("📡 Sending FCM notification to ${astrologer.name} (${astrologer.astroId}) → $title");
+      final res = await api.sendNotificationToAstrologer(
+        astrologerId: astrologer.astroId,
+        title: title,
+        body: body,
+        screen: screen,
+        data: payload,
+      );
+
+      if (res["success"] == true) {
+        _d("✅ Notification sent successfully to ${astrologer.name}");
+      } else {
+        _d("⚠️ Failed to send notification: ${res['error']}");
+      }
+    } catch (e, st) {
+      _d("💥 Exception in _sendAstrologerNotification: $e\n$st");
+    }
   }
 
   // Simple debug printer
@@ -328,7 +367,10 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               price: _priceLabel(astrologer.audioCallCharge, '/10 min'),
               features: ['Best for quick guidance', 'Uninterrupted connection'],
               disabled: !hasAudio,
-              onTap: () => _showCallRequestDialog(astrologer, 'Audio'),
+              onTap: () async {
+                await _sendAstrologerNotification(astrologer, 'Audio');
+                _showCallRequestDialog(astrologer, 'Audio');
+              },
             ),
             const SizedBox(height: 16),
             _buildConsultationOption(
@@ -338,7 +380,10 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               price: _priceLabel(astrologer.videoCallCharge, '/10 min'),
               features: ['Better understanding', 'Screen sharing'],
               disabled: !hasVideo,
-              onTap: () => _showCallRequestDialog(astrologer, 'Video'),
+              onTap: () async {
+                await _sendAstrologerNotification(astrologer, 'Video');
+                _showCallRequestDialog(astrologer, 'Video');
+              },
             ),
             const SizedBox(height: 16),
             _buildConsultationOption(
@@ -348,7 +393,10 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               price: _priceLabel(astrologer.chatCharge, '/message'),
               features: ['24×7 availability', 'Share images'],
               disabled: !hasChat,
-              onTap: () => _showCallRequestDialog(astrologer, 'Chat'),
+              onTap: () async {
+                await _sendAstrologerNotification(astrologer, 'Chat');
+                _showCallRequestDialog(astrologer, 'Chat');
+              },
             ),
           ],
         ),
@@ -431,11 +479,20 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 4))]),
       child: Row(
         children: [
-          Expanded(child: _buildFAB(icon: Icons.audiotrack, label: 'Audio Call', price: _priceLabel(astrologer.audioCallCharge, '/10 min'), onPressed: hasAudio ? () => _showCallRequestDialog(astrologer, 'Audio') : null, color: Colors.blue)),
+          Expanded(child: _buildFAB(icon: Icons.audiotrack, label: 'Audio Call', price: _priceLabel(astrologer.audioCallCharge, '/10 min'), onPressed: hasAudio ? () async {
+            await _sendAstrologerNotification(astrologer, 'Audio');
+            _showCallRequestDialog(astrologer, 'Audio');
+          } : null, color: Colors.blue)),
           const SizedBox(width: 12),
-          Expanded(child: _buildFAB(icon: Icons.videocam, label: 'Video Call', price: _priceLabel(astrologer.videoCallCharge, '/10 min'), onPressed: hasVideo ? () => _showCallRequestDialog(astrologer, 'Video') : null, color: Colors.green)),
+          Expanded(child: _buildFAB(icon: Icons.videocam, label: 'Video Call', price: _priceLabel(astrologer.videoCallCharge, '/10 min'), onPressed: hasVideo ? () async {
+            await _sendAstrologerNotification(astrologer, 'Video');
+            _showCallRequestDialog(astrologer, 'Video');
+          } : null, color: Colors.green)),
           const SizedBox(width: 12),
-          Expanded(child: _buildFAB(icon: Icons.chat, label: 'Chat', price: _priceLabel(astrologer.chatCharge, '/message'), onPressed: hasChat ? () => _showCallRequestDialog(astrologer, 'Chat') : null, color: Colors.orange)),
+          Expanded(child: _buildFAB(icon: Icons.chat, label: 'Chat', price: _priceLabel(astrologer.chatCharge, '/message'), onPressed: hasChat ? () async {
+            await _sendAstrologerNotification(astrologer, 'Chat');
+            _showCallRequestDialog(astrologer, 'Chat');
+          } : null, color: Colors.orange)),
         ],
       ),
     );

@@ -1091,6 +1091,9 @@ class FastAPIServices {
     }
   }
 
+
+
+
   // ---------------- LOAD TOKEN & USER ID FROM STORAGE ----------------
 // ---------------- LOAD TOKEN & USER ID FROM STORAGE (REFINED) ----------------
   Future<void> _loadCredentials() async {
@@ -1435,6 +1438,65 @@ class FastAPIServices {
     }
   }
 
+  // ----------------------------------------------------------
+// 🚀 Send Notification to Astrologer
+// ----------------------------------------------------------
+  Future<Map<String, dynamic>> sendNotificationToAstrologer({
+    required String astrologerId,
+    required String title,
+    required String body,
+    required String screen,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final url = Uri.parse(
+          "${FastApiEndpoints.sendAstrologerNotification}");
+
+      final payload = {
+        "astrologer_id": astrologerId,
+        "title": title,
+        "body": body,
+        "screen": screen,
+        "data": data ?? {},
+      };
+
+      print("📡 Sending notification to astrologer...");
+      print("🔗 URL: $url");
+      print("🧾 Body: ${jsonEncode(payload)}");
+
+      final response = await http.post(
+        url,
+        headers: {
+          "accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode(payload),
+      );
+
+      print("⬅️ Response Status: ${response.statusCode}");
+      print("⬅️ Response Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final res = jsonDecode(response.body);
+        print("✅ Notification sent successfully!");
+        print("   🔹 FCM Message ID: ${res['fcm_message_id'] ?? 'N/A'}");
+        print("   🔹 Notification ID: ${res['notification_id'] ?? 'N/A'}");
+        return {"success": true, "data": res};
+      } else {
+        print("❌ Failed to send notification: ${response.body}");
+        return {
+          "success": false,
+          "error": "HTTP ${response.statusCode}: ${response.body}"
+        };
+      }
+    } catch (e, stackTrace) {
+      print("🔥 Exception while sending notification: $e");
+      print(stackTrace);
+      return {"success": false, "error": e.toString()};
+    }
+  }
+
+
 
 
 
@@ -1563,6 +1625,11 @@ class FastAPIServices {
       debugPrint("💥 [sendMoney] ERROR ${response.statusCode}: $details");
       throw Exception('Send money failed (${response.statusCode}): $details');
     }
+
+
+
+
+
 
 
 
