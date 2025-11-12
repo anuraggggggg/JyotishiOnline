@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "595491914581",
-    "project_id": "jyotishi-user",
-    "storage_bucket": "jyotishi-user.firebasestorage.app"
+    "project_number": "1020250180079",
+    "project_id": "jyotishi2025",
+    "storage_bucket": "jyotishi2025.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:595491914581:android:96a42c72a7ad8f0020a5dc",
+        "mobilesdk_app_id": "1:1020250180079:android:cb4f27863caefe51cc0e1a",
         "android_client_info": {
-          "package_name": "com.jyotishi.user"
+          "package_name": "com.jyotishi2025.user"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBJIbMAZeSJGpGSL4GZYDAflHm3mcHhiqQ"
+          "current_key": "AIzaSyCKT2YSqvZNmul9Nlb1OyCcBd6GKwZE9Go"
         }
       ],
       "services": {

@@ -194,7 +194,7 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                       onTap: () {
                         if (Platform.isAndroid) {
                           StoreRedirect.redirect(
-                            androidAppId: "com.astrowaydiploy.user",
+                            androidAppId: "com.jyotishi.user",
                           );
                         }
                       },

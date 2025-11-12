@@ -242,6 +242,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // String? token = await FirebaseMessaging.instance.getToken();
+  // print("✅ Latest FCM Token: $token");
 
   // Initialize Shared Preferences first
   global.sp = await SharedPreferences.getInstance();
