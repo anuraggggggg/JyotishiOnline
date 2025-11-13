@@ -44,6 +44,7 @@ import 'package:provider/provider.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'controllers/fastApiProvider/LiveAstrologerProvider.dart';
 import 'controllers/splashController.dart';
 import 'controllers/timer_controller.dart';
 import 'fastApi/fastApiServices.dart';
@@ -301,7 +302,11 @@ void main() async {
       providers: [
         ChangeNotifierProvider(
             create: (context) => WalletProvider(FastAPIServices())),
-        ChangeNotifierProvider(create: (_) => GetAllAstrologerProvider()),
+        ChangeNotifierProvider(
+            create: (_) => GetAllAstrologerProvider()),
+        ChangeNotifierProvider(
+          create: (_) => LiveAstrologerProvider(),
+        ),
       ],
       child: EasyLocalization(
         supportedLocales: const [

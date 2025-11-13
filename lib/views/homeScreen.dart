@@ -70,10 +70,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../controllers/IntakeController.dart';
 import '../controllers/chatController.dart';
+import '../controllers/fastApiProvider/LiveAstrologerProvider.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/splashController.dart';
 import '../controllers/walletController.dart';
 import '../model/fastApiModel/CustomerDetailModel.dart';
+import '../model/fastApiModel/LiveAstrologerModel.dart';
 import '../model/fastApiModel/astrologerProfileModel.dart';
 import '../theme/appTheme.dart';
 import '../utils/fonts.dart';
@@ -86,6 +88,7 @@ import 'astromall/astroProductScreen.dart';
 import 'customer_support/customerSupportChatScreen.dart';
 import 'customer_support/customer_support_chat_screen.dart';
 import 'daily_horoscope/dailyHoroscopeScreen.dart';
+import 'live_astrologer/newAstrologerLive.dart';
 
 class HomeScreen extends StatefulWidget {
   HomeScreen() : super();
@@ -128,6 +131,9 @@ class _HomeScreenState extends State<HomeScreen> {
     FastAPIServices().fetchCurrentWallet();
     FastAPIServices().fetchAllAstrologers();
     FastAPIServices().fetchCurrentUserDetails();
+    Provider.of<LiveAstrologerProvider>(context, listen: false)
+        .fetchLiveAstrologers();
+
     _fetchUserProfile();
     // _loadUserName();
 
@@ -2123,6 +2129,43 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             )
                           : Offstage(),
+
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                        child: Text(
+                          "Live Now 🔴",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+
+                      SizedBox(
+                        height: 170,
+                        child: Consumer<LiveAstrologerProvider>(
+                          builder: (context, provider, child) {
+                            if (provider.isLoading) {
+                              return Center(child: CircularProgressIndicator());
+                            }
+
+                            if (provider.liveAstrologers.isEmpty) {
+                              return Center(child: Text("No astrologers live right now"));
+                            }
+
+                            return ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              itemCount: provider.liveAstrologers.length,
+                              itemBuilder: (context, index) {
+                                final astro = provider.liveAstrologers[index];
+                                return LiveAstroCard(astro: astro);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                         child: Row(
@@ -4981,6 +5024,116 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 }
+
+class LiveAstroCard extends StatelessWidget {
+  final LiveAstrologerModel astro;
+
+  const LiveAstroCard({super.key, required this.astro});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () async {
+        final api = FastAPIServices();
+
+        try {
+          // 🔥 Call join live API
+          final res = await api.joinLive(astroId: astro.astroId);
+
+          final channelName = res["channelName"];
+          final rtcToken = res["rtc_token"];
+
+          // Navigate to live viewer
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => LiveViewerPage(
+                channelName: channelName,
+                token: rtcToken,
+                astroId: astro.astroId,
+              ),
+            ),
+          );
+        } catch (e) {
+          print("❌ Failed to join live: $e");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Cannot join live right now")),
+          );
+        }
+      },
+
+      child: Container(
+        width: 130,
+        margin: EdgeInsets.only(right: 15),
+        padding: EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 6,
+              offset: Offset(1, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(50),
+                  child: Image.network(
+                    "https://fastapi.jyotishionline.com${astro.profileImage}",
+                    height: 55,
+                    width: 55,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+
+                // 🔴 LIVE badge
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      "LIVE",
+                      style: TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 8),
+
+            // Astrologer Name
+            Text(
+              astro.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+
+            // Skill
+            Text(
+              astro.primarySkill,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
 
 
 Widget _buildAstroTile(GetAllAstrologerModel astrologer) {

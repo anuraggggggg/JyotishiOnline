@@ -16,6 +16,7 @@ import 'package:http/http.dart' as http;
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../model/fastApiModel/LiveAstrologerModel.dart';
 import '../model/fastApiModel/NotificationModel.dart';
 import '../model/fastApiModel/astrologerProfileModel.dart';
 import '../model/fastApiModel/newChatModel.dart';
@@ -1563,6 +1564,86 @@ class FastAPIServices {
       return null;
     }
   }
+
+
+
+  /// 🔴 Fetch All Live Astrologers (Agora Live List)
+  Future<List<LiveAstrologerModel>> fetchLiveAstrologers() async {
+    await _loadCredentials(); // Load token if required
+
+    final url = Uri.parse("https://fastapi.jyotishionline.com/agora/live/list");
+
+    print("📡 [LIVE LIST] GET → $url");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          "accept": "application/json",
+        },
+      );
+
+      print("📡 [LIVE LIST] Status: ${response.statusCode}");
+      print("📩 [LIVE LIST] Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+
+        return data
+            .map((e) => LiveAstrologerModel.fromJson(e))
+            .toList();
+      } else {
+        throw Exception("Failed to fetch live astrologers: ${response.body}");
+      }
+    } catch (e, st) {
+      print("❌ [LIVE LIST] Exception: $e");
+      print(st);
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> joinLive({
+    required String astroId,
+  }) async {
+    await _loadCredentials(); // loads _userId & _accessToken
+
+    final url = Uri.parse("https://fastapi.jyotishionline.com/agora/live/join");
+
+    final body = {
+      "astro_id": astroId,
+      "user_id": _userId, // can be null → backend supports guests
+    };
+
+    print("🎥 [JOIN LIVE] URL → $url");
+    print("🎥 [JOIN LIVE] Body → ${jsonEncode(body)}");
+
+    final response = await http.post(
+      url,
+      headers: {
+        "accept": "application/json",
+        "Content-Type": "application/json",
+        if (_accessToken != null) "Authorization": "Bearer $_accessToken",
+      },
+      body: jsonEncode(body),
+    );
+
+    print("🎥 [JOIN LIVE] Status → ${response.statusCode}");
+    print("🎥 [JOIN LIVE] Response → ${response.body}");
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Failed to join live: ${response.body}");
+    }
+  }
+
+
+
+
+
+
+
+
   Future<SendMoneyResponse> sendMoney({
     required String astrologerId,
     required num amount,
@@ -1625,6 +1706,8 @@ class FastAPIServices {
       debugPrint("💥 [sendMoney] ERROR ${response.statusCode}: $details");
       throw Exception('Send money failed (${response.statusCode}): $details');
     }
+
+
 
 
 
