@@ -368,7 +368,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               features: ['Best for quick guidance', 'Uninterrupted connection'],
               disabled: !hasAudio,
               onTap: () async {
-                await _sendAstrologerNotification(astrologer, 'Audio');
+                // Removed early notification — open payment & session flow only
                 _showCallRequestDialog(astrologer, 'Audio');
               },
             ),
@@ -381,7 +381,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               features: ['Better understanding', 'Screen sharing'],
               disabled: !hasVideo,
               onTap: () async {
-                await _sendAstrologerNotification(astrologer, 'Video');
+                // Removed early notification — open payment & session flow only
                 _showCallRequestDialog(astrologer, 'Video');
               },
             ),
@@ -394,7 +394,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               features: ['24×7 availability', 'Share images'],
               disabled: !hasChat,
               onTap: () async {
-                await _sendAstrologerNotification(astrologer, 'Chat');
+                // Removed early notification — open payment & session flow only
                 _showCallRequestDialog(astrologer, 'Chat');
               },
             ),
@@ -480,17 +480,17 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       child: Row(
         children: [
           Expanded(child: _buildFAB(icon: Icons.audiotrack, label: 'Audio Call', price: _priceLabel(astrologer.audioCallCharge, '/10 min'), onPressed: hasAudio ? () async {
-            await _sendAstrologerNotification(astrologer, 'Audio');
+            // Removed early notification — open payment & session flow only
             _showCallRequestDialog(astrologer, 'Audio');
           } : null, color: Colors.blue)),
           const SizedBox(width: 12),
           Expanded(child: _buildFAB(icon: Icons.videocam, label: 'Video Call', price: _priceLabel(astrologer.videoCallCharge, '/10 min'), onPressed: hasVideo ? () async {
-            await _sendAstrologerNotification(astrologer, 'Video');
+            // Removed early notification — open payment & session flow only
             _showCallRequestDialog(astrologer, 'Video');
           } : null, color: Colors.green)),
           const SizedBox(width: 12),
           Expanded(child: _buildFAB(icon: Icons.chat, label: 'Chat', price: _priceLabel(astrologer.chatCharge, '/message'), onPressed: hasChat ? () async {
-            await _sendAstrologerNotification(astrologer, 'Chat');
+            // Removed early notification — open payment & session flow only
             _showCallRequestDialog(astrologer, 'Chat');
           } : null, color: Colors.orange)),
         ],
@@ -800,6 +800,10 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                           _lastMyUserId = userUid;
                         });
                         _d("💾 saved debug: roomId=$_lastRoomId, astro=$_lastAstrologerUid, me=$_lastMyUserId");
+
+                        // 3) Send Notification AFTER payment + session creation
+                        _d("📨 Sending notification now (after payment + session created)...");
+                        await _sendAstrologerNotification(astrologer, callType);
 
                         // close sheet then navigate
                         if (Navigator.of(sheetCtx).canPop()) {
