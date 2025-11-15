@@ -2251,110 +2251,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                         ),
                       ),
-                      //---------- Categories  ----------------------------------------
-                      // Container(
-                      //   margin: EdgeInsets.symmetric(horizontal: 20),
-                      //   child: Column(
-                      //     crossAxisAlignment: CrossAxisAlignment.start,
-                      //     children: [
-                      //       Row(
-                      //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      //         children: [
-                      //           Text(
-                      //             'Categories',
-                      //             style: Get.theme.primaryTextTheme.titleMedium!
-                      //                 .copyWith(fontWeight: FontWeight.w500),
-                      //           ).tr(),
-                      //           GestureDetector(
-                      //             onTap: () {
-                      //               Get.to(() => CategoryScreen());
-                      //             },
-                      //             child: Text(
-                      //               'View All',
-                      //               style: Get.theme.primaryTextTheme.bodySmall!
-                      //                   .copyWith(
-                      //                 fontWeight: FontWeight.w400,
-                      //                 color: Colors.black,
-                      //               ),
-                      //             ).tr(),
-                      //           ),
-                      //         ],
-                      //       ),
-                      //     ],
-                      //   ),
-                      // ),
-                      // SizedBox(
-                      //   height: FontSizes(context).height2(),
-                      // ),
-                      //
-                      // GetBuilder<AstrologerCategoryController>(
-                      //     builder: (astrologyCat) {
-                      //       return Container(
-                      //           height: 12.h,
-                      //           margin: EdgeInsets.symmetric(
-                      //               horizontal: FontSizes(context).width3()),
-                      //           child: ListView.builder(
-                      //               scrollDirection: Axis.horizontal,
-                      //               itemCount: astrologyCat.categoryList.length,
-                      //               shrinkWrap: true,
-                      //               itemBuilder: (context, index) {
-                      //                 return InkWell(
-                      //                   onTap: () async {
-                      //                     global.showOnlyLoaderDialog(context);
-                      //                     bottomNavigationController
-                      //                         .astrologerList = [];
-                      //                     bottomNavigationController.astrologerList
-                      //                         .clear();
-                      //                     bottomNavigationController
-                      //                         .isAllDataLoaded = false;
-                      //                     bottomNavigationController.update();
-                      //                     chatController.isSelected = index;
-                      //                     chatController.update();
-                      //                     await bottomNavigationController.astroCat(
-                      //                         id: astrologyCat
-                      //                             .categoryList[index].id!,
-                      //                         isLazyLoading: false);
-                      //                     global.hideLoader();
-                      //                     Navigator.push(
-                      //                         context,
-                      //                         MaterialPageRoute(
-                      //                             builder: (context) => CallScreen(
-                      //                               flag: 1,
-                      //                             )));
-                      //                   },
-                      //                   child: Container(
-                      //                     alignment: Alignment.center,
-                      //                     margin:
-                      //                     EdgeInsets.symmetric(horizontal: 10),
-                      //                     child: Column(
-                      //                       crossAxisAlignment:
-                      //                       CrossAxisAlignment.center,
-                      //                       children: [
-                      //                         CircleAvatar(
-                      //                           backgroundColor: Colors.white,
-                      //                           radius: FontSizes(context).width7(),
-                      //                           backgroundImage: NetworkImage(
-                      //                               "${global.imgBaseurl}${astrologyCat.categoryList[index].image}"),
-                      //                         ),
-                      //                         SizedBox(
-                      //                           height:
-                      //                           FontSizes(context).height1(),
-                      //                         ),
-                      //                         CustomText(
-                      //                           text:
-                      //                           "${astrologyCat.categoryList[index].name}",
-                      //                           textAlign: TextAlign.center,
-                      //                           maxLine: 2,
-                      //                           fontWeight: FontWeight.w600,
-                      //                           fontsize:
-                      //                           FontSizes(context).font3(),
-                      //                         )
-                      //                       ],
-                      //                     ),
-                      //                   ),
-                      //                 );
-                      //               }));
-                      //     }),
 
                       Padding(
                         padding: const EdgeInsets.all(10),
@@ -2416,26 +2312,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                             horizontal: 12,
                                             vertical: 6), // Better padding
                                         child: Text(
-                                          "Live chat with",
+                                          "Live Chat with an Astrologer",
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
                                             fontFamily: 'Poppins',
                                             fontWeight: FontWeight.w600,
-                                            fontSize: 12, // Larger font
+                                            fontSize: 14, // Larger font
                                             color: Colors.grey.shade800,
                                           ),
                                         ).tr(),
                                       ),
-                                      SizedBox(height: 8), // Consistent spacing
-                                      Text(
-                                        "Astrologer",
-                                        style: TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontSize: 18, // Larger and bolder
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.black,
-                                        ),
-                                      ).tr(),
+                                       // Consistent spacing
                                       SizedBox(
                                           height:
                                               12), // More space before image
@@ -2514,38 +2401,23 @@ class _HomeScreenState extends State<HomeScreen> {
                                             // Text Section (Now Centered)
                                             Container(
                                               decoration: BoxDecoration(
-                                                color:
-                                                    appYellow.withOpacity(0.2),
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
+                                                color: appYellow.withOpacity(0.2),
+                                                borderRadius: BorderRadius.circular(16),
                                               ),
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 12, vertical: 6),
+                                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                               child: Text(
-                                                "Talk to an",
-                                                textAlign: TextAlign
-                                                    .center, // Add this
+                                                "Talk to an Astrologer",
+                                                textAlign: TextAlign.center,
                                                 style: TextStyle(
                                                   fontFamily: 'Poppins',
                                                   fontWeight: FontWeight.w600,
-                                                  fontSize: 12,
+                                                  fontSize: 14,
                                                   color: Colors.grey.shade800,
                                                 ),
                                               ).tr(),
                                             ),
-                                            SizedBox(
-                                                height:
-                                                    8), // Consistent spacing
-                                            Text(
-                                              "Astrologer",
-                                              style: TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 18, // Slightly larger
-                                                fontWeight: FontWeight
-                                                    .w700, // Bold for emphasis
-                                                color: Colors.black,
-                                              ),
-                                            ).tr(),
+
+
                                             SizedBox(
                                                 height:
                                                     12), // More space before image
@@ -2570,41 +2442,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     height: 10,
                                   ),
 
-                                  // GestureDetector(
-                                  //   onTap: () {
-                                  //     Get.to(() => AstrologyServicesPage());
-                                  //   },
-                                  //   child: Container(
-                                  //     width: MediaQuery.of(context).size.width * 0.7,
-                                  //
-                                  //
-                                  //
-                                  //     decoration: BoxDecoration(
-                                  //       border: Border.all(color: appYellow, width: 2),
-                                  //       borderRadius: BorderRadius.circular(20),
-                                  //     ),
-                                  //
-                                  //     child: Padding(
-                                  //       padding: const EdgeInsets.all(4),
-                                  //       child: Column(
-                                  //         crossAxisAlignment: CrossAxisAlignment.start,
-                                  //         children: const [
-                                  //           Text("Cosmic Insights" , style: TextStyle(
-                                  //             fontSize:   14,
-                                  //           ),),
-                                  //           SizedBox(height: 5),
-                                  //           Text(
-                                  //             "All Services",
-                                  //             style: TextStyle(
-                                  //               fontSize: 14,
-                                  //               fontWeight: FontWeight.bold,
-                                  //             ),
-                                  //           ),
-                                  //         ],
-                                  //       ),
-                                  //     ),
-                                  //   ),
-                                  // ),
+
                                 ],
                               ),
                             ),
@@ -2614,142 +2452,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       ///Stories
 
-                      // GetBuilder<HomeController>(builder: (homeController) {
-                      //   return Column(
-                      //     children: [
-                      //       homeController.allStories.length == 0
-                      //           ? SizedBox()
-                      //           : Padding(
-                      //               padding: const EdgeInsets.symmetric(
-                      //                   vertical: 10, horizontal: 10),
-                      //               child: Row(
-                      //                 children: [
-                      //                   Text(
-                      //                     'Astro Stories',
-                      //                     style: Get.theme.primaryTextTheme
-                      //                         .titleMedium!
-                      //                         .copyWith(
-                      //                             fontWeight: FontWeight.w500),
-                      //                   ).tr(),
-                      //                 ],
-                      //               ),
-                      //             ),
-                      //       homeController.allStories.length == 0
-                      //           ? SizedBox()
-                      //           : Container(
-                      //               margin: EdgeInsets.only(left: 10),
-                      //               height: 100,
-                      //               child: ListView.builder(
-                      //                   shrinkWrap: false,
-                      //                   itemCount:
-                      //                       homeController.allStories.length,
-                      //                   scrollDirection: Axis.horizontal,
-                      //                   itemBuilder: (context, index) {
-                      //                     return Container(
-                      //                       margin: EdgeInsets.only(left: 4),
-                      //                       child: InkWell(
-                      //                           onTap: () {
-                      //                             homeController
-                      //                                 .getAstroStory(
-                      //                                     homeController
-                      //                                         .allStories[index]
-                      //                                         .astrologerId
-                      //                                         .toString())
-                      //                                 .then((value) {
-                      //                               Navigator.of(context).push(
-                      //                                 MaterialPageRoute(
-                      //                                     builder: (context) =>
-                      //                                         ViewStoriesScreen(
-                      //                                           profile:
-                      //                                               "${global.imgBaseurl}${homeController.allStories[index].profileImage}",
-                      //                                           name: homeController
-                      //                                               .allStories[
-                      //                                                   index]
-                      //                                               .name
-                      //                                               .toString(),
-                      //                                           isprofile:
-                      //                                               false,
-                      //                                           astroId: int.parse(homeController
-                      //                                               .allStories[
-                      //                                                   index]
-                      //                                               .astrologerId
-                      //                                               .toString()),
-                      //                                         )),
-                      //                               );
-                      //                             });
-                      //                           },
-                      //                           child: Column(
-                      //                             children: [
-                      //                               CircleAvatar(
-                      //                                 radius: 30,
-                      //                                 backgroundColor: homeController
-                      //                                             .allStories[
-                      //                                                 index]
-                      //                                             .allStoriesViewed
-                      //                                             .toString() ==
-                      //                                         "1"
-                      //                                     ? Colors.grey
-                      //                                     : Colors.red,
-                      //                                 child: CircleAvatar(
-                      //                                   radius: 27,
-                      //                                   backgroundColor:
-                      //                                       Colors.yellow,
-                      //                                   backgroundImage:
-                      //                                       NetworkImage(
-                      //                                           "${global.imgBaseurl}${homeController.allStories[index].profileImage}"),
-                      //                                 ),
-                      //                               ),
-                      //                               SizedBox(
-                      //                                 width: 16.w,
-                      //                                 child: Text(
-                      //                                   homeController
-                      //                                       .allStories[index]
-                      //                                       .name
-                      //                                       .toString(),
-                      //                                   maxLines: 1,
-                      //                                   overflow: TextOverflow
-                      //                                       .ellipsis,
-                      //                                   style: TextStyle(
-                      //                                       fontSize: 15.sp),
-                      //                                 ),
-                      //                               ),
-                      //                             ],
-                      //                           )),
-                      //                     );
-                      //                   }),
-                      //             ),
-                      //     ],
-                      //   );
-                      // }),
-                      //--------------------------------------TOP BANNER-----------------------------------------------------------------------------
-                      // Container(
-                      //   margin: EdgeInsets.symmetric(
-                      //       horizontal: FontSizes(context).width2()),
-                      //   height: FontSizes(context).height23(),
-                      //   child: PageView.builder(
-                      //     controller: _pageController,
-                      //     itemCount: 1,
-                      //     onPageChanged: (page) {
-                      //       setState(() {
-                      //         _pageIndex = page;
-                      //       });
-                      //     },
-                      //     itemBuilder: (context, index) {
-                      //       return Container(
-                      //           decoration: BoxDecoration(
-                      //               borderRadius: BorderRadius.circular(15),
-                      //               border: Border.all(
-                      //                   color: colorGrey.withOpacity(0.4))),
-                      //           margin: EdgeInsets.only(
-                      //               bottom: screenHeight(context) * 0.02,
-                      //               top: screenHeight(context) * 0.01),
-                      //           child: Image.network(
-                      //             '${global.imgBaseurl}${global.getSystemFlagValueForLogin(global.systemFlagNameList.TopBanner)}',
-                      //             fit: BoxFit.fill,
-                      //           ));
-                      //     },
-                      //   ),
-                      // ),
+
 
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -2769,135 +2472,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           )
                         ],
                       ),
-                      //--------------------------------ASTROLOGER BLOCK------------------------------------------------------------------------------------
-                      // GetBuilder<HomeController>(builder: (homeController) {
-                      //   return homeController.bannerList.isEmpty
-                      //       ? const SizedBox()
-                      //       : Container(
-                      //           margin: EdgeInsets.symmetric(horizontal: 10),
-                      //           child: ImageSlideshow(
-                      //             isLoop: true,
-                      //             autoPlayInterval: 3000,
-                      //             width: double.infinity,
-                      //             height: 25.h,
-                      //             initialPage: 0,
-                      //             children: List.generate(
-                      //                 homeController.bannerList.length,
-                      //                 (index) {
-                      //               return GestureDetector(
-                      //                 onTap: () async {
-                      //                   if (homeController
-                      //                           .bannerList[index].bannerType ==
-                      //                       'Astrologer') {
-                      //                     global.showOnlyLoaderDialog(context);
-                      //                     bottomController.astrologerList = [];
-                      //                     bottomController.astrologerList
-                      //                         .clear();
-                      //                     bottomController.isAllDataLoaded =
-                      //                         false;
-                      //                     bottomController.update();
-                      //                     await bottomController
-                      //                         .getAstrologerList(
-                      //                             isLazyLoading: false);
-                      //                     global.hideLoader();
-                      //                     bottomController.setBottomIndex(1, 0);
-                      //                   } else if (homeController
-                      //                           .bannerList[index].bannerType ==
-                      //                       'Astroshop') {
-                      //                     final AstromallController
-                      //                         astromallController =
-                      //                         Get.find<AstromallController>();
-                      //                     astromallController.astroCategory
-                      //                         .clear();
-                      //                     astromallController.isAllDataLoaded =
-                      //                         false;
-                      //                     astromallController.update();
-                      //                     global.showOnlyLoaderDialog(context);
-                      //                     await astromallController
-                      //                         .getAstromallCategory(false);
-                      //                     global.hideLoader();
-                      //                     Get.to(() => AstromallScreen());
-                      //                   } else {}
-                      //                 },
-                      //                 //                       child:
-                      //                 // FastCachedImage(
-                      //                 //                         url:
-                      //                 //                             '${global.imgBaseurl}${homeController.bannerList[index].bannerImage}',
-                      //                 //                         fit: BoxFit.cover,
-                      //                 //                         fadeInDuration:
-                      //                 //                             const Duration(seconds: 1),
-                      //                 //                         errorBuilder:
-                      //                 //                             (context, exception, stacktrace) {
-                      //                 //                           return Icon(Icons.no_accounts);
-                      //                 //                         },
-                      //                 //                       ),
-                      //                 child: CachedNetworkImage(
-                      //                   imageUrl: kIsWeb
-                      //                       ? 'https://corsproxy.io/?${global.imgBaseurl}${homeController.bannerList[index].bannerImage}'
-                      //                       : '${global.imgBaseurl}${homeController.bannerList[index].bannerImage}',
-                      //                   imageBuilder: (context, imageProvider) {
-                      //                     return homeController
-                      //                             .checkBannerValid(
-                      //                       startDate: homeController
-                      //                           .bannerList[index].fromDate,
-                      //                       endDate: homeController
-                      //                           .bannerList[index].toDate,
-                      //                     )
-                      //                         ? Card(
-                      //                             child: Container(
-                      //                               height: Get.height * 0.2,
-                      //                               width: Get.width,
-                      //                               decoration: BoxDecoration(
-                      //                                 borderRadius:
-                      //                                     BorderRadius.circular(
-                      //                                         10),
-                      //                                 image: DecorationImage(
-                      //                                   fit: BoxFit.cover,
-                      //                                   image: imageProvider,
-                      //                                 ),
-                      //                               ),
-                      //                             ),
-                      //                           )
-                      //                         : Container(
-                      //                             color: Colors.green,
-                      //                           );
-                      //                   },
-                      //                   placeholder: (context, url) => Center(
-                      //                       child: CircularProgressIndicator()),
-                      //                   errorWidget: (context, url, error) =>
-                      //                       Card(
-                      //                           child: SizedBox(
-                      //                     child: Container(
-                      //                       color: Colors.grey.shade400,
-                      //                       child: Center(
-                      //                         child: Column(
-                      //                           mainAxisAlignment:
-                      //                               MainAxisAlignment.center,
-                      //                           children: [
-                      //                             Icon(
-                      //                               Icons.error,
-                      //                               color: Colors.red,
-                      //                               size: 30.sp,
-                      //                             ),
-                      //                             Text(
-                      //                               'banner Loading error',
-                      //                               style: TextStyle(
-                      //                                 fontSize: 14.sp,
-                      //                                 fontWeight:
-                      //                                     FontWeight.w400,
-                      //                               ),
-                      //                             )
-                      //                           ],
-                      //                         ),
-                      //                       ),
-                      //                     ),
-                      //                   )),
-                      //                 ),
-                      //               );
-                      //             }),
-                      //           ),
-                      //         );
-                      // }),
+
                       GetBuilder<HomeController>(builder: (homeController) {
                         return homeController.myOrders.isEmpty
                             ? const SizedBox()

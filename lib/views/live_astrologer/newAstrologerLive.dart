@@ -21,6 +21,10 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
   late RtcEngine _engine;
   int? hostUid; // astrologer UID when online
   bool isInitialized = false;
+  bool _joining = true;
+
+  // 🔹 Hardcode your Agora App ID here (you already shared this)
+  static const String _agoraAppId = "3a39af44074a40bebc2fff2cba7437e5";
 
   @override
   void initState() {
@@ -29,85 +33,135 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
   }
 
   Future<void> initAgora() async {
-    _engine = createAgoraRtcEngine();
+    try {
+      debugPrint('🎥 [Viewer] initAgora() channel=${widget.channelName}');
 
-    await _engine.initialize(RtcEngineContext(
-      appId: "YOUR_AGORA_APP_ID", // TODO: <==== Put your App ID here
-    ));
+      _engine = createAgoraRtcEngine();
 
-    // Event Handlers
-    _engine.registerEventHandler(
-      RtcEngineEventHandler(
-        onJoinChannelSuccess: (connection, elapsed) {
-          print("🎥 Joined channel as audience");
-          setState(() {
-            isInitialized = true;
-          });
-        },
+      // 1) Initialize engine with valid App ID
+      await _engine.initialize(
+        const RtcEngineContext(
+          appId: _agoraAppId,
+        ),
+      );
 
-        onUserJoined: (connection, remoteUid, elapsed) {
-          print("⭐ Host joined: UID = $remoteUid");
-          setState(() {
-            hostUid = remoteUid; // Save host UID
-          });
-        },
+      // 2) Live Broadcast mode
+      await _engine.setChannelProfile(
+        ChannelProfileType.channelProfileLiveBroadcasting,
+      );
 
-        onUserOffline: (connection, remoteUid, reason) {
-          print("⭕ Host left the live");
-          setState(() {
-            hostUid = null;
-          });
-        },
-      ),
-    );
+      // 3) Viewer is audience (does NOT publish)
+      await _engine.setClientRole(
+        role: ClientRoleType.clientRoleAudience,
+      );
 
-    await _engine.enableVideo();
+      // 4) Enable video (only subscribe, not publish)
+      await _engine.enableVideo();
 
-    // Viewer joins as audience
-    await _engine.joinChannel(
-      token: widget.token,
-      channelId: widget.channelName,
-      uid: 0, // audience does not need unique UID
-      options: ChannelMediaOptions(
-        clientRoleType: ClientRoleType.clientRoleAudience,
-      ),
-    );
+      // 5) Events
+      _engine.registerEventHandler(
+        RtcEngineEventHandler(
+          onJoinChannelSuccess: (connection, elapsed) {
+            debugPrint("🎥 [Viewer] Joined channel as audience");
+            setState(() {
+              isInitialized = true;
+              _joining = false;
+            });
+          },
+          onUserJoined: (connection, remoteUid, elapsed) {
+            debugPrint("⭐ [Viewer] Host joined: UID = $remoteUid");
+            setState(() {
+              hostUid = remoteUid; // Save host UID
+            });
+          },
+          onUserOffline: (connection, remoteUid, reason) {
+            debugPrint("⭕ [Viewer] Host left the live (uid=$remoteUid)");
+            setState(() {
+              hostUid = null;
+            });
+          },
+          onError: (err, msg) {
+            debugPrint('❌ [Viewer] Agora error: $err $msg');
+          },
+          onConnectionStateChanged:
+              (RtcConnection conn, ConnectionStateType state,
+              ConnectionChangedReasonType reason) {
+            debugPrint(
+                '🔎 [Viewer] connectionState=$state reason=$reason channel=${conn.channelId}');
+          },
+        ),
+      );
+
+      // 6) Join as audience, subscribe only
+      await _engine.joinChannel(
+        token: widget.token,
+        channelId: widget.channelName,
+        uid: 0, // let Agora assign UID for viewer
+        options: const ChannelMediaOptions(
+          clientRoleType: ClientRoleType.clientRoleAudience,
+          publishCameraTrack: false,
+          publishMicrophoneTrack: false,
+          autoSubscribeAudio: true,
+          autoSubscribeVideo: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint('💥 [Viewer] initAgora failed: $e');
+      if (mounted) {
+        setState(() => _joining = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Live view failed: $e')),
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
-    _engine.leaveChannel();
-    _engine.release();
+    () async {
+      try {
+        await _engine.leaveChannel();
+      } catch (_) {}
+      try {
+        await _engine.release();
+      } catch (_) {}
+    }();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final waiting = hostUid == null;
+
     return Scaffold(
       backgroundColor: Colors.black,
-
       body: Stack(
         children: [
           // MAIN VIDEO AREA
           Center(
-            child: hostUid != null
-                ? AgoraVideoView(
+            child: waiting
+                ? Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_joining)
+                  const CircularProgressIndicator(color: Colors.white),
+                if (!_joining) const SizedBox.shrink(),
+                const SizedBox(height: 16),
+                Text(
+                  "Waiting for astrologer to go live...",
+                  style:
+                  const TextStyle(color: Colors.white, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            )
+                : AgoraVideoView(
               controller: VideoViewController.remote(
                 rtcEngine: _engine,
                 canvas: VideoCanvas(uid: hostUid),
-                connection: RtcConnection(channelId: widget.channelName),
+                connection:
+                RtcConnection(channelId: widget.channelName),
               ),
-            )
-                : Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: Colors.white),
-                SizedBox(height: 16),
-                Text(
-                  "Waiting for astrologer to go live...",
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ],
             ),
           ),
 
@@ -118,7 +172,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
             child: CircleAvatar(
               backgroundColor: Colors.white,
               child: IconButton(
-                icon: Icon(Icons.arrow_back, color: Colors.black),
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
