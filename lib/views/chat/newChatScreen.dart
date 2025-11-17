@@ -50,9 +50,11 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   int _retries = 0;
   int _seq = 0;
 
-  // ⏱ Session timer
+  // ⏱ Session timer (10 minutes, starts only when astrologer connects)
   Timer? _sessionTimer;
-  int _secondsLeft = 600;
+  static const int _totalSessionSeconds = 600; // 🔥 10 minutes
+  int _secondsLeft = _totalSessionSeconds;
+  bool _timerStarted = false;
 
   final Set<String> _clientSeqSeen = <String>{};
   final Map<String, int> _clientSeqIndex = {};
@@ -81,8 +83,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     super.initState();
     _initializeUserData();
 
-    // ⏱ start ticking immediately
-    _startSessionCountdown();
+    // ❌ NO TIMER HERE NOW – we start only when astrologer connects
+    // _startSessionCountdown();
 
     _scrollController.addListener(() {
       if (_scrollController.position.pixels <=
@@ -95,10 +97,13 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     });
   }
 
-  // ⏱ Session timer that REBUILDS every second
-  void _startSessionCountdown() {
+  // ⏱ Session timer that REBUILDS every second – starts only when astrologer connects
+  void _startSessionCountdownIfNeeded() {
+    if (_timerStarted) return;
+    _timerStarted = true;
+
     _sessionTimer?.cancel();
-    _secondsLeft = 60;
+    _secondsLeft = _totalSessionSeconds;
 
     _sessionTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) {
@@ -106,13 +111,9 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
         return;
       }
 
-      // Decrement first
       _secondsLeft--;
-
-      // Always rebuild so the AppBar text updates
       setState(() {});
 
-      // When it reaches zero, stop timer and end session after this frame
       if (_secondsLeft <= 0) {
         t.cancel();
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -156,7 +157,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     if (_myUserId.isEmpty || _roomId.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Missing session details. Please try again.')),
+          const SnackBar(
+              content: Text('Missing session details. Please try again.')),
         );
       }
       return;
@@ -214,7 +216,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           if (roomId.isNotEmpty) 'room_id': roomId,
         };
       })
-          .where((m) => (m['room_id'] == null) || (m['room_id'] == _roomId))
+          .where((m) =>
+      (m['room_id'] == null) || (m['room_id'] == _roomId))
           .toList();
 
       if (loadMore) {
@@ -227,8 +230,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           }
           _messages.sort((a, b) =>
               (DateTime.tryParse(a['created_at'] ?? '') ?? DateTime(0))
-                  .compareTo(
-                  DateTime.tryParse(b['created_at'] ?? '') ?? DateTime(0)));
+                  .compareTo(DateTime.tryParse(b['created_at'] ?? '') ??
+                  DateTime(0)));
           _currentPage--;
         });
 
@@ -277,7 +280,9 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
         final id = msg.id?.toString();
         final roomId = (msg.roomId ?? '').toString();
         if (roomId.isNotEmpty && roomId != _roomId) return <String, dynamic>{};
-        if (id != null && _historyIdsSeen.contains(id)) return <String, dynamic>{};
+        if (id != null && _historyIdsSeen.contains(id)) {
+          return <String, dynamic>{};
+        }
 
         return <String, dynamic>{
           'sender_id': msg.senderId?.toString() ?? '',
@@ -364,7 +369,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           _lastWsAt = DateTime.now();
           try {
             _wsFrameCount++;
-            _lastWsRaw = data is String ? data : utf8.decode(data as List<int>);
+            _lastWsRaw =
+            data is String ? data : utf8.decode(data as List<int>);
             debugPrint('⬅️ WS #$_wsFrameCount: $_lastWsRaw');
           } catch (_) {}
           _handleIncomingMessage(data);
@@ -470,12 +476,15 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
             .toString();
         final out = <String, dynamic>{
           'sender_id':
-          (map['sender_id'] ?? map['user_id'] ?? map['from'] ?? '').toString(),
+          (map['sender_id'] ?? map['user_id'] ?? map['from'] ?? '')
+              .toString(),
           'message': content.toString(),
           'created_at': created,
         };
         if (map['id'] != null) out['server_id'] = map['id'].toString();
-        if (map['room_id'] != null) out['room_id'] = map['room_id'].toString();
+        if (map['room_id'] != null) {
+          out['room_id'] = map['room_id'].toString();
+        }
         final cid = _extractClientSeqId(map);
         if (cid != null) out['client_sequence_id'] = cid;
         return out;
@@ -488,6 +497,22 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     try {
       final raw = data is String ? data : utf8.decode(data as List<int>);
       final parsed = jsonDecode(raw);
+
+      // 🔥 Detect astrologer WS "joined" event → start timer
+      if (!_timerStarted && parsed is Map) {
+        final evt = parsed['event']?.toString().toLowerCase();
+        final role = parsed['role']?.toString().toLowerCase();
+        final uid =
+        (parsed['user_id'] ?? parsed['sender_id'] ?? '').toString();
+
+        if (evt == 'joined' &&
+            (uid == widget.astrologerUid ||
+                role == 'astrologer' ||
+                role == 'astro')) {
+          debugPrint('⏱️ Astrologer joined via WS → start timer');
+          _startSessionCountdownIfNeeded();
+        }
+      }
 
       final msg = _extractMessage(parsed);
       if (msg == null) {
@@ -506,6 +531,13 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       if (room.isNotEmpty && room != _roomId) {
         debugPrint('↩️ Ignored message for other room: $room');
         return;
+      }
+
+      // 🔥 Start timer on first message from astrologer
+      final senderId = (msg['sender_id'] ?? '').toString();
+      if (!_timerStarted && senderId == widget.astrologerUid) {
+        debugPrint('⏱️ First message from astrologer → start timer');
+        _startSessionCountdownIfNeeded();
       }
 
       if (_addMessageIfNew(msg) && mounted) {
@@ -540,8 +572,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
 
     final s = (m['sender_id'] ?? '').toString();
     final c = (m['message'] ?? '').toString().trim();
-    final t =
-        DateTime.tryParse((m['created_at'] ?? '').toString()) ?? DateTime.now();
+    final t = DateTime.tryParse((m['created_at'] ?? '').toString()) ??
+        DateTime.now();
 
     for (var i = _messages.length - 1;
     i >= 0 && i >= _messages.length - 20;
@@ -550,7 +582,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       final ms = (mm['sender_id'] ?? '').toString();
       final mc = (mm['message'] ?? '').toString().trim();
       final mt =
-          DateTime.tryParse((mm['created_at'] ?? '').toString()) ?? DateTime(0);
+          DateTime.tryParse((mm['created_at'] ?? '').toString()) ??
+              DateTime(0);
       if (ms == s &&
           mc == c &&
           (t.difference(mt).inMilliseconds).abs() <= 2000) {
@@ -567,6 +600,12 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     }
     if (sid.isNotEmpty) {
       _historyIdsSeen.add(sid);
+    }
+
+    // 🔥 Also start timer from history messages, only when first astrologer message appears
+    if (!_timerStarted && s == widget.astrologerUid) {
+      debugPrint('⏱️ Astrologer message in history → start timer');
+      _startSessionCountdownIfNeeded();
     }
 
     _updateLatestSeenAt(m['created_at']);
@@ -676,6 +715,23 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     });
   }
 
+  // Decode emojis if they are coming as \uXXXX sequences
+  String _decodeMessageText(dynamic raw) {
+    final text = (raw ?? '').toString();
+    // If it doesn't look escaped, just return
+    if (!text.contains(r'\u')) return text;
+
+    try {
+      // Try JSON decode trick
+      final fixed = jsonDecode(
+          '"${text.replaceAll(r'\', r'\\').replaceAll('"', r'\"')}"');
+      if (fixed is String) return fixed;
+      return text;
+    } catch (_) {
+      return text;
+    }
+  }
+
   @override
   void dispose() {
     try {
@@ -683,23 +739,23 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     } catch (_) {}
     _reconnectTimer?.cancel();
     _pollTimer?.cancel();
-    _sessionTimer?.cancel(); // ⏱ stop the session timer
+    _sessionTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
   // ---------------------------------------------------------------------------
-  // Enhanced UI with Theme Colors
+  // UI
   // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     final canSend = _isConnected && _socket != null;
 
-    // format countdown as M:SS
+    // format countdown as MM:SS
     final String countdownStr =
-        '${(_secondsLeft ~/ 60)}:${(_secondsLeft % 60).toString().padLeft(2, '0')}';
+        '${(_secondsLeft ~/ 60).toString().padLeft(2, '0')}:${(_secondsLeft % 60).toString().padLeft(2, '0')}';
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -716,7 +772,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
               decoration: BoxDecoration(
                 color: _primaryColor.withOpacity(0.2),
                 shape: BoxShape.circle,
-                border: Border.all(color: _primaryColor.withOpacity(0.5), width: 1.5),
+                border: Border.all(
+                    color: _primaryColor.withOpacity(0.5), width: 1.5),
               ),
               child: Icon(
                 Icons.person,
@@ -746,7 +803,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: _isConnected ? _onlineColor : _offlineColor,
+                          color:
+                          _isConnected ? _onlineColor : _offlineColor,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -767,23 +825,21 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           ],
         ),
         actions: [
-          // ⏱ show countdown
+          // ⏱ timer label without emojis
           Container(
             margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.15),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.timer, size: 16, color: Colors.white),
-                const SizedBox(width: 6),
-                Text(
-                  'Ends in $countdownStr',
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ],
+            child: Text(
+              'Session: $countdownStr',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600),
             ),
           ),
           IconButton(
@@ -851,19 +907,18 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   Widget _buildMessageList() {
     return Stack(
       children: [
-        // Background pattern
+        // Background pattern (optional)
         Opacity(
           opacity: 0.03,
           child: Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/pattern.png'), // Add your pattern asset
+                image: AssetImage('assets/pattern.png'),
                 repeat: ImageRepeat.repeat,
               ),
             ),
           ),
         ),
-
         ListView.builder(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -873,8 +928,10 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
               return _buildLoadingMoreIndicator();
             }
 
-            final msg = _messages[_isFetchingMore ? index - 1 : index];
-            final isMine = msg['sender_id']?.toString() == _myUserId;
+            final msg =
+            _messages[_isFetchingMore ? index - 1 : index];
+            final isMine =
+                msg['sender_id']?.toString() == _myUserId;
 
             return _buildMessageBubble(msg, isMine);
           },
@@ -888,7 +945,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       padding: const EdgeInsets.all(16),
       child: Center(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: _primaryColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(20),
@@ -901,7 +959,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                  valueColor:
+                  AlwaysStoppedAnimation<Color>(_primaryColor),
                 ),
               ),
               const SizedBox(width: 8),
@@ -925,10 +984,14 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
         ? '${messageTime.hour}:${messageTime.minute.toString().padLeft(2, '0')}'
         : '';
 
+    final displayText = _decodeMessageText(msg['message']);
+
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+      margin:
+      const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
       child: Row(
-        mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+        isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isMine)
             Container(
@@ -945,17 +1008,21 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
                 size: 16,
               ),
             ),
-
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: isMine ? _primaryColor : _cardColor,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
-                  bottomLeft: isMine ? const Radius.circular(20) : const Radius.circular(4),
-                  bottomRight: isMine ? const Radius.circular(4) : const Radius.circular(20),
+                  bottomLeft: isMine
+                      ? const Radius.circular(20)
+                      : const Radius.circular(4),
+                  bottomRight: isMine
+                      ? const Radius.circular(4)
+                      : const Radius.circular(20),
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -969,7 +1036,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    (msg['message'] ?? '').toString(),
+                    displayText,
                     style: TextStyle(
                       color: isMine ? Colors.white : _textColor,
                       fontSize: 15,
@@ -980,7 +1047,9 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
                   Text(
                     timeString,
                     style: TextStyle(
-                      color: isMine ? Colors.white.withOpacity(0.7) : _hintColor,
+                      color: isMine
+                          ? Colors.white.withOpacity(0.7)
+                          : _hintColor,
                       fontSize: 10,
                     ),
                   ),
@@ -988,7 +1057,6 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
               ),
             ),
           ),
-
           if (isMine)
             Container(
               width: 32,
@@ -1061,7 +1129,9 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           const SizedBox(width: 12),
           Container(
             decoration: BoxDecoration(
-              color: canSend ? _primaryColor : _primaryColor.withOpacity(0.3),
+              color: canSend
+                  ? _primaryColor
+                  : _primaryColor.withOpacity(0.3),
               shape: BoxShape.circle,
               boxShadow: canSend
                   ? [
@@ -1080,7 +1150,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
                 size: 20,
               ),
               onPressed: canSend ? _sendMessage : null,
-              tooltip: canSend ? 'Send message' : 'Connecting...',
+              tooltip:
+              canSend ? 'Send message' : 'Connecting...',
             ),
           ),
         ],

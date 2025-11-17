@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-
 import '../../fastApi/agora_service.dart';
 
 class CustomerVideoCallPage extends StatefulWidget {
@@ -22,16 +21,20 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> {
   late RtcEngine _engine;
   bool _engineCreated = false;
 
-  String _appId = "3a39af44074a40bebc2fff2cba7437e5";   // ✔ Hardcoded APP ID
+  String _appId = "3a39af44074a40bebc2fff2cba7437e5";
   String _channel = '';
   String _token = '';
-  String _account = '';  // viewer ID
+  String _account = '';
 
   bool _loading = true;
   bool _joined = false;
   int? _remoteUid;
 
   Timer? _pulse;
+  Timer? _callTimer;
+
+  int _secondsLeft = 600;      // 🔥 10 mins total
+  bool _timerStarted = false;  // 🔥 Start only when astrologer joins
 
   @override
   void initState() {
@@ -42,96 +45,98 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> {
   @override
   void dispose() {
     _pulse?.cancel();
+    _callTimer?.cancel();
+
     () async {
-      try { await _engine.leaveChannel(); } catch (_) {}
-      try { await _engine.release(); } catch (_) {}
+      try {
+        await _engine.leaveChannel();
+      } catch (_) {}
+      try {
+        await _engine.release();
+      } catch (_) {}
     }();
+
     super.dispose();
   }
 
+  /// ---------------- INIT CALL ----------------
   Future<void> _bootstrap() async {
-    debugPrint('📲 [CustomerVC] bootstrap() astroId=${widget.astroId}');
-
     try {
-      // 🔐 Permissions
-      final statuses = await [Permission.camera, Permission.microphone].request();
+      final statuses =
+      await [Permission.camera, Permission.microphone].request();
+
       if (statuses[Permission.camera] != PermissionStatus.granted ||
           statuses[Permission.microphone] != PermissionStatus.granted) {
         throw 'Camera/Microphone permission denied';
       }
 
-      // 🌐 Fetch LIVE JOIN TOKEN (Customer / Audience API)
       final auth = await AgoraService.getVideoTokens(widget.astroId);
 
       _channel = auth.channelName;
       _token = auth.currentUserToken;
-
-      // Viewer ID (API does not return it → generate locally)
       _account = auth.currentUserId ??
           "viewer_${DateTime.now().millisecondsSinceEpoch}";
-
-      debugPrint("APP ID: $_appId");
-      debugPrint("CHANNEL: $_channel");
-      debugPrint("TOKEN: $_token");
-      debugPrint("ACCOUNT: $_account");
 
       if (_channel.isEmpty || _token.isEmpty) {
         throw "Missing channel/token from API.";
       }
 
-      // 🧠 Initialize Agora Engine
+      // Agora engine setup
       _engine = createAgoraRtcEngine();
       await _engine.initialize(RtcEngineContext(appId: _appId));
       _engineCreated = true;
 
-      // ⭐ LIVE MODE (host + audience)
-      await _engine.setChannelProfile(ChannelProfileType.channelProfileLiveBroadcasting);
+      await _engine.setChannelProfile(
+        ChannelProfileType.channelProfileCommunication,
+      );
 
-      // ⭐ CUSTOMER IS AUDIENCE (just watching)
-      await _engine.setClientRole(role: ClientRoleType.clientRoleAudience);
+      await _engine.setClientRole(
+        role: ClientRoleType.clientRoleBroadcaster,
+      );
 
-      // Enable video (creates renderer)
       await _engine.enableVideo();
+      await _engine.startPreview();
 
-      // 🎧 Event Listeners
+      // -------- EVENT HANDLERS ----------
       _engine.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (conn, elapsed) {
-            debugPrint("🎉 Joined channel successfully");
             setState(() => _joined = true);
           },
+
+          // 🔥 START TIMER WHEN ASTROLOGER JOINS
           onUserJoined: (conn, remoteUid, elapsed) {
-            debugPrint("👋 Host UID joined = $remoteUid");
+            debugPrint("⭐ Astrologer joined = $remoteUid");
             setState(() => _remoteUid = remoteUid);
+
+            if (!_timerStarted) {
+              _startTimer();   // START TIMER HERE 🔥
+              _timerStarted = true;
+            }
           },
+
           onUserOffline: (conn, remoteUid, reason) {
             setState(() => _remoteUid = null);
           },
         ),
       );
 
-      // ⭐ JOIN as AUDIENCE (Do NOT publish audio/video)
+      // -------- JOIN --------
       await _engine.joinChannelWithUserAccount(
         token: _token,
         channelId: _channel,
         userAccount: _account,
         options: const ChannelMediaOptions(
-          clientRoleType: ClientRoleType.clientRoleAudience,
-          publishCameraTrack: false,
-          publishMicrophoneTrack: false,
+          clientRoleType: ClientRoleType.clientRoleBroadcaster,
+          publishCameraTrack: true,
+          publishMicrophoneTrack: true,
           autoSubscribeAudio: true,
           autoSubscribeVideo: true,
         ),
       );
 
-      // Debug timer
-      _pulse = Timer.periodic(
-        Duration(seconds: 6),
-            (_) => debugPrint("💓 Audience heartbeat | remoteUid=$_remoteUid"),
-      );
-
     } catch (e) {
-      debugPrint('💥 CustomerVC error: $e');
+      debugPrint('💥 Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -141,26 +146,64 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> {
     }
   }
 
+  /// ---------------- TIMER START ----------------
+  void _startTimer() {
+    debugPrint("⏳ Timer started");
+
+    _callTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsLeft <= 0) {
+        _endSession();
+      } else {
+        setState(() => _secondsLeft--);
+      }
+    });
+  }
+
+  /// ---------------- AUTO END ----------------
+  Future<void> _endSession() async {
+    debugPrint("⛔ CALL AUTO ENDED");
+    _callTimer?.cancel();
+
+    try {
+      await _engine.leaveChannel();
+    } catch (_) {}
+
+    if (mounted) {
+      Navigator.pop(context); // Go back
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Session ended (10 minutes over).")));
+    }
+  }
+
   Future<void> _leave() async {
+    _callTimer?.cancel();
     try {
       await _engine.leaveChannel();
     } catch (_) {}
     if (mounted) Navigator.pop(context);
   }
 
+  /// ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
+    final minutes = (_secondsLeft ~/ 60).toString().padLeft(2, "0");
+    final seconds = (_secondsLeft % 60).toString().padLeft(2, "0");
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Live Video (Customer)', style: TextStyle(fontWeight: FontWeight.w600)),
+        title: const Text(
+          'Video Call (Customer)',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         backgroundColor: Colors.black,
       ),
+
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Stack(
         children: [
-          // Remote Video (HOST)
+          // REMOTE VIDEO ======================
           Positioned.fill(
             child: _remoteUid == null
                 ? Center(
@@ -178,7 +221,48 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> {
             ),
           ),
 
-          // CALL END BUTTON
+          // LOCAL VIDEO PiP ==================
+          Positioned(
+            top: 20,
+            right: 20,
+            width: 120,
+            height: 180,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                color: Colors.black54,
+                child: AgoraVideoView(
+                  controller: VideoViewController(
+                    rtcEngine: _engine,
+                    canvas: const VideoCanvas(uid: 0),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ⏳ TIMER DISPLAY ==================
+          Positioned(
+            top: 20,
+            left: 20,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                "$minutes:$seconds",
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+
+          // END CALL BUTTON ==================
           Positioned(
             bottom: 25,
             left: 0,
