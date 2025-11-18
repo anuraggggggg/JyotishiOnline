@@ -352,6 +352,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     WidgetsBinding.instance.addObserver(this);
     super.initState();
+
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       log("onMessageRecived foreground -> ${message.data}");
       if (message.data["title"] == "For Live accept/reject") {

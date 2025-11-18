@@ -339,49 +339,56 @@ class _LoveCompatibilityInputScreenState extends State<LoveCompatibilityInputScr
                       Obx(() => SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed:
-                                  controller.isLoading.value ? null : _submit,
+                              onPressed: controller.isLoading.value ? null : _submit,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: LoveCompatibilityInputScreen.celestialGold,
                                 foregroundColor: LoveCompatibilityInputScreen.cosmicBlue,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 18),
+                                padding: const EdgeInsets.symmetric(vertical: 18),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 elevation: 8,
                                 shadowColor: LoveCompatibilityInputScreen.celestialGold.withOpacity(0.5),
                               ),
-                              child: controller.isLoading.value
-                                  ? Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        const SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 3,
-                                            color: LoveCompatibilityInputScreen.cosmicBlue,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 15),
-                                        Text(
-                                          "Calculating...",
-                                          style: GoogleFonts.poppins(
-                                              fontSize: 18, color: LoveCompatibilityInputScreen.cosmicBlue),
-                                        ),
-                                      ],
-                                    )
-                                  : Text(
-                                      "Check Compatibility ₹599 + GST",
-                                      style: GoogleFonts.poppins(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: LoveCompatibilityInputScreen.cosmicBlue),
+                              child: Center(
+                                child: controller.isLoading.value
+                                    ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,      // 🔥 keeps row centered tightly
+                                  children: [
+                                    const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 3,
+                                        color: LoveCompatibilityInputScreen.cosmicBlue,
+                                      ),
                                     ),
-                            ),
-                          )),
+                                    const SizedBox(width: 15),
+                                    Text(
+                                      "Calculating...",
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: LoveCompatibilityInputScreen.cosmicBlue,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                                    : Text(
+                                  "Check Compatibility ₹599 + GST",
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: LoveCompatibilityInputScreen.cosmicBlue,
+                                  ),
+                                ),
+                              ),
+                            )
+
+                      )),
                       const SizedBox(height: 16),
                       Obx(() => controller.errorMessage.value.isNotEmpty
                           ? Text(

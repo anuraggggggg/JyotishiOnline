@@ -1,13 +1,10 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-
 import 'package:AstrowayCustomer/controllers/advancedPanchangController.dart';
 import 'package:AstrowayCustomer/controllers/astrologerCategoryController.dart';
-import 'package:AstrowayCustomer/controllers/astrologyBlogController.dart';
 import 'package:AstrowayCustomer/controllers/astromallController.dart';
 import 'package:AstrowayCustomer/controllers/bottomNavigationController.dart';
-import 'package:AstrowayCustomer/controllers/dailyHoroscopeController.dart';
 import 'package:AstrowayCustomer/controllers/fastApiProvider/GetAllAstrologerProvider.dart';
 import 'package:AstrowayCustomer/controllers/history_controller.dart';
 import 'package:AstrowayCustomer/controllers/homeController.dart';
@@ -18,31 +15,18 @@ import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/UserModel.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/allAstrologerModel.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/currentUserWalletModel.dart';
-
-import 'package:AstrowayCustomer/model/kundli_model.dart';
 import 'package:AstrowayCustomer/utils/AppColors.dart';
 import 'package:AstrowayCustomer/utils/date_converter.dart';
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:AstrowayCustomer/utils/images.dart';
 import 'package:AstrowayCustomer/views/addMoneyToWallet.dart';
-import 'package:AstrowayCustomer/views/astroBlog/astrologyBlogListScreen.dart';
-import 'package:AstrowayCustomer/views/astroBlog/astrologyDetailScreen.dart';
-import 'package:AstrowayCustomer/views/astrologerNews.dart';
 import 'package:AstrowayCustomer/views/astrologerProfile/astrologerProfile.dart';
-import 'package:AstrowayCustomer/views/astrologerVideo.dart';
-import 'package:AstrowayCustomer/views/astromall/astromallScreen.dart';
-import 'package:AstrowayCustomer/views/blog_screen.dart';
 import 'package:AstrowayCustomer/views/call/call_history_detail_screen.dart';
-import 'package:AstrowayCustomer/views/callScreen.dart';
-import 'package:AstrowayCustomer/views/categoryScreen.dart';
 import 'package:AstrowayCustomer/views/chat/chat_screen.dart';
 import 'package:AstrowayCustomer/views/clientsReviewScreem.dart';
-import 'package:AstrowayCustomer/views/kudali/kundliScreen.dart';
-import 'package:AstrowayCustomer/views/kundliMatching/kundliMatchingScreen.dart';
 import 'package:AstrowayCustomer/views/liveAstrologerList.dart';
 import 'package:AstrowayCustomer/views/live_astrologer/live_astrologer_screen.dart';
 import 'package:AstrowayCustomer/views/notification.dart';
-import 'package:AstrowayCustomer/views/panchangScreen.dart';
 import 'package:AstrowayCustomer/views/proKerela/LoveCompatibilityInputScreen.dart';
 import 'package:AstrowayCustomer/views/proKerela/birthdayNumberInputScreen.dart';
 import 'package:AstrowayCustomer/views/proKerela/dailyPredictionInputScreen.dart';
@@ -51,23 +35,18 @@ import 'package:AstrowayCustomer/views/proKerela/planetInputScreen.dart';
 import 'package:AstrowayCustomer/views/proKerela/services.dart';
 import 'package:AstrowayCustomer/views/searchAstrologerScreen.dart';
 import 'package:AstrowayCustomer/views/settings/notificationScreen.dart';
-import 'package:AstrowayCustomer/views/stories/viewStories.dart';
 import 'package:AstrowayCustomer/views/wallet/walletRechargeScreen.dart';
 import 'package:AstrowayCustomer/widget/drawerWidget.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_slideshow/flutter_image_slideshow.dart';
-
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
-
 import 'package:responsive_sizer/responsive_sizer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../controllers/IntakeController.dart';
 import '../controllers/chatController.dart';
 import '../controllers/fastApiProvider/LiveAstrologerProvider.dart';
@@ -76,18 +55,11 @@ import '../controllers/splashController.dart';
 import '../controllers/walletController.dart';
 import '../model/fastApiModel/CustomerDetailModel.dart';
 import '../model/fastApiModel/LiveAstrologerModel.dart';
-import '../model/fastApiModel/astrologerProfileModel.dart';
 import '../theme/appTheme.dart';
 import '../utils/fonts.dart';
-import '../utils/screenSize.dart';
-import '../widget/videoPlayerWidget.dart';
 import 'CustomText.dart';
 import 'astrologerProfile/FastApi/allAstrologer.dart';
 import 'astrologerProfile/FastApi/astroProfile.dart';
-import 'astromall/astroProductScreen.dart';
-import 'customer_support/customerSupportChatScreen.dart';
-import 'customer_support/customer_support_chat_screen.dart';
-import 'daily_horoscope/dailyHoroscopeScreen.dart';
 import 'live_astrologer/newAstrologerLive.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -135,7 +107,6 @@ class _HomeScreenState extends State<HomeScreen> {
         .fetchLiveAstrologers();
 
     _fetchUserProfile();
-    // _loadUserName();
 
     _fetchAllData();
 
@@ -144,12 +115,6 @@ class _HomeScreenState extends State<HomeScreen> {
             .getAstrologers());
   }
 
-  // Future<void> _loadUserName() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   setState(() {
-  //     userName = prefs.getString("user_name"); // read the saved name
-  //   });
-  // }
 
   void _fetchAllData() async {
     final wallet = await FastAPIServices().fetchCurrentWallet();
@@ -649,13 +614,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                         0.01,
                                   ),
                                   Icon(Icons.translate),
-                                  // Image.asset(
-                                  //   Images.translation,
-                                  //   height: 18,
-                                  //   width: 18,
-                                  //   fit: BoxFit.fill,
-                                  //   color: Colors.black,
-                                  // ),
                                 ],
                               ),
                             ),
@@ -753,31 +711,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ]
               : [
-                  // GetBuilder<SettingsController>(builder: (settingsController) {
-                  //   return InkWell(
-                  //     onTap: () async {
-                  //       global.showOnlyLoaderDialog(context);
-                  //       await settingsController.getNotification();
-                  //       global.hideLoader();
-                  //       Get.to(() => const NotificationScreen());
-                  //     },
-                  //     child: Icon(
-                  //       Icons.notifications_none,
-                  //       size: 30,
-                  //     ),
-                  //   );
-                  // }),
+
                   const SizedBox(width: 5),
                   InkWell(
                     onTap: () async {
-                      // bool isLogin = await global.isLogin();
-                      // global.showOnlyLoaderDialog(context);
-                      // await walletController.getAmount();
-                      // global.hideLoader();
-                      // if (isLogin) {
-                      //   // Get.to(() => AddmoneyToWallet());
-
-                      // }
 
                       Get.to(() => RechargeWalletScreen());
                     },
@@ -1185,16 +1122,24 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         body: RefreshIndicator(
           onRefresh: () async {
-            // global.warningDialog(context);
-            await homeController.getBanner();
-            await homeController.getBlog();
-            await homeController.getAstroNews();
-            await homeController.getMyOrder();
-            await homeController.getAstrologyVideos();
-            await homeController.getClientsTestimonals();
-            await homeController.getAllStories();
-            await bottomControllerMain.getLiveAstrologerList();
-            await astromallController.getAstromallCategory(false);
+
+            FastAPIServices().fetchCustomerDetails();
+            FastAPIServices().fetchCurrentUserDetails();
+            FastAPIServices().getAllWalletDetails();
+            FastAPIServices().fetchCurrentWallet();
+            FastAPIServices().fetchAllAstrologers();
+            FastAPIServices().fetchCurrentUserDetails();
+            Provider.of<LiveAstrologerProvider>(context, listen: false)
+                .fetchLiveAstrologers();
+
+            _fetchUserProfile();
+
+            _fetchAllData();
+
+            Future.microtask(() =>
+                Provider.of<GetAllAstrologerProvider>(context, listen: false)
+                    .getAstrologers());
+
           },
           child: GetBuilder<BottomNavigationController>(
               builder: (bottomController) {
@@ -1208,59 +1153,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       Container(
                         height: 40,
                       ),
-                      // Padding(
-                      //   padding: const EdgeInsets.symmetric(
-                      //       horizontal: 10, vertical: 3),
-                      //   child: GestureDetector(
-                      //     onTap: () {
-                      //       Get.to(() => SearchAstrologerScreen());
-                      //     },
-                      //     child: SizedBox(
-                      //       height: 8.h,
-                      //       child: Container(
-                      //         padding: EdgeInsets.symmetric(
-                      //             vertical: FontSizes(context).height02()),
-                      //         margin: EdgeInsets.symmetric(
-                      //             horizontal: FontSizes(context).width2(),
-                      //             vertical: FontSizes(context).height1()),
-                      //         decoration: BoxDecoration(
-                      //           color: backgroundColor,
-                      //           borderRadius: BorderRadius.circular(
-                      //               FontSizes(context).width4()),
-                      //         ),
-                      //         child: Padding(
-                      //           padding:
-                      //               const EdgeInsets.symmetric(horizontal: 5),
-                      //           child: Row(
-                      //             mainAxisAlignment:
-                      //                 MainAxisAlignment.spaceBetween,
-                      //             children: [
-                      //               Padding(
-                      //                 padding: const EdgeInsets.only(left: 10),
-                      //                 child: Text(
-                      //                   'Search',
-                      //                   style: Get
-                      //                       .theme.primaryTextTheme.bodyLarge!
-                      //                       .copyWith(
-                      //                     fontWeight: FontWeight.w500,
-                      //                     fontSize: 15,
-                      //                     color: Colors.black38,
-                      //                   ),
-                      //                 ).tr(),
-                      //               ),
-                      //               Icon(
-                      //                 Icons.search,
-                      //                 size: 20.sp,
-                      //                 color: Color(0xff555555),
-                      //               ),
-                      //             ],
-                      //           ),
-                      //         ),
-                      //       ),
-                      //     ),
-                      //   ),
-                      // ),
-
                       GestureDetector(
                         onTap: () {
                           Get.to(() => AstrologyServicesPage());
@@ -2130,41 +2022,55 @@ class _HomeScreenState extends State<HomeScreen> {
                             )
                           : Offstage(),
 
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                        child: Text(
-                          "Live Now 🔴",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                      Consumer<LiveAstrologerProvider>(
+                        builder: (context, provider, child) {
 
-                      SizedBox(
-                        height: 170,
-                        child: Consumer<LiveAstrologerProvider>(
-                          builder: (context, provider, child) {
-                            if (provider.isLoading) {
-                              return Center(child: CircularProgressIndicator());
-                            }
-
-                            if (provider.liveAstrologers.isEmpty) {
-                              return Center(child: Text("No astrologers live right now"));
-                            }
-
-                            return ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              padding: EdgeInsets.symmetric(horizontal: 12),
-                              itemCount: provider.liveAstrologers.length,
-                              itemBuilder: (context, index) {
-                                final astro = provider.liveAstrologers[index];
-                                return LiveAstroCard(astro: astro);
-                              },
+                          // 1️⃣ Show loader while fetching data
+                          if (provider.isLoading) {
+                            return SizedBox(
+                              height: 170,
+                              child: Center(child: CircularProgressIndicator()),
                             );
-                          },
-                        ),
+                          }
+
+                          // 2️⃣ Hide everything if no astrologers are live
+                          if (provider.liveAstrologers.isEmpty) {
+                            return SizedBox.shrink();   // << NOTHING IS SHOWN
+                          }
+
+                          // 3️⃣ Show "Live Now" + List ONLY when live astrologers exist
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                                child: Text(
+                                  "Live Now 🔴",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+
+                              SizedBox(
+                                height: 170,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  padding: EdgeInsets.symmetric(horizontal: 12),
+                                  itemCount: provider.liveAstrologers.length,
+                                  itemBuilder: (context, index) {
+                                    final astro = provider.liveAstrologers[index];
+                                    return LiveAstroCard(astro: astro);
+                                  },
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
+
+
 
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
@@ -2254,205 +2160,197 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       Padding(
                         padding: const EdgeInsets.all(10),
-                        child: Container(
-                            child: Row(
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            /// First Card (Chat With Astrologer)
+                            /// --------------------------------------------------------
+                            /// FIRST CARD
+                            /// --------------------------------------------------------
                             GestureDetector(
-                                onTap: () async {
-                                  global.showOnlyLoaderDialog(context);
-                                  bottomController.astrologerList = [];
-                                  bottomController.isAllDataLoaded = false;
-                                  bottomController.update();
-                                  await bottomController.getAstrologerList(
-                                      isLazyLoading: false);
-                                  global.hideLoader();
-                                  bottomController.setBottomIndex(1, 0);
-                                },
-                                child: Container(
-                                  width:
-                                      MediaQuery.of(context).size.width * 0.5,
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.27,
-                                  constraints: BoxConstraints(
-                                    maxWidth: 300,
-                                    minWidth: 180,
-                                  ),
-                                  padding:
-                                      EdgeInsets.all(16), // Increased padding
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: appYellow, width: 1.5),
-                                    borderRadius: BorderRadius.circular(20),
-                                    color: Colors.white,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.grey.withOpacity(
-                                            0.2), // Stronger shadow
-                                        spreadRadius: 1,
-                                        blurRadius: 6,
-                                        offset: Offset(0, 3),
-                                      )
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment
-                                        .center, // Center all content
-                                    children: [
-                                      // Text Section (Centered)
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: appYellow.withOpacity(0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                        ),
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6), // Better padding
-                                        child: Text(
-                                          "Live Chat with an Astrologer",
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14, // Larger font
-                                            color: Colors.grey.shade800,
-                                          ),
-                                        ).tr(),
-                                      ),
-                                       // Consistent spacing
-                                      SizedBox(
-                                          height:
-                                              12), // More space before image
-                                      // Centered Image
-                                      Container(
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                                0.25,
-                                        constraints: BoxConstraints(
-                                            maxWidth: 70), // Larger image
-                                        child: Image.asset(
-                                          "assets/images/chat3.png",
-                                          fit: BoxFit.contain,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )),
+                              onTap: () async {
+                                global.showOnlyLoaderDialog(context);
+                                bottomController.astrologerList = [];
+                                bottomController.isAllDataLoaded = false;
+                                bottomController.update();
+                                await bottomController.getAstrologerList(isLazyLoading: false);
+                                global.hideLoader();
+                                bottomController.setBottomIndex(1, 0);
+                              },
+                              child: Container(
+                                width: MediaQuery.of(context).size.width * 0.5,
+                                height: 150, // FIXED same size
+                                constraints: const BoxConstraints(
+                                  maxWidth: 300,
+                                  minWidth: 180,
+                                ),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: appYellow, width: 1.5),
+                                  borderRadius: BorderRadius.circular(20),
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(0.2),
+                                      spreadRadius: 1,
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 3),
+                                    )
+                                  ],
+                                ),
 
-                            SizedBox(
-                              width: 5,
+                                child: Column(
+                                  children: [
+                                    /// ------------ TITLE (Auto-shrink for translations) ------------
+                                    Flexible(
+                                      flex: 1,
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: appYellow.withOpacity(0.2),
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 6),
+                                          child: Text(
+                                            "Live Chat with an Astrologer",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontFamily: 'Poppins',
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                              color: Colors.grey.shade800,
+                                            ),
+                                          ).tr(),
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 6),
+
+                                    /// ------------ IMAGE (Auto-scale, never overflows) ------------
+                                    Expanded(
+                                      flex: 2,
+                                      child: Center(
+                                        child: AspectRatio(
+                                          aspectRatio: 1,
+                                          child: FittedBox(
+                                            fit: BoxFit.contain,
+                                            child: Image.asset(
+                                              "assets/images/chat3.png",
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
 
-                            /// Second Column with 2 buttons
+                            const SizedBox(width: 5),
+
+                            /// --------------------------------------------------------
+                            /// SECOND COLUMN
+                            /// --------------------------------------------------------
                             Expanded(
                               child: Column(
                                 children: [
+                                  /// --------------------------------------------------------
+                                  /// SECOND CARD
+                                  /// --------------------------------------------------------
                                   GestureDetector(
-                                      onTap: () async {
-                                        global.showOnlyLoaderDialog(context);
-                                        bottomController.astrologerList = [];
-                                        bottomController.isAllDataLoaded =
-                                            false;
-                                        bottomController.update();
-                                        await bottomController
-                                            .getAstrologerList(
-                                                isLazyLoading: false);
-                                        global.hideLoader();
-                                        bottomController.setBottomIndex(2, 0);
-                                      },
-                                      child: Container(
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                                0.5,
-                                        height:
-                                            MediaQuery.of(context).size.height *
-                                                0.27,
-                                        constraints: BoxConstraints(
-                                          maxWidth: 300,
-                                          minWidth: 180,
-                                        ),
-                                        padding: EdgeInsets.all(
-                                            16), // Increased padding for better spacing
-                                        decoration: BoxDecoration(
-                                          border: Border.all(
-                                              color: appYellow, width: 1.5),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          color: Colors.white,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.grey.withOpacity(
-                                                  0.2), // Slightly stronger shadow
-                                              spreadRadius: 1,
-                                              blurRadius: 6, // Softer blur
-                                              offset:
-                                                  Offset(0, 3), // More depth
-                                            ),
-                                          ],
-                                        ),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment: CrossAxisAlignment
-                                              .center, // Center all content
-                                          children: [
-                                            // Text Section (Now Centered)
-                                            Container(
-                                              decoration: BoxDecoration(
-                                                color: appYellow.withOpacity(0.2),
-                                                borderRadius: BorderRadius.circular(16),
-                                              ),
-                                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                              child: Text(
-                                                "Talk to an Astrologer",
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontFamily: 'Poppins',
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 14,
-                                                  color: Colors.grey.shade800,
+                                    onTap: () async {
+                                      global.showOnlyLoaderDialog(context);
+                                      bottomController.astrologerList = [];
+                                      bottomController.isAllDataLoaded = false;
+                                      bottomController.update();
+                                      await bottomController.getAstrologerList(isLazyLoading: false);
+                                      global.hideLoader();
+                                      bottomController.setBottomIndex(2, 0);
+                                    },
+                                    child: Container(
+                                      height: 150, // EXACT SAME HEIGHT
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 300,
+                                        minWidth: 180,
+                                      ),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: appYellow, width: 1.5),
+                                        borderRadius: BorderRadius.circular(20),
+                                        color: Colors.white,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.grey.withOpacity(0.2),
+                                            spreadRadius: 1,
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 3),
+                                          )
+                                        ],
+                                      ),
+
+                                      child: Column(
+                                        children: [
+                                          /// ------------ TITLE ------------
+                                          Flexible(
+                                            flex: 1,
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: appYellow.withOpacity(0.2),
+                                                  borderRadius: BorderRadius.circular(16),
                                                 ),
-                                              ).tr(),
-                                            ),
-
-
-                                            SizedBox(
-                                                height:
-                                                    12), // More space before image
-                                            // Centered Image
-                                            Container(
-                                              width: MediaQuery.of(context)
-                                                      .size
-                                                      .width *
-                                                  0.25,
-                                              constraints: BoxConstraints(
-                                                  maxWidth:
-                                                      70), // Larger but constrained
-                                              child: Image.asset(
-                                                "assets/images/call1.jpg",
-                                                fit: BoxFit.contain,
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 12, vertical: 6),
+                                                child: Text(
+                                                  "Talk to an Astrologer",
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontFamily: 'Poppins',
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14,
+                                                    color: Colors.grey.shade800,
+                                                  ),
+                                                ).tr(),
                                               ),
                                             ),
-                                          ],
-                                        ),
-                                      )),
-                                  SizedBox(
-                                    height: 10,
+                                          ),
+
+                                          const SizedBox(height: 6),
+
+                                          /// ------------ IMAGE ------------
+                                          Expanded(
+                                            flex: 2,
+                                            child: Center(
+                                              child: AspectRatio(
+                                                aspectRatio: 1,
+                                                child: FittedBox(
+                                                  fit: BoxFit.contain,
+                                                  child: Image.asset(
+                                                    "assets/images/call1.jpg",
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
 
-
+                                  const SizedBox(height: 10),
                                 ],
                               ),
                             ),
                           ],
-                        )),
+                        ),
                       ),
 
+
+
                       ///Stories
-
-
 
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -2911,372 +2809,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               );
                       }),
-                      //--------------------------------------LIVE ASTROLOGER LIST---------------------------------
-                      GetBuilder<BottomNavigationController>(builder: (c) {
-                        return Get.find<BottomNavigationController>()
-                                    .liveAstrologer
-                                    .length ==
-                                0
-                            ? const SizedBox()
-                            : SizedBox(
-                                height: 38.h,
-                                child: Card(
-                                  elevation: 0,
-                                  margin: EdgeInsets.only(top: 6),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.zero),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 10),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Text(
-                                                    'Live Astrologers',
-                                                    style: Get
-                                                        .theme
-                                                        .primaryTextTheme
-                                                        .titleMedium!
-                                                        .copyWith(
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w500),
-                                                  ).tr(),
-                                                  Padding(
-                                                    padding: EdgeInsets.only(
-                                                        left: 5),
-                                                    child: GestureDetector(
-                                                      onTap: () async {
-                                                        global
-                                                            .showOnlyLoaderDialog(
-                                                                context);
-                                                        await bottomControllerMain
-                                                            .getLiveAstrologerList();
-                                                        global.hideLoader();
-                                                      },
-                                                      child: Icon(
-                                                        Icons.refresh,
-                                                        size: 20,
-                                                      ),
-                                                    ),
-                                                  )
-                                                ],
-                                              ),
-                                              GestureDetector(
-                                                onTap: () async {
-                                                  Get.to(() =>
-                                                      LiveAstrologerListScreen());
-                                                },
-                                                child: Text(
-                                                  'View All',
-                                                  style: Get
-                                                      .theme
-                                                      .primaryTextTheme
-                                                      .bodySmall!
-                                                      .copyWith(
-                                                    fontWeight: FontWeight.w400,
-                                                    color: Colors.blue[500],
-                                                  ),
-                                                ).tr(),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        GetBuilder<BottomNavigationController>(
-                                          builder: (c) {
-                                            return Expanded(
-                                              child: ListView.builder(
-                                                itemCount: Get.find<
-                                                        BottomNavigationController>()
-                                                    .liveAstrologer
-                                                    .length,
-                                                shrinkWrap: true,
-                                                scrollDirection:
-                                                    Axis.horizontal,
-                                                padding: EdgeInsets.only(
-                                                    top: 10, left: 10),
-                                                itemBuilder: (context, index) {
-                                                  return GestureDetector(
-                                                      onTap: () async {
-                                                        bottomControllerMain
-                                                            .anotherLiveAstrologers = Get
-                                                                .find<
-                                                                    BottomNavigationController>()
-                                                            .liveAstrologer
-                                                            .where((element) =>
-                                                                element
-                                                                    .astrologerId !=
-                                                                Get.find<
-                                                                        BottomNavigationController>()
-                                                                    .liveAstrologer[
-                                                                        index]
-                                                                    .astrologerId)
-                                                            .toList();
-                                                        bottomControllerMain
-                                                            .update();
-                                                        print("channel name");
-                                                        print(
-                                                            "${Get.find<BottomNavigationController>().liveAstrologer[index].channelName}");
-                                                        await liveController
-                                                            .getWaitList(Get.find<
-                                                                    BottomNavigationController>()
-                                                                .liveAstrologer[
-                                                                    index]
-                                                                .channelName);
-                                                        int index2 = liveController
-                                                            .waitList
-                                                            .indexWhere((element) =>
-                                                                element
-                                                                    .userId ==
-                                                                global
-                                                                    .currentUserId);
-                                                        if (index2 != -1) {
-                                                          liveController
-                                                                  .isImInWaitList =
-                                                              true;
-                                                          liveController
-                                                              .update();
-                                                        } else {
-                                                          liveController
-                                                                  .isImInWaitList =
-                                                              false;
-                                                          liveController
-                                                              .update();
-                                                        }
-                                                        liveController
-                                                            .isImInLive = true;
-                                                        liveController
-                                                                .isJoinAsChat =
-                                                            false;
-                                                        liveController
-                                                                .isLeaveCalled =
-                                                            false;
-                                                        liveController.update();
-                                                        bool isLogin =
-                                                            await global
-                                                                .isLogin();
-                                                        if (isLogin) {
-                                                          Get.to(
-                                                            () =>
-                                                                LiveAstrologerScreen(
-                                                              token: Get.find<
-                                                                      BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .token,
-                                                              channel: Get.find<
-                                                                      BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .channelName,
-                                                              astrologerName: Get
-                                                                      .find<
-                                                                          BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .name,
-                                                              astrologerProfile: Get
-                                                                      .find<
-                                                                          BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .profileImage,
-                                                              astrologerId: Get
-                                                                      .find<
-                                                                          BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .astrologerId,
-                                                              isFromHome: true,
-                                                              charge: Get.find<
-                                                                      BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .charge,
-                                                              isForLiveCallAcceptDecline:
-                                                                  false,
-                                                              isFromNotJoined:
-                                                                  false,
-                                                              isFollow: Get.find<
-                                                                      BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .isFollow!,
-                                                              videoCallCharge: Get
-                                                                      .find<
-                                                                          BottomNavigationController>()
-                                                                  .liveAstrologer[
-                                                                      index]
-                                                                  .videoCallRate,
-                                                            ),
-                                                          );
-                                                        }
-                                                      },
-                                                      child: Container(
-                                                          decoration: BoxDecoration(
-                                                              borderRadius: BorderRadius
-                                                                  .circular(FontSizes(
-                                                                          context)
-                                                                      .width2())),
-                                                          margin: EdgeInsets.symmetric(
-                                                              horizontal:
-                                                                  FontSizes(
-                                                                          context)
-                                                                      .width1()),
-                                                          child: Stack(
-                                                            children: [
-                                                              ClipRRect(
-                                                                borderRadius: BorderRadius
-                                                                    .circular(FontSizes(
-                                                                            context)
-                                                                        .width2()),
-                                                                child: Get.find<BottomNavigationController>()
-                                                                            .liveAstrologer[index]
-                                                                            .profileImage !=
-                                                                        ""
-                                                                    ? Container(
-                                                                        width:
-                                                                            120,
-                                                                        height:
-                                                                            200,
-                                                                        margin: EdgeInsets.only(
-                                                                            right:
-                                                                                4),
-                                                                        child:
-                                                                            Image(
-                                                                          fit: BoxFit
-                                                                              .cover,
-                                                                          colorBlendMode:
-                                                                              BlendMode.darken,
-                                                                          color:
-                                                                              Colors.black45,
-                                                                          width:
-                                                                              FontSizes(context).width30(),
-                                                                          height:
-                                                                              FontSizes(context).height20(),
-                                                                          image:
-                                                                              NetworkImage(
-                                                                            "${global.imgBaseurl}${Get.find<BottomNavigationController>().liveAstrologer[index].profileImage}",
-                                                                          ),
-                                                                        ),
-                                                                      )
-                                                                    : Container(
-                                                                        //NO image then it will set
-                                                                        width:
-                                                                            120,
-                                                                        height:
-                                                                            200,
-                                                                        margin: EdgeInsets.only(
-                                                                            right:
-                                                                                4),
-                                                                        decoration: BoxDecoration(
-                                                                            color: Colors.black.withOpacity(0.3),
-                                                                            borderRadius: BorderRadius.circular(10),
-                                                                            border: Border.all(
-                                                                              color: Color.fromARGB(255, 214, 214, 214),
-                                                                            ),
-                                                                            image: DecorationImage(
-                                                                                fit: BoxFit.cover,
-                                                                                image: AssetImage(
-                                                                                  Images.deafultUser,
-                                                                                ),
-                                                                                colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.3), BlendMode.darken))),
-                                                                      ),
-                                                              ),
-                                                              Positioned(
-                                                                right: FontSizes(
-                                                                        context)
-                                                                    .width2(),
-                                                                top: FontSizes(
-                                                                        context)
-                                                                    .height01(),
-                                                                child:
-                                                                    Container(
-                                                                        padding: EdgeInsets.symmetric(
-                                                                            horizontal: FontSizes(context)
-                                                                                .width2()),
-                                                                        decoration: BoxDecoration(
-                                                                            borderRadius: BorderRadius.circular(FontSizes(context)
-                                                                                .width2()),
-                                                                            color: Get
-                                                                                .theme.primaryColor),
-                                                                        child:
-                                                                            CustomText(
-                                                                          text:
-                                                                              "Live",
-                                                                          fontWeight:
-                                                                              FontWeight.w600,
-                                                                          color:
-                                                                              whiteColor,
-                                                                        )),
-                                                              ),
-                                                              Positioned(
-                                                                left: FontSizes(
-                                                                        context)
-                                                                    .width2(),
-                                                                bottom: FontSizes(
-                                                                        context)
-                                                                    .height1(),
-                                                                child: Column(
-                                                                  crossAxisAlignment:
-                                                                      CrossAxisAlignment
-                                                                          .start,
-                                                                  children: [
-                                                                    CustomText(
-                                                                      text:
-                                                                          "${Get.find<BottomNavigationController>().liveAstrologer[index].name}",
-                                                                      color:
-                                                                          whiteColor,
-                                                                      maxLine:
-                                                                          1,
-                                                                      fontsize:
-                                                                          FontSizes(context)
-                                                                              .font4(),
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w700,
-                                                                    ),
-                                                                    CustomText(
-                                                                      text:
-                                                                          "${Get.find<BottomNavigationController>().liveAstrologer[index].videoCallRate} /min",
-                                                                      color: Get
-                                                                          .theme
-                                                                          .primaryColor,
-                                                                      maxLine:
-                                                                          1,
-                                                                      fontsize:
-                                                                          FontSizes(context)
-                                                                              .font3(),
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w600,
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                              )
-                                                            ],
-                                                          )));
-                                                },
-                                              ),
-                                            );
-                                          },
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                      }),
 
                       GestureDetector(
                         onTap: () {
@@ -3316,1253 +2848,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-
-                      ///Customer experience
-                      GetBuilder<HomeController>(builder: (homeController) {
-                        return homeController.clientReviews.length == 0
-                            ? SizedBox()
-                            : Container(
-                                // height: 50.h,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      margin: EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Customer's Experience",
-                                            style: Get.theme.primaryTextTheme
-                                                .titleMedium!
-                                                .copyWith(
-                                                    fontWeight:
-                                                        FontWeight.w500),
-                                          ).tr(),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      margin: EdgeInsets.symmetric(
-                                          horizontal:
-                                              FontSizes(context).width3()),
-                                      height: FontSizes(context).height37(),
-                                      child: GridView.builder(
-                                          scrollDirection: Axis.horizontal,
-                                          shrinkWrap: true,
-                                          itemCount: homeController
-                                              .clientReviews.length,
-                                          gridDelegate:
-                                              SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisSpacing:
-                                                FontSizes(context).height01(),
-                                            mainAxisSpacing:
-                                                FontSizes(context).width2(),
-                                            mainAxisExtent:
-                                                FontSizes(context).width70(),
-                                            crossAxisCount: 2,
-                                          ),
-                                          itemBuilder: (context, index) {
-                                            return Container(
-                                              margin: EdgeInsets.only(
-                                                top: FontSizes(context)
-                                                    .height01(),
-                                                bottom: FontSizes(context)
-                                                    .height01(),
-                                              ),
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: FontSizes(context)
-                                                      .width2(),
-                                                  vertical: FontSizes(context)
-                                                      .height1()),
-                                              decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          FontSizes(context)
-                                                              .width4()),
-                                                  color: whiteColor,
-                                                  border: Border.all(
-                                                      color: Get
-                                                          .theme.primaryColor,
-                                                      width: 0.1),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                        color: Get
-                                                            .theme.primaryColor
-                                                            .withOpacity(0.7),
-                                                        offset: Offset(
-                                                          0.1,
-                                                          0.1,
-                                                        ),
-                                                        blurRadius: 0.1,
-                                                        spreadRadius: 0.1),
-                                                  ]),
-                                              child: Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Column(
-                                                    children: [
-                                                      homeController
-                                                                      .clientReviews[
-                                                                          index]
-                                                                      .profile
-                                                                      .toString() ==
-                                                                  "" ||
-                                                              homeController
-                                                                      .clientReviews[
-                                                                          index]
-                                                                      .profile
-                                                                      .toString() ==
-                                                                  "null"
-                                                          ? CircleAvatar(
-                                                              radius: FontSizes(
-                                                                      context)
-                                                                  .width10(),
-                                                              backgroundImage:
-                                                                  AssetImage(Images
-                                                                      .deafultUser))
-                                                          : CircleAvatar(
-                                                              radius: FontSizes(
-                                                                      context)
-                                                                  .width10(),
-                                                              backgroundImage: CachedNetworkImageProvider(
-                                                                  "${global.imgBaseurl}${homeController.clientReviews[index].profile}",
-                                                                  errorListener: (e) =>
-                                                                      AssetImage(
-                                                                          Images
-                                                                              .deafultUser)),
-                                                            ),
-                                                    ],
-                                                  ),
-                                                  SizedBox(
-                                                    width: FontSizes(context)
-                                                        .width2(),
-                                                  ),
-                                                  Expanded(
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .spaceBetween,
-                                                          children: [
-                                                            CustomText(
-                                                              text:
-                                                                  "${homeController.clientReviews[index].name}",
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
-                                                              color: blackColor,
-                                                              fontsize: FontSizes(
-                                                                      context)
-                                                                  .font04(),
-                                                              maxLine: 1,
-                                                            ),
-                                                            Icon(
-                                                              Icons.more_vert,
-                                                              color: blackColor,
-                                                              size: FontSizes(
-                                                                      context)
-                                                                  .width4(),
-                                                            )
-                                                          ],
-                                                        ),
-                                                        SizedBox(
-                                                          height:
-                                                              FontSizes(context)
-                                                                  .height1(),
-                                                        ),
-                                                        CustomText(
-                                                          text:
-                                                              "${homeController.clientReviews[index].review}",
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          color: blackColor,
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                          fontsize:
-                                                              FontSizes(context)
-                                                                  .font04(),
-                                                          maxLine: 2,
-                                                        ),
-                                                        SizedBox(
-                                                          height:
-                                                              FontSizes(context)
-                                                                  .height1(),
-                                                        ),
-                                                        InkWell(
-                                                          onTap: () async {
-                                                            global
-                                                                .showOnlyLoaderDialog(
-                                                                    context);
-                                                            await homeController
-                                                                .getClientsTestimonals();
-                                                            global.hideLoader();
-                                                            Get.to(() =>
-                                                                ClientsReviewScreen());
-                                                          },
-                                                          child: CustomText(
-                                                            text: "More",
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                            decoration:
-                                                                TextDecoration
-                                                                    .underline,
-                                                            decorationColor:
-                                                                orangeColor,
-                                                            color: Get.theme
-                                                                .primaryColor,
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis,
-                                                            fontsize: FontSizes(
-                                                                    context)
-                                                                .font04(),
-                                                            maxLine: 2,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          }),
-                                    ),
-                                  ],
-                                ),
-                              );
-                      }),
-
-                      ///astro in news
-                      // GetBuilder<HomeController>(builder: (homeController) {
-                      //   return homeController.astroNews.length == 0
-                      //       ? SizedBox()
-                      //       : SizedBox(
-                      //           height: 266,
-                      //           child: Card(
-                      //             elevation: 0,
-                      //             margin: EdgeInsets.only(top: 6),
-                      //             shape: RoundedRectangleBorder(
-                      //                 borderRadius: BorderRadius.zero),
-                      //             child: Padding(
-                      //               padding: const EdgeInsets.only(
-                      //                   top: 10, bottom: 5),
-                      //               child: Column(
-                      //                 crossAxisAlignment:
-                      //                     CrossAxisAlignment.start,
-                      //                 children: [
-                      //                   Padding(
-                      //                     padding: const EdgeInsets.symmetric(
-                      //                         horizontal: 10),
-                      //                     child: Row(
-                      //                       mainAxisAlignment:
-                      //                           MainAxisAlignment.spaceBetween,
-                      //                       children: [
-                      //                         Container(
-                      //                           margin: EdgeInsets.symmetric(
-                      //                               horizontal: 10),
-                      //                           child: Column(
-                      //                             crossAxisAlignment:
-                      //                                 CrossAxisAlignment.start,
-                      //                             children: [
-                      //                               Text(
-                      //                                 '${global.getSystemFlagValueForLogin(global.systemFlagNameList.appName)} in News',
-                      //                                 style: Get
-                      //                                     .theme
-                      //                                     .primaryTextTheme
-                      //                                     .titleMedium!
-                      //                                     .copyWith(
-                      //                                         fontWeight:
-                      //                                             FontWeight
-                      //                                                 .w500),
-                      //                               ).tr(),
-                      //                             ],
-                      //                           ),
-                      //                         ),
-                      //                         GestureDetector(
-                      //                           onTap: () {
-                      //                             Get.to(() =>
-                      //                                 AstrologerNewsScreen());
-                      //                           },
-                      //                           child: Text(
-                      //                             'View All',
-                      //                             style: Get
-                      //                                 .theme
-                      //                                 .primaryTextTheme
-                      //                                 .bodySmall!
-                      //                                 .copyWith(
-                      //                               fontWeight: FontWeight.w400,
-                      //                               color: Colors.blue[500],
-                      //                             ),
-                      //                           ).tr(),
-                      //                         ),
-                      //                       ],
-                      //                     ),
-                      //                   ),
-                      //                   Expanded(
-                      //                       child: ListView.builder(
-                      //                     itemCount:
-                      //                         homeController.astroNews.length,
-                      //                     shrinkWrap: true,
-                      //                     scrollDirection: Axis.horizontal,
-                      //                     padding: EdgeInsets.only(
-                      //                         top: 10, left: 10, bottom: 10),
-                      //                     itemBuilder: (context, index) {
-                      //                       return GestureDetector(
-                      //                         onTap: () {
-                      //                           Get.to(() => BlogScreen(
-                      //                                 link: homeController
-                      //                                     .astroNews[index]
-                      //                                     .link,
-                      //                               ));
-                      //                         },
-                      //                         child: Card(
-                      //                           elevation: 4,
-                      //                           margin:
-                      //                               EdgeInsets.only(right: 12),
-                      //                           shape: RoundedRectangleBorder(
-                      //                             borderRadius:
-                      //                                 BorderRadius.circular(20),
-                      //                           ),
-                      //                           child: Container(
-                      //                             width: 190,
-                      //                             decoration: BoxDecoration(
-                      //                               color: Colors.white,
-                      //                               borderRadius:
-                      //                                   BorderRadius.circular(
-                      //                                       20),
-                      //                             ),
-                      //                             child: Column(
-                      //                               crossAxisAlignment:
-                      //                                   CrossAxisAlignment
-                      //                                       .start,
-                      //                               children: [
-                      //                                 ClipRRect(
-                      //                                   borderRadius:
-                      //                                       BorderRadius.only(
-                      //                                     topLeft:
-                      //                                         Radius.circular(
-                      //                                             20),
-                      //                                     topRight:
-                      //                                         Radius.circular(
-                      //                                             20),
-                      //                                   ),
-                      //                                   child:
-                      //                                       CachedNetworkImage(
-                      //                                     imageUrl:
-                      //                                         '${global.imgBaseurl}${homeController.astroNews[index].bannerImage}',
-                      //                                     imageBuilder: (context,
-                      //                                             imageProvider) =>
-                      //                                         Container(
-                      //                                       height: 110,
-                      //                                       width: Get.width,
-                      //                                       decoration:
-                      //                                           BoxDecoration(
-                      //                                         borderRadius:
-                      //                                             BorderRadius
-                      //                                                 .circular(
-                      //                                                     10),
-                      //                                         image:
-                      //                                             DecorationImage(
-                      //                                           fit:
-                      //                                               BoxFit.fill,
-                      //                                           image:
-                      //                                               imageProvider,
-                      //                                         ),
-                      //                                       ),
-                      //                                     ),
-                      //                                     placeholder: (context,
-                      //                                             url) =>
-                      //                                         const Center(
-                      //                                             child:
-                      //                                                 CircularProgressIndicator()),
-                      //                                     errorWidget: (context,
-                      //                                             url, error) =>
-                      //                                         Image.asset(
-                      //                                       Images.blog,
-                      //                                       height: Get.height *
-                      //                                           0.15,
-                      //                                       width: Get.width,
-                      //                                       fit: BoxFit.fill,
-                      //                                     ),
-                      //                                   ),
-                      //                                 ),
-                      //                                 Padding(
-                      //                                   padding:
-                      //                                       const EdgeInsets
-                      //                                           .only(
-                      //                                           left: 5,
-                      //                                           right: 5,
-                      //                                           top: 3,
-                      //                                           bottom: 3),
-                      //                                   child: Column(
-                      //                                     crossAxisAlignment:
-                      //                                         CrossAxisAlignment
-                      //                                             .start,
-                      //                                     children: [
-                      //                                       Container(
-                      //                                         height: 55,
-                      //                                         child: Text(
-                      //                                           homeController
-                      //                                               .astroNews[
-                      //                                                   index]
-                      //                                               .description,
-                      //                                           textAlign:
-                      //                                               TextAlign
-                      //                                                   .start,
-                      //                                           maxLines: 2,
-                      //                                           style: Get
-                      //                                               .theme
-                      //                                               .textTheme
-                      //                                               .titleMedium!
-                      //                                               .copyWith(
-                      //                                             fontSize: 13,
-                      //                                             fontWeight:
-                      //                                                 FontWeight
-                      //                                                     .w500,
-                      //                                             letterSpacing:
-                      //                                                 0,
-                      //                                           ),
-                      //                                         ).tr(),
-                      //                                       ),
-                      //                                       Row(
-                      //                                         mainAxisAlignment:
-                      //                                             MainAxisAlignment
-                      //                                                 .spaceBetween,
-                      //                                         children: [
-                      //                                           Text(
-                      //                                             homeController
-                      //                                                 .astroNews[
-                      //                                                     index]
-                      //                                                 .channel,
-                      //                                             textAlign:
-                      //                                                 TextAlign
-                      //                                                     .center,
-                      //                                             style: Get
-                      //                                                 .theme
-                      //                                                 .textTheme
-                      //                                                 .titleMedium!
-                      //                                                 .copyWith(
-                      //                                               fontSize:
-                      //                                                   11,
-                      //                                               fontWeight:
-                      //                                                   FontWeight
-                      //                                                       .w500,
-                      //                                               color: Colors
-                      //                                                       .grey[
-                      //                                                   700],
-                      //                                               letterSpacing:
-                      //                                                   0,
-                      //                                             ),
-                      //                                           ).tr(),
-                      //                                           Text(
-                      //                                             "${DateFormat("MMM d, yyyy").format(DateTime.parse(homeController.astroNews[index].newsDate.toString()))}",
-                      //                                             textAlign:
-                      //                                                 TextAlign
-                      //                                                     .center,
-                      //                                             style: Get
-                      //                                                 .theme
-                      //                                                 .textTheme
-                      //                                                 .titleMedium!
-                      //                                                 .copyWith(
-                      //                                               fontSize:
-                      //                                                   11,
-                      //                                               fontWeight:
-                      //                                                   FontWeight
-                      //                                                       .w500,
-                      //                                               color: Colors
-                      //                                                       .grey[
-                      //                                                   700],
-                      //                                               letterSpacing:
-                      //                                                   0,
-                      //                                             ),
-                      //                                           ),
-                      //                                         ],
-                      //                                       ),
-                      //                                     ],
-                      //                                   ),
-                      //                                 ),
-                      //                               ],
-                      //                             ),
-                      //                           ),
-                      //                         ),
-                      //                       );
-                      //                     },
-                      //                   ))
-                      //                 ],
-                      //               ),
-                      //             ),
-                      //           ),
-                      //         );
-                      // }),
-                      // Card(
-                      //   elevation: 0,
-                      //   margin: EdgeInsets.only(top: 6),
-                      //   shape: RoundedRectangleBorder(
-                      //       borderRadius: BorderRadius.zero),
-                      //   child: Padding(
-                      //     padding: const EdgeInsets.symmetric(
-                      //         vertical: 10, horizontal: 10),
-                      //     child: SizedBox(
-                      //       height: 110,
-                      //       child: Stack(
-                      //         children: [
-                      //           GestureDetector(
-                      //             onTap: () async {
-                      //               DateTime dateBasic = DateTime.now();
-                      //               int formattedYear = int.parse(
-                      //                   DateFormat('yyyy').format(dateBasic));
-                      //               int formattedDay = int.parse(
-                      //                   DateFormat('dd').format(dateBasic));
-                      //               int formattedMonth = int.parse(
-                      //                   DateFormat('MM').format(dateBasic));
-                      //               int formattedHour = int.parse(
-                      //                   DateFormat('HH').format(dateBasic));
-                      //               int formattedMint = int.parse(
-                      //                   DateFormat('mm').format(dateBasic));
-                      //
-                      //               global.showOnlyLoaderDialog(context);
-                      //               await kundliController
-                      //                   .getBasicPanchangDetail(
-                      //                       day: formattedDay,
-                      //                       hour: formattedHour,
-                      //                       min: formattedMint,
-                      //                       month: formattedMonth,
-                      //                       year: formattedYear,
-                      //                       lat: 21.1255,
-                      //                       lon: 73.1122,
-                      //                       tzone: 5);
-                      //               panchangController
-                      //                   .getPanchangVedic(DateTime.now());
-                      //               global.hideLoader();
-                      //               Get.to(() => PanchangScreen());
-                      //             },
-                      //             child: Container(
-                      //               width: Get.width,
-                      //               decoration: BoxDecoration(
-                      //                 color: Get.theme.primaryColor,
-                      //                 borderRadius: BorderRadius.circular(10),
-                      //               ),
-                      //               padding: EdgeInsets.only(right: 20),
-                      //               child: Column(
-                      //                 crossAxisAlignment:
-                      //                     CrossAxisAlignment.end,
-                      //                 mainAxisAlignment:
-                      //                     MainAxisAlignment.center,
-                      //                 children: [
-                      //                   Text(
-                      //                     "Today's Panchang",
-                      //                     style: TextStyle(color: Colors.white),
-                      //                   ).tr(),
-                      //                   Container(
-                      //                     height: 25,
-                      //                     width: 90,
-                      //                     margin: EdgeInsets.only(
-                      //                         right: 35, top: 5),
-                      //                     padding: EdgeInsets.symmetric(
-                      //                         horizontal: 5),
-                      //                     decoration: BoxDecoration(
-                      //                       color: Colors.black,
-                      //                       borderRadius:
-                      //                           BorderRadius.circular(7),
-                      //                     ),
-                      //                     alignment: Alignment.center,
-                      //                     child: Text(
-                      //                       'Check Now',
-                      //                       style: TextStyle(
-                      //                         fontSize: 10,
-                      //                         fontWeight: FontWeight.w500,
-                      //                         color: Colors.white,
-                      //                         letterSpacing: -0.2,
-                      //                         wordSpacing: 0,
-                      //                       ),
-                      //                     ).tr(),
-                      //                   ),
-                      //                 ],
-                      //               ),
-                      //             ),
-                      //           ),
-                      //           Container(
-                      //             height: 110,
-                      //             width: 130,
-                      //             child: ClipRRect(
-                      //               borderRadius: BorderRadius.only(
-                      //                 topRight: Radius.circular(45),
-                      //                 bottomRight: Radius.circular(45),
-                      //                 topLeft: Radius.circular(10),
-                      //                 bottomLeft: Radius.circular(10),
-                      //               ),
-                      //               child: CachedNetworkImage(
-                      //                 imageUrl:
-                      //                     '${global.imgBaseurl}${global.getSystemFlagValueForLogin(global.systemFlagNameList.todayPanchang)}',
-                      //                 imageBuilder: (context, imageProvider) =>
-                      //                     Image.network(
-                      //                   '${global.imgBaseurl}${global.getSystemFlagValueForLogin(global.systemFlagNameList.todayPanchang)}',
-                      //                   fit: BoxFit.fill,
-                      //                 ),
-                      //                 placeholder: (context, url) =>
-                      //                     const Center(
-                      //                         child:
-                      //                             CircularProgressIndicator()),
-                      //                 errorWidget: (context, url, error) =>
-                      //                     Icon(Icons.no_accounts, size: 20),
-                      //               ),
-                      //             ),
-                      //             decoration: BoxDecoration(
-                      //                 color: Colors.black,
-                      //                 borderRadius: BorderRadius.only(
-                      //                   topRight: Radius.circular(45),
-                      //                   bottomRight: Radius.circular(45),
-                      //                   topLeft: Radius.circular(10),
-                      //                   bottomLeft: Radius.circular(10),
-                      //                 )),
-                      //           ),
-                      //         ],
-                      //       ),
-                      //     ),
-                      //   ),
-                      // ),
-                      // GetBuilder<HomeController>(builder: (homeController) {
-                      //   return homeController.astrologyVideo.length == 0
-                      //       ? SizedBox()
-                      //       : SizedBox(
-                      //           height: 250,
-                      //           child: Card(
-                      //             elevation: 0,
-                      //             margin: EdgeInsets.only(top: 6),
-                      //             shape: RoundedRectangleBorder(
-                      //                 borderRadius: BorderRadius.zero),
-                      //             child: Padding(
-                      //               padding: const EdgeInsets.only(
-                      //                   top: 10, bottom: 5),
-                      //               child: Column(
-                      //                 crossAxisAlignment:
-                      //                     CrossAxisAlignment.start,
-                      //                 children: [
-                      //                   Padding(
-                      //                     padding: const EdgeInsets.symmetric(
-                      //                         horizontal: 10),
-                      //                     child: Row(
-                      //                       mainAxisAlignment:
-                      //                           MainAxisAlignment.spaceBetween,
-                      //                       children: [
-                      //                         Container(
-                      //                           margin: EdgeInsets.symmetric(
-                      //                               horizontal: 10),
-                      //                           child: Column(
-                      //                             crossAxisAlignment:
-                      //                                 CrossAxisAlignment.start,
-                      //                             children: [
-                      //                               Text(
-                      //                                 'Watch Astrology Videos',
-                      //                                 style: Get
-                      //                                     .theme
-                      //                                     .primaryTextTheme
-                      //                                     .titleMedium!
-                      //                                     .copyWith(
-                      //                                         fontWeight:
-                      //                                             FontWeight
-                      //                                                 .w500),
-                      //                               ).tr(),
-                      //                             ],
-                      //                           ),
-                      //                         ),
-                      //                         GestureDetector(
-                      //                           onTap: () {
-                      //                             Get.to(() =>
-                      //                                 AstrologerVideoScreen());
-                      //                           },
-                      //                           child: Text(
-                      //                             'View All',
-                      //                             style: Get
-                      //                                 .theme
-                      //                                 .primaryTextTheme
-                      //                                 .bodySmall!
-                      //                                 .copyWith(
-                      //                               fontWeight: FontWeight.w400,
-                      //                               color: Colors.blue[500],
-                      //                             ),
-                      //                           ).tr(),
-                      //                         ),
-                      //                       ],
-                      //                     ),
-                      //                   ),
-                      //                   Expanded(
-                      //                       child: ListView.builder(
-                      //                     itemCount: homeController
-                      //                         .astrologyVideo.length,
-                      //                     shrinkWrap: true,
-                      //                     scrollDirection: Axis.horizontal,
-                      //                     padding: EdgeInsets.only(
-                      //                         top: 10, left: 10, bottom: 10),
-                      //                     itemBuilder: (context, index) {
-                      //                       return GestureDetector(
-                      //                         onTap: () async {
-                      //                           global.showOnlyLoaderDialog(
-                      //                               context);
-                      //                           await homeController.youtubPlay(
-                      //                               homeController
-                      //                                   .astrologyVideo[index]
-                      //                                   .youtubeLink);
-                      //                           global.hideLoader();
-                      //                           Get.to(() => BlogScreen(
-                      //                                 link: homeController
-                      //                                     .astrologyVideo[index]
-                      //                                     .youtubeLink,
-                      //                                 title: 'Video',
-                      //                                 controller: homeController
-                      //                                     .youtubePlayerController,
-                      //                                 date:
-                      //                                     '${DateFormat("MMM d,yyyy").format(DateTime.parse(homeController.astrologyVideo[index].createdAt))}',
-                      //                                 videoTitle: homeController
-                      //                                     .astrologyVideo[index]
-                      //                                     .videoTitle,
-                      //                               ));
-                      //                         },
-                      //                         child: Card(
-                      //                           elevation: 4,
-                      //                           margin:
-                      //                               EdgeInsets.only(right: 12),
-                      //                           shape: RoundedRectangleBorder(
-                      //                             borderRadius:
-                      //                                 BorderRadius.circular(20),
-                      //                           ),
-                      //                           child: Container(
-                      //                             width: 230,
-                      //                             decoration: BoxDecoration(
-                      //                               color: Colors.white,
-                      //                               borderRadius:
-                      //                                   BorderRadius.circular(
-                      //                                       20),
-                      //                             ),
-                      //                             child: Column(
-                      //                               crossAxisAlignment:
-                      //                                   CrossAxisAlignment
-                      //                                       .start,
-                      //                               mainAxisSize:
-                      //                                   MainAxisSize.min,
-                      //                               children: [
-                      //                                 Stack(
-                      //                                   alignment:
-                      //                                       Alignment.center,
-                      //                                   children: [
-                      //                                     ClipRRect(
-                      //                                       borderRadius:
-                      //                                           BorderRadius
-                      //                                               .only(
-                      //                                         topLeft: Radius
-                      //                                             .circular(20),
-                      //                                         topRight: Radius
-                      //                                             .circular(20),
-                      //                                       ),
-                      //                                       child:
-                      //                                           CachedNetworkImage(
-                      //                                         imageUrl:
-                      //                                             '${global.imgBaseurl}${homeController.astrologyVideo[index].coverImage}',
-                      //                                         imageBuilder:
-                      //                                             (context,
-                      //                                                     imageProvider) =>
-                      //                                                 Container(
-                      //                                           height: 110,
-                      //                                           width:
-                      //                                               Get.width,
-                      //                                           decoration:
-                      //                                               BoxDecoration(
-                      //                                             borderRadius:
-                      //                                                 BorderRadius
-                      //                                                     .circular(
-                      //                                                         10),
-                      //                                             image:
-                      //                                                 DecorationImage(
-                      //                                               fit: BoxFit
-                      //                                                   .fill,
-                      //                                               image:
-                      //                                                   imageProvider,
-                      //                                             ),
-                      //                                           ),
-                      //                                         ),
-                      //                                         placeholder: (context,
-                      //                                                 url) =>
-                      //                                             const Center(
-                      //                                                 child:
-                      //                                                     CircularProgressIndicator()),
-                      //                                         errorWidget: (context,
-                      //                                                 url,
-                      //                                                 error) =>
-                      //                                             Image.asset(
-                      //                                           Images.blog,
-                      //                                           height:
-                      //                                               Get.height *
-                      //                                                   0.15,
-                      //                                           width:
-                      //                                               Get.width,
-                      //                                           fit:
-                      //                                               BoxFit.fill,
-                      //                                         ),
-                      //                                       ),
-                      //                                     ),
-                      //                                     Positioned(
-                      //                                       child: Image.asset(
-                      //                                         Images.youtube,
-                      //                                         height: 40,
-                      //                                         width: 40,
-                      //                                       ),
-                      //                                     )
-                      //                                   ],
-                      //                                 ),
-                      //                                 Padding(
-                      //                                   padding:
-                      //                                       const EdgeInsets
-                      //                                           .only(
-                      //                                           left: 5,
-                      //                                           right: 5,
-                      //                                           top: 3,
-                      //                                           bottom: 3),
-                      //                                   child: Column(
-                      //                                     crossAxisAlignment:
-                      //                                         CrossAxisAlignment
-                      //                                             .start,
-                      //                                     children: [
-                      //                                       Container(
-                      //                                         height: 43,
-                      //                                         child: Text(
-                      //                                           homeController
-                      //                                               .astrologyVideo[
-                      //                                                   index]
-                      //                                               .videoTitle,
-                      //                                           textAlign:
-                      //                                               TextAlign
-                      //                                                   .start,
-                      //                                           maxLines: 2,
-                      //                                           overflow:
-                      //                                               TextOverflow
-                      //                                                   .ellipsis,
-                      //                                           style: Get
-                      //                                               .theme
-                      //                                               .textTheme
-                      //                                               .titleMedium!
-                      //                                               .copyWith(
-                      //                                             fontSize: 13,
-                      //                                             fontWeight:
-                      //                                                 FontWeight
-                      //                                                     .w500,
-                      //                                             letterSpacing:
-                      //                                                 0,
-                      //                                           ),
-                      //                                         ).tr(),
-                      //                                       ),
-                      //                                       Row(
-                      //                                         mainAxisAlignment:
-                      //                                             MainAxisAlignment
-                      //                                                 .end,
-                      //                                         children: [
-                      //                                           Text(
-                      //                                             "${DateFormat("MMM d, yyyy").format(DateTime.parse(homeController.astrologyVideo[index].createdAt))}",
-                      //                                             textAlign:
-                      //                                                 TextAlign
-                      //                                                     .center,
-                      //                                             style: Get
-                      //                                                 .theme
-                      //                                                 .textTheme
-                      //                                                 .titleMedium!
-                      //                                                 .copyWith(
-                      //                                               fontSize:
-                      //                                                   10,
-                      //                                               fontWeight:
-                      //                                                   FontWeight
-                      //                                                       .w500,
-                      //                                               color: Colors
-                      //                                                       .grey[
-                      //                                                   700],
-                      //                                               letterSpacing:
-                      //                                                   0,
-                      //                                             ),
-                      //                                           ),
-                      //                                         ],
-                      //                                       ),
-                      //                                     ],
-                      //                                   ),
-                      //                                 ),
-                      //                               ],
-                      //                             ),
-                      //                           ),
-                      //                         ),
-                      //                       );
-                      //                     },
-                      //                   ))
-                      //                 ],
-                      //               ),
-                      //             ),
-                      //           ),
-                      //         );
-                      // }),
-                      // GetBuilder<HomeController>(builder: (homeController) {
-                      //   return Card(
-                      //     elevation: 0,
-                      //     margin: EdgeInsets.only(top: 6),
-                      //     shape: RoundedRectangleBorder(
-                      //         borderRadius: BorderRadius.zero),
-                      //     child: Container(
-                      //       margin: EdgeInsets.symmetric(
-                      //           horizontal: 30, vertical: 10),
-                      //       decoration: BoxDecoration(
-                      //         color: Colors.grey[200],
-                      //         borderRadius: BorderRadius.circular(15),
-                      //       ),
-                      //       padding: EdgeInsets.all(10),
-                      //       child: Column(
-                      //         crossAxisAlignment: CrossAxisAlignment.start,
-                      //         children: [
-                      //           Text(
-                      //             'I am the Product Manager',
-                      //             style: Get.theme.primaryTextTheme.titleMedium!
-                      //                 .copyWith(
-                      //               fontWeight: FontWeight.w500,
-                      //               fontSize: 17.sp,
-                      //             ),
-                      //           ).tr(),
-                      //           Text(
-                      //             'share your feedback to help us improve the app',
-                      //             style: TextStyle(
-                      //               fontSize: 15.sp,
-                      //             ),
-                      //           ).tr(),
-                      //           SizedBox(
-                      //             height: 10,
-                      //           ),
-                      //           TextFormField(
-                      //             style: TextStyle(fontSize: 15.sp),
-                      //             controller: homeController.feedbackController,
-                      //             maxLines: 8,
-                      //             keyboardType: TextInputType.text,
-                      //             decoration: InputDecoration(
-                      //               contentPadding: EdgeInsets.all(5),
-                      //               border: InputBorder.none,
-                      //               filled: true,
-                      //               fillColor: Colors.white,
-                      //               hintText: 'Start typing here..',
-                      //               hintStyle: TextStyle(
-                      //                 fontWeight: FontWeight.w600,
-                      //                 color: Colors.grey[500],
-                      //                 fontSize: 15.sp,
-                      //               ),
-                      //             ),
-                      //           ),
-                      //           Align(
-                      //             alignment: Alignment.center,
-                      //             child: Padding(
-                      //               padding: const EdgeInsets.only(
-                      //                   top: 15, bottom: 5),
-                      //               child: SizedBox(
-                      //                 height: 35,
-                      //                 child: TextButton(
-                      //                   style: ButtonStyle(
-                      //                     padding: MaterialStateProperty.all(
-                      //                         EdgeInsets.all(0)),
-                      //                     fixedSize: MaterialStateProperty.all(
-                      //                         Size.fromWidth(Get.width / 2)),
-                      //                     backgroundColor:
-                      //                         MaterialStateProperty.all(
-                      //                             Get.theme.primaryColor),
-                      //                     shape: MaterialStateProperty.all(
-                      //                       RoundedRectangleBorder(
-                      //                         borderRadius:
-                      //                             BorderRadius.circular(7),
-                      //                       ),
-                      //                     ),
-                      //                   ),
-                      //                   onPressed: () async {
-                      //                     bool isLogin = await global.isLogin();
-                      //                     if (isLogin) {
-                      //                       if (homeController
-                      //                               .feedbackController.text ==
-                      //                           "") {
-                      //                         global.showToast(
-                      //                           message:
-                      //                               'Please enter feedback',
-                      //                           textColor: global.textColor,
-                      //                           bgColor:
-                      //                               global.toastBackGoundColor,
-                      //                         );
-                      //                       } else {
-                      //                         global.showOnlyLoaderDialog(
-                      //                             context);
-                      //                         await homeController.addFeedback(
-                      //                             homeController
-                      //                                 .feedbackController.text);
-                      //                         global.hideLoader();
-                      //                       }
-                      //                     }
-                      //                   },
-                      //                   child: Text(
-                      //                     'Send Feedback',
-                      //                     style: Get
-                      //                         .theme.primaryTextTheme.bodySmall!
-                      //                         .copyWith(color: Colors.white),
-                      //                   ).tr(),
-                      //                 ),
-                      //               ),
-                      //             ),
-                      //           ),
-                      //         ],
-                      //       ),
-                      //     ),
-                      //   );
-                      // }),
-                      // Card(
-                      //   elevation: 0,
-                      //   margin: EdgeInsets.only(top: 6),
-                      //   shape: RoundedRectangleBorder(
-                      //       borderRadius: BorderRadius.zero),
-                      //   child: Padding(
-                      //     padding: const EdgeInsets.symmetric(
-                      //             vertical: 15, horizontal: 10)
-                      //         .copyWith(bottom: 65),
-                      //     child: Row(
-                      //       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      //       children: [
-                      //         Column(
-                      //           children: [
-                      //             Container(
-                      //               height: 70,
-                      //               width: 70,
-                      //               decoration: BoxDecoration(
-                      //                 borderRadius: BorderRadius.circular(7),
-                      //                 color: Colors.grey[200],
-                      //               ),
-                      //               child: Padding(
-                      //                 padding: const EdgeInsets.all(10),
-                      //                 child: Image.asset(
-                      //                   Images.confidential,
-                      //                   height: 45,
-                      //                 ),
-                      //               ),
-                      //             ),
-                      //             SizedBox(
-                      //               height: 15,
-                      //             ),
-                      //             Text(
-                      //               'Private &\nConfidential',
-                      //               textAlign: TextAlign.center,
-                      //               style: Get.theme.textTheme.titleMedium!
-                      //                   .copyWith(
-                      //                 fontSize: 16.sp,
-                      //                 fontWeight: FontWeight.w400,
-                      //                 letterSpacing: 0.5,
-                      //               ),
-                      //             ).tr(),
-                      //           ],
-                      //         ),
-                      //         Column(
-                      //           children: [
-                      //             Container(
-                      //               height: 70,
-                      //               width: 70,
-                      //               decoration: BoxDecoration(
-                      //                 borderRadius: BorderRadius.circular(7),
-                      //                 color: Colors.grey[200],
-                      //               ),
-                      //               child: Padding(
-                      //                 padding: const EdgeInsets.all(10),
-                      //                 child: Image.asset(
-                      //                   Images.verifiedAccount,
-                      //                   height: 45,
-                      //                 ),
-                      //               ),
-                      //             ),
-                      //             SizedBox(
-                      //               height: 15,
-                      //             ),
-                      //             Text(
-                      //               'Verified\nAstrologers',
-                      //               textAlign: TextAlign.center,
-                      //               style: Get.theme.textTheme.titleMedium!
-                      //                   .copyWith(
-                      //                 fontSize: 16.sp,
-                      //                 fontWeight: FontWeight.w400,
-                      //                 letterSpacing: 0.5,
-                      //               ),
-                      //             ).tr(),
-                      //           ],
-                      //         ),
-                      //         Column(
-                      //           children: [
-                      //             Container(
-                      //               height: 70,
-                      //               width: 70,
-                      //               decoration: BoxDecoration(
-                      //                 borderRadius: BorderRadius.circular(7),
-                      //                 color: Colors.grey[200],
-                      //               ),
-                      //               child: Padding(
-                      //                 padding: const EdgeInsets.all(10),
-                      //                 child: Image.asset(
-                      //                   Images.payment,
-                      //                   height: 45,
-                      //                 ),
-                      //               ),
-                      //             ),
-                      //             SizedBox(
-                      //               height: 15,
-                      //             ),
-                      //             Text(
-                      //               'Secure\nPayments',
-                      //               textAlign: TextAlign.center,
-                      //               style: Get.theme.textTheme.titleMedium!
-                      //                   .copyWith(
-                      //                 fontSize: 16.sp,
-                      //                 fontWeight: FontWeight.w500,
-                      //                 letterSpacing: 0.5,
-                      //               ),
-                      //             ).tr(),
-                      //           ],
-                      //         ),
-                      //       ],
-                      //     ),
-                      //   ),
-                      // ),
                     ],
                   ),
-                ),
-                //-----------------------CHAT WITH ASTROLOGER BUTTON----------------------------------
-                // Container(
-                //   margin: EdgeInsets.only(top: 6, bottom: 4),
-                //   width: 100.w,
-                //   height: 6.h,
-                //   child: Row(
-                //     mainAxisAlignment: MainAxisAlignment.center,
-                //     children: [
-                //       InkWell(
-                //         onTap: () async {
-                //           global.showOnlyLoaderDialog(context);
-                //           bottomController.astrologerList = [];
-                //           bottomController.astrologerList.clear();
-                //           bottomController.isAllDataLoaded = false;
-                //           bottomController.update();
-                //           await bottomController.getAstrologerList(
-                //               isLazyLoading: false);
-                //           global.hideLoader();
-                //           bottomController.setBottomIndex(1, 0);
-                //         },
-                //         child: Container(
-                //             width: Adaptive.w(43),
-                //             decoration: BoxDecoration(
-                //               color: Get.theme.primaryColor,
-                //               borderRadius: BorderRadius.all(
-                //                 Radius.circular(4.w),
-                //               ),
-                //             ),
-                //             child: Container(
-                //               padding: EdgeInsets.only(left: 1.5.w),
-                //               height: 6.h,
-                //               child: Row(
-                //                 mainAxisAlignment: MainAxisAlignment.center,
-                //                 children: [
-                //                   Icon(
-                //                     FontAwesomeIcons.solidCommentDots,
-                //                     size: 14.sp,
-                //                     color: Colors.white,
-                //                   ),
-                //                   Padding(
-                //                     padding: EdgeInsets.only(left: 2.w),
-                //                     child: FittedBox(
-                //                       fit: BoxFit.contain,
-                //                       alignment: Alignment.center,
-                //                       child: Text('Chat with Astrologer',
-                //                               style: TextStyle(
-                //                                   fontWeight: FontWeight.w500,
-                //                                   color: Colors.white,
-                //                                   fontSize: 14.sp))
-                //                           .tr(),
-                //                     ),
-                //                   ),
-                //                 ],
-                //               ),
-                //             )),
-                //       ),
-                //       SizedBox(
-                //         width: 2.w,
-                //       ),
-                //       InkWell(
-                //         onTap: () async {
-                //           global.showOnlyLoaderDialog(context);
-                //           bottomController.astrologerList = [];
-                //           bottomController.astrologerList.clear();
-                //           bottomController.isAllDataLoaded = false;
-                //           bottomController.update();
-                //           await bottomController.getAstrologerList(
-                //               isLazyLoading: false);
-                //           global.hideLoader();
-                //           bottomController.setBottomIndex(3, 0);
-                //         },
-                //         child: Container(
-                //             width: Adaptive.w(43),
-                //             decoration: BoxDecoration(
-                //               color: Get.theme.primaryColor,
-                //               borderRadius: BorderRadius.all(
-                //                 Radius.circular(4.w),
-                //               ),
-                //             ),
-                //             child: Container(
-                //               padding: EdgeInsets.only(left: 1.5.w),
-                //               height: 6.h,
-                //               child: Row(
-                //                 mainAxisAlignment: MainAxisAlignment.center,
-                //                 children: [
-                //                   Icon(
-                //                     Icons.phone,
-                //                     size: 14.sp,
-                //                     color: Colors.white,
-                //                   ),
-                //                   Padding(
-                //                     padding: EdgeInsets.only(left: 2.w),
-                //                     child: FittedBox(
-                //                       child: Text('Talk to Astrologer',
-                //                               style: TextStyle(
-                //                                   fontWeight: FontWeight.w500,
-                //                                   color: Colors.white,
-                //                                   fontSize: 14.sp))
-                //                           .tr(),
-                //                     ),
-                //                   ),
-                //                 ],
-                //               ),
-                //             )),
-                //       ),
-                //     ],
-                //   ),
-                // )
-              ],
+                ),],
             );
           }),
         ),
-        // floatingActionButton: InkWell(
-        //   onTap: () {
-        //      global.warningDialog(context);
-        //   },
-        //   child: Container(
-        //     margin: EdgeInsets.symmetric(vertical: 6.h),
-        //     child: CircleAvatar(
-        //       radius: 20.sp,
-        //       backgroundColor: Colors.black,
-        //       backgroundImage: AssetImage(
-        //         "assets/images/warning.png",
-        //       ),
-        //     ),
-        //   ),
-        // ),
-        //  floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+
       ),
     );
   }
@@ -4769,8 +3061,6 @@ Widget _buildAstroTile(GetAllAstrologerModel astrologer) {
   );
 }
 
-
-
 // Helper method for placeholder avatar with initials
 Widget _buildPlaceholderAvatar(String name) {
   final initials = name.isNotEmpty
@@ -4840,38 +3130,6 @@ Widget _buildInfoChip(IconData icon, String text) {
     ),
   );
 }
-
-// Helper widget for a single info chip
-
-// Widget _buildAstroTile(GetAllAstrologerModel astrologer) {
-//   final imageUrl = (astrologer.profileImage ?? '').trim();
-//   final hasImage =
-//       imageUrl.isNotEmpty && !imageUrl.toLowerCase().contains('null');
-
-//   return Card(
-//     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-//     margin: const EdgeInsets.symmetric(vertical: 8),
-//     elevation: 3,
-//     child: ListTile(
-//       leading: CircleAvatar(
-//         radius: 30,
-//         backgroundImage: hasImage
-//             ? NetworkImage(imageUrl)
-//             : const AssetImage("assets/images/placeholder.png")
-//                 as ImageProvider,
-//       ),
-//       title: Text(astrologer.name ?? 'Unknown',
-//           style: const TextStyle(fontWeight: FontWeight.bold)),
-//       subtitle: Text(
-//         "${astrologer.primarySkill ?? '—'} • ${astrologer.languageKnown ?? '—'}\n"
-//         "Exp: ${astrologer.experienceInYears ?? 0} yrs • ₹${astrologer.charge ?? 'N/A'}/min",
-//       ),
-//       isThreeLine: true,
-//       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-//       onTap: () {/* navigate */},
-//     ),
-//   );
-// }
 
 class CustomClipPath extends CustomClipper<Path> {
   var radius = 10.0;

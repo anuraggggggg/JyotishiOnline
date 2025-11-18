@@ -94,10 +94,10 @@ class AstrologyServicesPage extends StatelessWidget {
             ),
             itemBuilder: (context, index) {
               final service = services[index];
+              final String title = service['title'] as String;
+
               return GestureDetector(
                 onTap: () {
-                  final title = service['title'];
-
                   if (title == 'Daily\nPrediction') {
                     Get.to(() => DailyPanchangScreen());
                   } else if (title == 'Detailed\nKundli') {
@@ -110,12 +110,6 @@ class AstrologyServicesPage extends StatelessWidget {
                     Get.to(() => LoveCompatibilityInputScreen());
                   } else if (title == 'Birthday\nNumber') {
                     Get.to(() => BirthdayNumberInputScreen());
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('"${service['title']}" is coming soon!'),
-                      ),
-                    );
                   }
                 },
                 child: Card(
@@ -141,20 +135,27 @@ class AstrologyServicesPage extends StatelessWidget {
                           color: celestialGold,
                         ),
                         const SizedBox(height: 12),
+
+                        // 🔥 Title: keeps original key (with \n) but avoids overflow
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Text(
-                            service['title'].toString(),
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: stardustWhite,
-                              letterSpacing: 0.5,
-                            ),
-                          ).tr(),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              title,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.poppins(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: stardustWhite,
+                                letterSpacing: 0.5,
+                              ),
+                            ).tr(),
+                          ),
                         ),
+
                         const SizedBox(height: 12),
+
                         if (service['price'] != null)
                           Container(
                             padding: const EdgeInsets.symmetric(
