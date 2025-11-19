@@ -1104,19 +1104,19 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: Colors.black,
                         )),
                   ),
-            GestureDetector(
-              onTap: () {
-                Get.to(() => NotificationPage());
-              },
-              child: Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: Icon(
-                  Icons.notifications_none,
-                  size: 28,
-                  color: Colors.black,
-                ),
-              ),
-            )
+            // GestureDetector(
+            //   onTap: () {
+            //     Get.to(() => NotificationPage());
+            //   },
+            //   child: Padding(
+            //     padding: const EdgeInsets.only(right: 10),
+            //     child: Icon(
+            //       Icons.notifications_none,
+            //       size: 28,
+            //       color: Colors.black,
+            //     ),
+            //   ),
+            // )
 
           ],
         ),

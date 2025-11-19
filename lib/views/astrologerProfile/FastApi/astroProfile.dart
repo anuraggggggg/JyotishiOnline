@@ -250,20 +250,31 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
           ),
           const SizedBox(height: 20),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                astrologer.name,
-                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.black87),
-                maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false,
+              Expanded(
+                child: Text(
+                  astrologer.name,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                ),
               ),
+
               const SizedBox(width: 8),
+
               Icon(
                 astrologer.isVerified ? Icons.verified : Icons.verified_outlined,
-                color: astrologer.isVerified ? appColor : Colors.grey, size: 22,
+                color: astrologer.isVerified ? appColor : Colors.grey,
+                size: 22,
               ),
             ],
           ),
+
           const SizedBox(height: 8),
           Text(
             astrologer.primarySkill ?? "Astrology Expert",
