@@ -1,15 +1,15 @@
 // lib/views/LiveViewerPage.dart
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 
 class LiveViewerPage extends StatefulWidget {
   final String channelName;
-  final String token; // pass '' if no token
-  final String astroId; // optional use
+  final String token;
+  final String astroId;
 
   const LiveViewerPage({
     super.key,
@@ -24,243 +24,219 @@ class LiveViewerPage extends StatefulWidget {
 
 class _LiveViewerPageState extends State<LiveViewerPage> {
   late RtcEngine _engine;
-
   int? hostUid;
-  bool _joining = true;
   int? _dataStreamId;
   bool _streamReady = false;
+  bool _joining = true;
+  late final int _myUid;
 
-  // Replace with your Agora App ID
-  static const String _agoraAppId = "3a39af44074a40bebc2fff2cba7437e5";
+  // reassembly buffers
+  final Map<String, List<String?>> _recvParts = {};
+  final Map<String, int> _recvTotal = {};
 
-  // CHAT
   final List<_Comment> _comments = [];
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _inputCtrl = TextEditingController();
 
-  // UI helpers
-  bool get _canSend => !_joining && _streamReady && _inputCtrl.text.trim().isNotEmpty;
+  // use the same static appId you had earlier (keep as-is)
+  static const String _agoraAppId = "3a39af44074a40bebc2fff2cba7437e5";
+
+  bool get _canSend => !_joining && _inputCtrl.text.trim().isNotEmpty;
 
   @override
   void initState() {
     super.initState();
+    _myUid = Random().nextInt(900000) + 2000;
     _initRTC();
   }
 
-  // -------------------------
-  // Init RTC & Handlers
-  // -------------------------
   Future<void> _initRTC() async {
+    _engine = createAgoraRtcEngine();
+    await _engine.initialize(RtcEngineContext(appId: _agoraAppId));
+
+    _engine.registerEventHandler(RtcEngineEventHandler(
+      onJoinChannelSuccess: (connection, elapsed) async {
+        debugPrint('[Viewer] joined channel (uid=$_myUid)');
+        setState(() => _joining = false);
+      },
+
+      onUserJoined: (connection, uid, elapsed) {
+        debugPrint('[Viewer] user joined uid=$uid');
+        setState(() => hostUid = uid);
+      },
+
+      onUserOffline: (connection, uid, reason) {
+        if (hostUid == uid) setState(() => hostUid = null);
+      },
+
+      onStreamMessage: (connection, uid, streamId, data, offset, length) {
+        try {
+          // FIX: Use the entire received data buffer to form the JSON envelope,
+          // resolving the 'invalid offset/length' errors.
+          final cleaned = _trimNulls(Uint8List.fromList(data));
+          final envelopeText = utf8.decode(cleaned);
+
+          // envelope parse
+          final Map<String, dynamic> envelope = jsonDecode(envelopeText) as Map<String, dynamic>;
+          final m = envelope['m'] as Map<String, dynamic>?;
+          final d = envelope['d'] as String?;
+          if (m == null || d == null) {
+            debugPrint('[Viewer] envelope missing; ignoring');
+            return;
+          }
+
+          final id = m['id']?.toString() ?? '';
+          final part = (m['part'] is int) ? m['part'] as int : int.tryParse(m['part']?.toString() ?? '') ?? 0;
+          final total = (m['total'] is int) ? m['total'] as int : int.tryParse(m['total']?.toString() ?? '') ?? 1;
+
+          _recvParts.putIfAbsent(id, () => List<String?>.filled(total, null));
+          _recvTotal[id] = total;
+          if (part >= 0 && part < total) {
+            _recvParts[id]![part] = d;
+          } else {
+            debugPrint('[Viewer] invalid part index $part for id $id total $total');
+            return;
+          }
+
+          final parts = _recvParts[id]!;
+          final completed = parts.every((p) => p != null);
+          if (!completed) {
+            debugPrint('[Viewer] received part $part/$total for id=$id (waiting)');
+            return;
+          }
+
+          // assemble
+          final combined = <int>[];
+          for (final b64 in parts) combined.addAll(base64.decode(b64!));
+          _recvParts.remove(id);
+          _recvTotal.remove(id);
+
+          final payload = utf8.decode(combined);
+          debugPrint('[Viewer] assembled payload: $payload');
+
+          final Map<String, dynamic> obj = jsonDecode(payload) as Map<String, dynamic>;
+          setState(() {
+            _comments.add(_Comment(obj["user"] ?? "User", obj["text"] ?? "", DateTime.tryParse(obj["ts"] ?? "") ?? DateTime.now()));
+          });
+          _scrollDown();
+        } catch (e, st) {
+          debugPrint("[Viewer] JSON decode / assemble error: $e\n$st");
+        }
+      },
+
+      onConnectionStateChanged: (connection, state, reason) {
+        debugPrint('[Viewer] connection state $state reason $reason');
+      },
+
+      onError: (err, msg) {
+        debugPrint('[Viewer] Agora error $err $msg');
+      },
+    ));
+
+    await _engine.setChannelProfile(ChannelProfileType.channelProfileLiveBroadcasting);
+    await _engine.setClientRole(role: ClientRoleType.clientRoleAudience);
+    await _engine.enableVideo();
+
+    await _engine.joinChannel(
+      token: widget.token,
+      channelId: widget.channelName,
+      uid: _myUid,
+      options: const ChannelMediaOptions(
+        clientRoleType: ClientRoleType.clientRoleAudience,
+        autoSubscribeAudio: true,
+        autoSubscribeVideo: true,
+      ),
+    );
+  }
+
+  Uint8List _trimNulls(Uint8List bytes) {
+    int start = 0;
+    int end = bytes.length;
+    while (start < end && bytes[start] == 0) start++;
+    while (end > start && bytes[end - 1] == 0) end--;
+    return bytes.sublist(start, end);
+  }
+
+  // prepare data stream for viewer sending (temporary broadcaster role)
+  Future<void> _prepareStreamForSend() async {
+    if (_streamReady && _dataStreamId != null) return;
     try {
-      _engine = createAgoraRtcEngine();
-      await _engine.initialize(RtcEngineContext(appId: _agoraAppId));
-
-      // Recommended: register handlers BEFORE join
-      _engine.registerEventHandler(
-        RtcEngineEventHandler(
-          onJoinChannelSuccess: (connection, elapsed) async {
-            debugPrint('[Viewer] onJoinChannelSuccess channel=${connection.channelId} uid=${connection.localUid}');
-            if (!mounted) return;
-            setState(() {
-              _joining = false;
-            });
-
-            // create data stream so this client can both send & be compatible
-            await _createDataStream();
-          },
-
-          onUserJoined: (connection, uid, elapsed) {
-            debugPrint('[Viewer] onUserJoined uid=$uid');
-            if (!mounted) return;
-            setState(() {
-              hostUid = uid;
-            });
-          },
-
-          onUserOffline: (connection, uid, reason) {
-            debugPrint('[Viewer] onUserOffline uid=$uid reason=$reason');
-            if (!mounted) return;
-            setState(() {
-              if (hostUid == uid) hostUid = null;
-            });
-          },
-
-          onStreamMessage: (connection, uid, streamId, data, offset, length) {
-            // Accept packets from any streamId — don't filter by local _dataStreamId
-            try {
-              final raw = data.sublist(offset, offset + length);
-              String msg = utf8
-                  .decode(raw, allowMalformed: true)
-                  .replaceAll('\u0000', '')
-                  .replaceAll('\n', '')
-                  .replaceAll('\r', '')
-                  .replaceAll('\t', '')
-                  .trim();
-
-              if (msg.isEmpty) {
-                debugPrint('[Viewer] Ignored empty packet from uid=$uid streamId=$streamId');
-                return;
-              }
-
-              // Optionally log non-JSON packets for debugging
-              if (!msg.startsWith('{') || !msg.endsWith('}')) {
-                debugPrint('[Viewer] IGNORED NON-JSON packet from uid=$uid streamId=$streamId msg="$msg"');
-                return;
-              }
-
-              final json = jsonDecode(msg);
-
-              if (!mounted) return;
-              setState(() {
-                _comments.add(
-                  _Comment(
-                    json['user']?.toString() ?? 'User',
-                    json['text']?.toString() ?? '',
-                    DateTime.tryParse(json['ts']?.toString() ?? '') ?? DateTime.now(),
-                  ),
-                );
-              });
-
-              _scrollDown();
-            } catch (e, st) {
-              debugPrint('[Viewer] onStreamMessage decode error: $e\n$st');
-            }
-          },
-
-          onError: (err, msg) {
-            debugPrint('[Viewer] Agora error: $err $msg');
-          },
-
-          onConnectionStateChanged: (connection, state, reason) {
-            debugPrint('[Viewer] connection state: $state reason: $reason');
-          },
-        ),
-      );
-
-      // Use live broadcasting profile
-      await _engine.setChannelProfile(ChannelProfileType.channelProfileLiveBroadcasting);
-
-      // NOTE: to allow sending data stream messages from viewers, we set broadcaster role.
-      // If you prefer viewer to be audience (no sending), change to clientRoleAudience.
+      // Step 1: Temporarily switch role to Broadcaster
       await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+      debugPrint('[Viewer] Role set to Broadcaster. Waiting briefly...');
 
-      await _engine.enableVideo();
+      // *** CRITICAL FIX: Add a delay to let the role change propagate on the server ***
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      // Now join
-      await _engine.joinChannel(
-        token: widget.token,
-        channelId: widget.channelName,
-        uid: 0, // let SDK assign
-        options: const ChannelMediaOptions(
-          clientRoleType: ClientRoleType.clientRoleBroadcaster,
-          publishCameraTrack: false,
-          publishMicrophoneTrack: false,
-          publishMediaPlayerAudioTrack: false,
-          publishMediaPlayerVideoTrack: false,
-          autoSubscribeAudio: true,
-          autoSubscribeVideo: true,
-        ),
-      );
-
-      debugPrint('[Viewer] joinChannel called for ${widget.channelName}');
-    } catch (e, st) {
-      debugPrint('[Viewer] RTC INIT FAILED: $e\n$st');
+      // Step 2: Create the data stream
+      final id = await _engine.createDataStream(const DataStreamConfig(syncWithAudio: false, ordered: true));
+      _dataStreamId = id;
+      _streamReady = true;
+      debugPrint('[Viewer] created data stream id=$_dataStreamId');
+    } catch (e) {
+      debugPrint('[Viewer] Stream creation failed: $e');
+      _streamReady = false;
+      _dataStreamId = null;
+      // Step 3: Ensure role is reverted if creation fails
+      await _engine.setClientRole(role: ClientRoleType.clientRoleAudience);
     }
   }
 
-  // -------------------------
-  // Create Data Stream
-  // -------------------------
-  Future<void> _createDataStream() async {
-    if (_dataStreamId != null) return;
+  // send message (envelope+chunking)
+  Future<void> _sendMessage([String? maybeText]) async {
+    final text = (maybeText ?? _inputCtrl.text).trim();
+    if (text.isEmpty) return;
 
     try {
-      _dataStreamId = await _engine.createDataStream(
-        const DataStreamConfig(syncWithAudio: false, ordered: true),
-      );
-      debugPrint('[Viewer] DataStream created id=$_dataStreamId');
-      if (!mounted) return;
-      setState(() {
-        _streamReady = true;
-      });
-    } catch (e, st) {
-      debugPrint('[Viewer] createDataStream error: $e\n$st');
-      if (!mounted) return;
-      setState(() {
-        _streamReady = false;
-      });
-    }
-  }
-
-  // -------------------------
-  // Send message
-  // -------------------------
-  Future<void> _sendMessage() async {
-    final text = _inputCtrl.text.trim();
-    if (text.isEmpty) return;
-    if (!_streamReady) {
-      debugPrint('[Viewer] stream not ready, attempting to create...');
-      await _createDataStream();
-      if (!_streamReady) {
-        debugPrint('[Viewer] stream creation failed, cannot send');
+      await _prepareStreamForSend();
+      if (_dataStreamId == null) {
+        debugPrint('[Viewer] no data stream id, abort send');
         return;
       }
-    }
 
-    // Keep payload small (avoid very large messages)
-    final payloadMap = {
-      'user': 'Viewer',
-      'text': text,
-      'ts': DateTime.now().toIso8601String(),
-    };
+      final payloadMap = {"user": "Viewer", "text": text, "ts": DateTime.now().toIso8601String()};
+      final payloadBytes = utf8.encode(jsonEncode(payloadMap));
+      final msgId = DateTime.now().millisecondsSinceEpoch.toString() + '-' + Random().nextInt(9999).toString();
+      const int chunkSize = 900;
+      final int total = ((payloadBytes.length + chunkSize - 1) / chunkSize).floor();
 
-    final payload = jsonEncode(payloadMap);
-    final bytes = Uint8List.fromList(utf8.encode(payload));
-    if (bytes.length > 1024) {
-      debugPrint('[Viewer] payload too large (${bytes.length}), truncating text');
-      // truncate text safely
-      final truncated = payload.substring(0, 900);
-      final bytes2 = Uint8List.fromList(utf8.encode(truncated));
-      try {
-        await _engine.sendStreamMessage(
-          streamId: _dataStreamId ?? 0,
-          data: bytes2,
-          length: bytes2.length,
-        );
-      } catch (e) {
-        debugPrint('[Viewer] sendStreamMessage ERROR after truncate: $e');
+      int sent = 0;
+      int part = 0;
+      while (sent < payloadBytes.length) {
+        final take = min(chunkSize, payloadBytes.length - sent);
+        final chunk = payloadBytes.sublist(sent, sent + take);
+        final envelope = jsonEncode({"m": {"id": msgId, "part": part, "total": total}, "d": base64.encode(chunk)});
+        final bytesToSend = Uint8List.fromList(utf8.encode(envelope));
+        await _engine.sendStreamMessage(streamId: _dataStreamId!, data: bytesToSend, length: bytesToSend.length);
+        sent += take;
+        part++;
+        await Future.delayed(const Duration(milliseconds: 6));
       }
-    } else {
-      try {
-        await _engine.sendStreamMessage(
-          streamId: _dataStreamId ?? 0,
-          data: bytes,
-          length: bytes.length,
-        );
 
-        // Show locally
-        if (!mounted) return;
-        setState(() {
-          _comments.add(_Comment('You', text, DateTime.now()));
-        });
+      setState(() {
+        _comments.add(_Comment('You', text, DateTime.now()));
         _inputCtrl.clear();
-        _scrollDown();
+      });
+      _scrollDown();
+    } catch (e) {
+      debugPrint('[Viewer] Send ERROR: $e');
+    } finally {
+      // Step 3: Revert role back to audience regardless of send success/failure
+      try {
+        await _engine.setClientRole(role: ClientRoleType.clientRoleAudience);
       } catch (e) {
-        debugPrint('[Viewer] sendStreamMessage ERROR: $e');
+        debugPrint('[Viewer] revert role FAILED: $e');
       }
+      _dataStreamId = null;
+      _streamReady = false;
     }
   }
 
-  // -------------------------
-  // Scroll helper
-  // -------------------------
   void _scrollDown() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent + 100,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
+        _scrollController.jumpTo(
+          _scrollController.position.maxScrollExtent + 80,
         );
       }
     });
@@ -270,27 +246,13 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
   void dispose() {
     _inputCtrl.dispose();
     _scrollController.dispose();
-
-    // cleanup: leave & release safely
-    (() async {
-      try {
-        await _engine.leaveChannel();
-      } catch (e) {
-        debugPrint('[Viewer] leaveChannel error: $e');
-      }
-      try {
-        await _engine.release();
-      } catch (e) {
-        debugPrint('[Viewer] engine release error: $e');
-      }
-    })();
-
+    try {
+      _engine.leaveChannel();
+      _engine.release();
+    } catch (_) {}
     super.dispose();
   }
 
-  // -------------------------
-  // UI
-  // -------------------------
   @override
   Widget build(BuildContext context) {
     final waiting = hostUid == null;
@@ -301,10 +263,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
         children: [
           Center(
             child: waiting
-                ? const Text(
-              "Waiting for astrologer...",
-              style: TextStyle(color: Colors.white),
-            )
+                ? const Text("Waiting for host...", style: TextStyle(color: Colors.white))
                 : AgoraVideoView(
               controller: VideoViewController.remote(
                 rtcEngine: _engine,
@@ -322,10 +281,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
             child: Container(
               height: 170,
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.45),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
               child: ListView.builder(
                 controller: _scrollController,
                 itemCount: _comments.length,
@@ -347,43 +303,29 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: "Type a comment...",
-                      hintStyle: const TextStyle(color: Colors.white70),
+                      hintStyle: const TextStyle(color: Colors.white60),
                       filled: true,
-                      fillColor: Colors.black.withOpacity(0.4),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      fillColor: Colors.black38,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     ),
-                    onChanged: (_) => setState(() {}),
+                    onChanged: (s) => setState(() {}),
                     onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
                 const SizedBox(width: 8),
                 CircleAvatar(
-                  backgroundColor: _canSend ? Colors.purple : Colors.grey,
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white),
-                    onPressed: _canSend ? _sendMessage : null,
-                  ),
-                ),
+                  backgroundColor: _canSend ? Colors.purpleAccent : Colors.grey,
+                  child: IconButton(icon: const Icon(Icons.send, color: Colors.white), onPressed: _canSend ? _sendMessage : null),
+                )
               ],
             ),
           ),
 
-          // Back button
           Positioned(
             top: 40,
             left: 12,
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
+            child: CircleAvatar(child: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context))),
           ),
         ],
       ),
@@ -391,9 +333,6 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
   }
 }
 
-// -------------------------
-// Comment model & tile
-// -------------------------
 class _Comment {
   final String user;
   final String text;
@@ -407,20 +346,6 @@ class _CommentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          const CircleAvatar(radius: 10, child: Icon(Icons.person, size: 12)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              "${c.user}: ${c.text}",
-              style: const TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Text("${c.user}: ${c.text}", style: const TextStyle(color: Colors.white)));
   }
 }
