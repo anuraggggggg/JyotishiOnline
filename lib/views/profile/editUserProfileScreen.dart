@@ -285,37 +285,59 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
 
                     const SizedBox(height: 8),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Gender:", style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Text(
+                          "Gender:",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                         const SizedBox(width: 16),
+
                         Expanded(
-                          child: Row(
+                          child: Wrap(
+                            spacing: 50,   // 🔥 horizontal spacing
+                            runSpacing: 10, // vertical spacing if wrapped
                             children: [
-                              Radio<String>(
-                                value: 'Male',
-                                groupValue: _gender,
-                                onChanged: (v) => setState(() => _gender = v ?? 'Male'),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Radio<String>(
+                                    value: 'Male',
+                                    groupValue: _gender,
+                                    onChanged: (v) => setState(() => _gender = v ?? 'Male'),
+                                  ),
+                                  const Text('Male'),
+                                ],
                               ),
-                              const Text('Male'),
-                              const SizedBox(width: 16),
-                              Radio<String>(
-                                value: 'Female',
-                                groupValue: _gender,
-                                onChanged: (v) => setState(() => _gender = v ?? 'Female'),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Radio<String>(
+                                    value: 'Female',
+                                    groupValue: _gender,
+                                    onChanged: (v) => setState(() => _gender = v ?? 'Female'),
+                                  ),
+                                  const Text('Female'),
+                                ],
                               ),
-                              const Text('Female'),
-                              const SizedBox(width: 16),
-                              Radio<String>(
-                                value: 'Other',
-                                groupValue: _gender,
-                                onChanged: (v) => setState(() => _gender = v ?? 'Other'),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Radio<String>(
+                                    value: 'Other',
+                                    groupValue: _gender,
+                                    onChanged: (v) => setState(() => _gender = v ?? 'Other'),
+                                  ),
+                                  const Text('Other'),
+                                ],
                               ),
-                              const Text('Other'),
                             ],
                           ),
                         ),
                       ],
-                    ),
+                    )
+                    ,
+
 
                     TextFormField(
                       controller: _contactCtrl,

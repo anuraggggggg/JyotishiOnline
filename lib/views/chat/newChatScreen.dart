@@ -1,6 +1,8 @@
+// lib/views/chat/customer_chat_page.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +17,9 @@ class CustomerChatPage extends StatefulWidget {
   final String astrologerName;
   final String? token;
 
+  /// 🔹 New: chatRate – amount to be deducted ONCE when chat session starts
+  final double chatRate;
+
   const CustomerChatPage({
     Key? key,
     required this.astrologerUid,
@@ -22,6 +27,7 @@ class CustomerChatPage extends StatefulWidget {
     required this.myUserId,
     required this.astrologerName,
     this.token,
+    required this.chatRate,
   }) : super(key: key);
 
   @override
@@ -56,6 +62,10 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   int _secondsLeft = _totalSessionSeconds;
   bool _timerStarted = false;
 
+  // 💸 New: payment state (deduct chat amount once at session start)
+  bool _isCharging = false;
+  bool _chatChargeDone = false;
+
   final Set<String> _clientSeqSeen = <String>{};
   final Map<String, int> _clientSeqIndex = {};
   final Set<String> _historyIdsSeen = <String>{};
@@ -82,9 +92,6 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   void initState() {
     super.initState();
     _initializeUserData();
-
-    // ❌ NO TIMER HERE NOW – we start only when astrologer connects
-    // _startSessionCountdown();
 
     _scrollController.addListener(() {
       if (_scrollController.position.pixels <=
@@ -146,6 +153,80 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     }
   }
 
+  // 🔥 NEW: Deduct chat amount ONCE when session starts
+  Future<void> _maybeChargeForChat() async {
+    // If no rate, skip
+    if (widget.chatRate <= 0) {
+      debugPrint('💸 [ChatCharge] chatRate<=0 → skipping deduction');
+      return;
+    }
+
+    if (_chatChargeDone) {
+      debugPrint('💸 [ChatCharge] Already done in this widget instance');
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'chat_charged_${widget.roomId}';
+
+    final alreadyCharged = prefs.getBool(key) ?? false;
+    if (alreadyCharged) {
+      debugPrint('💸 [ChatCharge] Already charged for this room (prefs)');
+      _chatChargeDone = true;
+      return;
+    }
+
+    try {
+      setState(() => _isCharging = true);
+
+      debugPrint(
+          '💸 [ChatCharge] Sending ₹${widget.chatRate.toStringAsFixed(0)} to astrologer=${widget.astrologerUid} for room=${widget.roomId}');
+
+      final api = FastAPIServices();
+      final res = await api.sendMoney(
+        astrologerId: widget.astrologerUid,
+        amount: widget.chatRate,
+        type: 'chat_session',
+      );
+
+      debugPrint(
+          '✅ [ChatCharge] Success → txId=${res.transactionId} userBal=${res.userBalance} astroBal=${res.astroBalance}');
+
+      await prefs.setBool(key, true);
+      _chatChargeDone = true;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '₹${widget.chatRate.toStringAsFixed(0)} debited for chat session.'),
+          ),
+        );
+      }
+    } catch (e, st) {
+      debugPrint('💥 [ChatCharge] Failed: $e\n$st');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      // ❗ Business rule: if payment fails, close chat screen
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCharging = false);
+      }
+    }
+  }
+
   Future<void> _initializeUserData() async {
     debugPrint('🧠 Loading stored user data / wiring params...');
     final prefs = await SharedPreferences.getInstance();
@@ -164,6 +245,11 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       return;
     }
 
+    // 💸 FIRST: charge for chat session (ONCE per room)
+    await _maybeChargeForChat();
+    if (!mounted) return;
+
+    // Then load history / connect WS
     await _loadChatHistory();
     if (!mounted) return;
 
@@ -751,7 +837,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    final canSend = _isConnected && _socket != null;
+    final canSend = _isConnected && _socket != null && !_isCharging;
 
     // format countdown as MM:SS
     final String countdownStr =
@@ -853,6 +939,34 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           ? _buildLoadingIndicator()
           : Column(
         children: [
+          if (_isCharging)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 8),
+              color: Colors.orange.shade50,
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Processing payment for this chat session…',
+                      style: TextStyle(
+                        color: Colors.orange.shade900,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: Container(
               decoration: BoxDecoration(

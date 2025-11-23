@@ -830,6 +830,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
                                 ).push(
                                   MaterialPageRoute(
                                     builder: (_) => CustomerChatPage(
+                                      chatRate: astrologer.chatCharge,
                                       astrologerUid: astrologerUid,
                                       myUserId: userUid,
                                       roomId: roomId,
@@ -867,6 +868,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
                                 ).push(
                                   MaterialPageRoute(
                                     builder: (_) => CustomerChatPage(
+                                      chatRate: astrologer.chatCharge,
                                       astrologerUid: astrologerUid,
                                       myUserId: userUid,
                                       roomId: roomId,
