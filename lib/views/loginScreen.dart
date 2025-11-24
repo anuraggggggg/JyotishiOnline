@@ -7,12 +7,10 @@ import 'package:AstrowayCustomer/controllers/homeController.dart';
 import 'package:AstrowayCustomer/controllers/loginController.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/theme/appTheme.dart';
-import 'package:AstrowayCustomer/utils/images.dart';
 import 'package:AstrowayCustomer/views/loginWithEmailScreen.dart';
 import 'package:AstrowayCustomer/views/verifyPhoneScreen.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/gestures.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -32,19 +30,17 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   late final LoginController loginController;
   late final HomeController homeController;
-  // Local reactive variable to hold the currently selected PhoneNumber
+
   final Rx<PhoneNumber> _selectedPhoneNumber = PhoneNumber(isoCode: "IN").obs;
+
+  // Terms Checkbox
+  final RxBool acceptTerms = false.obs;
 
   @override
   void initState() {
     super.initState();
     loginController = Get.find<LoginController>();
     homeController = Get.find<HomeController>();
-
-    // Initialize _selectedPhoneNumber based on the initial country code from loginController
-    // This assumes loginController.countryCode.value might have a default or saved value.
-    // If you always want to start with IN unless explicitly changed by user, this is fine.
-    // For more robust initialisation based on saved user data, you might need a utility to convert dialCode to isoCode.
   }
 
   @override
@@ -59,376 +55,273 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: Colors.white,
           body: SingleChildScrollView(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          Image.asset(
-                            "assets/images/newLogo.png",
-                            height: MediaQuery.of(context).size.height * 0.20,
-                          ),
-                          SizedBox(height: 20),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              "Mobile Number",
-                              style: TextStyle(
-                                fontSize: 25,
-                                fontWeight: FontWeight.w500,
-                                color: buttonColor1,
-                              ),
-                            ).tr(),
-                          ),
-                          SizedBox(height: 10),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                // LOGO
                 Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Obx(() {
-                        return Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10)),
-                                  border: Border.all(color: Colors.grey),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 2),
-                                  child: Theme(
-                                    data: ThemeData(
-                                      dialogTheme: DialogTheme(
-                                        contentTextStyle: const TextStyle(
-                                            color: Colors.white),
-                                        backgroundColor: Colors.grey[800],
-                                        surfaceTintColor: Colors.grey[800],
-                                      ),
-                                    ),
-                                    child: InternationalPhoneNumberInput(
-                                      // The key is now dynamic, forcing the widget to rebuild on country change
-                                      key: ValueKey(
-                                          _selectedPhoneNumber.value.isoCode!),
-                                      textFieldController:
-                                          loginController.phoneController,
-                                      inputDecoration: const InputDecoration(
-                                        border: InputBorder.none,
-                                        hintText: 'Phone number',
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 16,
-                                          fontFamily: "verdana_regular",
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                      onInputValidated: (bool value) {
-                                        developer.log(
-                                            'Phone number validity: $value');
-                                      },
-                                      selectorConfig: SelectorConfig(
-                                        leadingPadding: 2,
-                                        selectorType:
-                                            PhoneInputSelectorType.BOTTOM_SHEET,
-                                        showFlags: true,
-                                      ),
-                                      ignoreBlank: false,
-                                      autoValidateMode:
-                                          AutovalidateMode.disabled,
-                                      selectorTextStyle:
-                                          const TextStyle(color: Colors.black),
-                                      searchBoxDecoration: InputDecoration(
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.all(
-                                              Radius.circular(2.w)),
-                                          borderSide: const BorderSide(
-                                              color: Colors.black),
-                                        ),
-                                        hintText: "Search",
-                                        hintStyle: const TextStyle(
-                                            color: Colors.black),
-                                      ),
-                                      // Use the local reactive variable for the initial value
-                                      initialValue: _selectedPhoneNumber.value,
-                                      formatInput: false,
-                                      keyboardType:
-                                          const TextInputType.numberWithOptions(
-                                        signed: true,
-                                        decimal: false,
-                                      ),
-                                      inputBorder: InputBorder.none,
-                                      onSaved: (PhoneNumber number) {
-                                        loginController
-                                            .updateCountryCode(number.dialCode);
-                                        _selectedPhoneNumber.value =
-                                            number; // Update local reactive variable
-                                      },
-                                      onFieldSubmitted: (value) {
-                                        FocusScope.of(context).unfocus();
-                                      },
-                                      onInputChanged: (PhoneNumber number) {
-                                        loginController
-                                            .updateCountryCode(number.dialCode);
-                                        _selectedPhoneNumber.value =
-                                            number; // Update local reactive variable
-                                      },
-                                      onSubmit: () {
-                                        FocusScope.of(context).unfocus();
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 20),
-
-                              // WhatsApp button - always visible
-                              GestureDetector(
-                                onTap: () async {
-                                  FocusScope.of(context).unfocus();
-                                  bool isValid = loginController.validedPhone();
-
-                                  if (!isValid) {
-                                    print(
-                                        "⚠️ Phone validation failed: ${loginController.errorText}");
-                                    global.showToast(
-                                      message: loginController.errorText ??
-                                          "Invalid phone number",
-                                      textColor: global.textColor,
-                                      bgColor: global.toastBackGoundColor,
-                                    );
-                                    return;
-                                  }
-
-                                  print(
-                                      "📞 Phone validation passed. Preparing to send OTP...");
-
-                                  try {
-                                    final response =
-                                        await FastAPIServices().sendOtp(
-                                      contactNo: loginController
-                                          .phoneController.text
-                                          .trim(),
-                                      countryCode:
-                                          "+91", // TODO: Make dynamic if multi-country support needed
-                                      sendWhatsapp: true,
-                                      sendSms: true,
-                                    );
-
-                                    print(
-                                        "✅ API call completed. Status: ${response.statusCode}");
-                                    print("📩 Response body: ${response.body}");
-
-                                    if (response.statusCode == 200) {
-                                      global.showToast(
-                                        message: "OTP sent successfully!",
-                                        textColor: global.textColor,
-                                        bgColor: Colors.green,
-                                      );
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => VerifyPhoneScreen(
-                                            phoneNumber: loginController
-                                                .phoneController.text
-                                                .trim(),
-                                            countryCode: '+91',
-                                            // countryCode: "+91",
-                                          ),
-                                        ),
-                                      );
-                                    } else {
-                                      final errorMessage = (response
-                                              .body.isNotEmpty)
-                                          ? response.body
-                                          : "Failed to send OTP. Please try again.";
-                                      global.showToast(
-                                        message: errorMessage,
-                                        textColor: global.textColor,
-                                        bgColor: Colors.red,
-                                      );
-                                    }
-                                  } catch (e, stackTrace) {
-                                    print("❌ Error while sending OTP: $e");
-                                    print(stackTrace);
-                                    global.showToast(
-                                      message:
-                                          "Something went wrong! Please check your internet connection.",
-                                      textColor: global.textColor,
-                                      bgColor: Colors.red,
-                                    );
-                                  }
-                                },
-                                child: Container(
-                                  height: 45,
-                                  width: double.infinity,
-                                  margin: EdgeInsets.only(top: 10),
-                                  decoration: BoxDecoration(
-                                    color: appYellow,
-                                    borderRadius: const BorderRadius.all(
-                                        Radius.circular(16)),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      'Send OTP',
-                                      style: TextStyle(color: Colors.black),
-                                      textAlign: TextAlign.center,
-                                    ).tr(),
-                                  ),
-                                ),
-                              ),
-
-                              SizedBox(height: 10),
-
-                              // SMS button - visible only for foreign users
-                              if (loginController.countryCode.value ==
-                                  "+91") ...[
-                                // GestureDetector(
-                                //   onTap: () async {
-                                //     FocusScope.of(context).unfocus();
-                                //     bool isValid =
-                                //         loginController.validedPhone();
-                                //     if (isValid) {
-                                //       await loginController.sendOtpToPhone();
-                                //     } else {
-                                //       global.showToast(
-                                //         message: loginController.errorText!,
-                                //         textColor: global.textColor,
-                                //         bgColor: global.toastBackGoundColor,
-                                //       );
-                                //     }
-                                //   },
-                                //   child: Container(
-                                //     height: 45,
-                                //     width: double.infinity,
-                                //     margin: EdgeInsets.only(top: 10),
-                                //     decoration: BoxDecoration(
-                                //       color: appYellow,
-                                //       borderRadius: const BorderRadius.all(
-                                //           Radius.circular(16)),
-                                //     ),
-                                //     child: Center(
-                                //       child: Text(
-                                //         'Send OTP ',
-                                //         style: TextStyle(color: Colors.black),
-                                //         textAlign: TextAlign.center,
-                                //       ).tr(),
-                                //     ),
-                                //   ),
-                                // ),
-                                SizedBox(height: 10),
-                              ],
-                              SizedBox(height: 20),
-                              // Add this code snippet within your Column widget,
-// after the 'Send OTP' button, and before the terms & conditions text.
-
-                              SizedBox(height: 20),
-// Add this new section for navigation to the Sign Up page
-                              Center(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    // Navigate to your Sign Up screen here
-                                    // Replace 'SignUpScreen()' with the name of your Sign Up page widget
-                                    // Navigator.push(
-                                    //   context,
-                                    //   MaterialPageRoute(
-                                    //     builder: (context) => SignUpScreen(),
-                                    //   ),
-                                    // );
-                                  },
-                                  child: RichText(
-                                    text: TextSpan(
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey,
-                                      ),
-                                      children: <TextSpan>[
-                                        TextSpan(
-                                            text: "Don't have an account? "),
-                                        TextSpan(
-                                          text: "Sign Up",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors
-                                                .blue, // or your desired color
-                                          ),
-    recognizer: TapGestureRecognizer()
-    ..onTap = () {
-      Get.to(() => const SignupWithEmailScreen());
-    }),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                  height:
-                                      20), // This adds some space before the next element
-                              Center(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    // Navigate to your Sign Up screen here
-                                    // Replace 'SignUpScreen()' with the name of your Sign Up page widget
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            LoginWithEmailScreen(),
-                                      ),
-                                    );
-                                  },
-                                  child: RichText(
-                                    text: TextSpan(
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey,
-                                      ),
-                                      children: <TextSpan>[
-                                        TextSpan(
-                                          text: "Login with Email & Password ",
-                                        ),
-                                        TextSpan(
-                                          text: "Click Here",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors
-                                                .blue, // or your desired color
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 20),
-
-                              Text(
-                                "By Creating account, you are accepting terms & conditions",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                ),
-                                textAlign: TextAlign.center,
-                              ).tr(),
-                            ],
+                      Image.asset(
+                        "assets/images/newLogo.png",
+                        height: MediaQuery.of(context).size.height * 0.20,
+                      ),
+                      SizedBox(height: 20),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "Mobile Number",
+                          style: TextStyle(
+                            fontSize: 25,
+                            fontWeight: FontWeight.w500,
+                            color: buttonColor1,
                           ),
-                        );
-                      }),
+                        ).tr(),
+                      ),
+                      SizedBox(height: 10),
                     ],
                   ),
+                ),
+
+                // PHONE INPUT
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Obx(() {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 2),
+                            child: Theme(
+                              data: ThemeData(
+                                dialogTheme: DialogTheme(
+                                  contentTextStyle: const TextStyle(color: Colors.white),
+                                  backgroundColor: Colors.grey[800],
+                                  surfaceTintColor: Colors.grey[800],
+                                ),
+                              ),
+                              child: InternationalPhoneNumberInput(
+                                key: ValueKey(_selectedPhoneNumber.value.isoCode!),
+                                textFieldController: loginController.phoneController,
+                                inputDecoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'Phone number',
+                                  hintStyle: TextStyle(color: Colors.grey),
+                                ),
+                                selectorConfig: SelectorConfig(
+                                  selectorType: PhoneInputSelectorType.BOTTOM_SHEET,
+                                  showFlags: true,
+                                ),
+                                initialValue: _selectedPhoneNumber.value,
+                                formatInput: false,
+                                keyboardType: TextInputType.numberWithOptions(
+                                  signed: true,
+                                  decimal: false,
+                                ),
+                                onInputChanged: (PhoneNumber number) {
+                                  loginController.updateCountryCode(number.dialCode);
+                                  _selectedPhoneNumber.value = number;
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(height: 20),
+
+                        // SEND OTP BUTTON
+                        GestureDetector(
+                          onTap: () async {
+                            FocusScope.of(context).unfocus();
+
+                            // T&C check
+                            if (!acceptTerms.value) {
+                              global.showToast(
+                                message: "Please accept Terms & Conditions",
+                                textColor: Colors.white,
+                                bgColor: Colors.red,
+                              );
+                              return;
+                            }
+
+                            bool isValid = loginController.validedPhone();
+                            if (!isValid) {
+                              global.showToast(
+                                message: loginController.errorText ??
+                                    "Invalid phone number",
+                                textColor: Colors.white,
+                                bgColor: Colors.red,
+                              );
+                              return;
+                            }
+
+                            try {
+                              final response = await FastAPIServices().sendOtp(
+                                contactNo:
+                                loginController.phoneController.text.trim(),
+                                countryCode: "+91",
+                                sendWhatsapp: true,
+                                sendSms: true,
+                              );
+
+                              if (response.statusCode == 200) {
+                                global.showToast(
+                                  message: "OTP sent successfully!",
+                                  textColor: Colors.white,
+                                  bgColor: Colors.green,
+                                );
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => VerifyPhoneScreen(
+                                      phoneNumber:
+                                      loginController.phoneController.text.trim(),
+                                      countryCode: '+91',
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                global.showToast(
+                                  message:
+                                  response.body.isNotEmpty ? response.body : "Failed",
+                                  textColor: Colors.white,
+                                  bgColor: Colors.red,
+                                );
+                              }
+                            } catch (e) {
+                              global.showToast(
+                                message: "Something went wrong",
+                                textColor: Colors.white,
+                                bgColor: Colors.red,
+                              );
+                            }
+                          },
+                          child: Container(
+                            height: 45,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: appYellow,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Send OTP',
+                                style: TextStyle(color: Colors.black),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(height: 20),
+
+                        // SIGN UP TEXT
+                        Center(
+                          child: GestureDetector(
+                            onTap: () {
+                              Get.to(() => const SignupWithEmailScreen());
+                            },
+                            child: RichText(
+                              text: TextSpan(
+                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                                children: [
+                                  TextSpan(text: "Don't have an account? "),
+                                  TextSpan(
+                                    text: "Sign Up",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(height: 20),
+
+                        // LOGIN WITH EMAIL
+                        Center(
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => LoginWithEmailScreen(),
+                                ),
+                              );
+                            },
+                            child: RichText(
+                              text: const TextSpan(
+                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                                children: [
+                                  TextSpan(text: "Login with Email & Password "),
+                                  TextSpan(
+                                    text: "Click Here",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(height: 25),
+
+                        // TERMS & CONDITIONS CHECKBOX
+                        // Obx(() {
+                        //   return Row(
+                        //     crossAxisAlignment: CrossAxisAlignment.center,
+                        //     children: [
+                        //       Checkbox(
+                        //         value: acceptTerms.value,
+                        //         activeColor: appYellow,
+                        //         onChanged: (value) {
+                        //           acceptTerms.value = value ?? false;
+                        //         },
+                        //       ),
+                        //       // Expanded(
+                        //       //   child: RichText(
+                        //       //     text: TextSpan(
+                        //       //       style: TextStyle(
+                        //       //         color: Colors.black,
+                        //       //         fontSize: 14,
+                        //       //       ),
+                        //       //       children: [
+                        //       //         const TextSpan(
+                        //       //             text:
+                        //       //             "By creating account, you accept the "),
+                        //       //         TextSpan(
+                        //       //           text: "Terms & Conditions",
+                        //       //           style: const TextStyle(
+                        //       //             color: Colors.blue,
+                        //       //             fontWeight: FontWeight.bold,
+                        //       //             decoration: TextDecoration.underline,
+                        //       //           ),
+                        //       //           recognizer: TapGestureRecognizer()
+                        //       //             ..onTap = () {
+                        //       //               print("Open Terms & Conditions screen");
+                        //       //             },
+                        //       //         ),
+                        //       //       ],
+                        //       //     ),
+                        //       //   ),
+                        //       // ),
+                        //     ],
+                        //   );
+                        // }),
+
+                        SizedBox(height: 20),
+                      ],
+                    );
+                  }),
                 ),
               ],
             ),
@@ -437,63 +330,4 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-}
-
-class CustomClipPath extends CustomClipper<Path> {
-  var radius = 5.0;
-  @override
-  Path getClip(Size size) {
-    Path path_1 = Path();
-    path_1.moveTo(size.width * -0.0034000, size.height * -0.0005200);
-    path_1.lineTo(size.width * 1.0044000, size.height * 0.0041400);
-    path_1.quadraticBezierTo(size.width * 1.0017750, size.height * 0.6117900,
-        size.width * 1.0009000, size.height * 0.8143400);
-    path_1.cubicTo(
-        size.width * 0.7438000,
-        size.height * 1.0302400,
-        size.width * 0.3289375,
-        size.height * 1.0551400,
-        size.width * 0.0006000,
-        size.height * 0.8136600);
-    path_1.quadraticBezierTo(size.width * -0.0010250, size.height * 0.6101200,
-        size.width * -0.0034000, size.height * -0.0005200);
-    path_1.close();
-
-    return path_1;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
-}
-
-class LeftTrianglePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()..color = Colors.white;
-    Path path = Path();
-    path.moveTo(size.width, size.height / 2);
-    path.lineTo(0, 0);
-    path.lineTo(0, size.height);
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
-class RightTrianglePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()..color = Colors.white;
-    Path path = Path();
-    path.moveTo(0, size.height / 2);
-    path.lineTo(size.width, 0);
-    path.lineTo(size.width, size.height);
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

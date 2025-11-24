@@ -56,7 +56,8 @@ class SettingListScreen extends StatelessWidget {
               }),
               // _SettingListItem(
               //   icon: Icons.assignment, // Icon for terms
-              //   title: "Terms and Condition",
+              //   title: "
+              //   Terms and Condition",
               //   onTap: () {
               //     Get.to(() => TermAndConditionScreen());
               //   },
@@ -75,11 +76,12 @@ class SettingListScreen extends StatelessWidget {
                 titleColor: Colors.black,
                 showTrailingIcon: false,
                 onTap: () {
+                  print("🔔 Logout button tapped");
+
                   Get.dialog(
                     AlertDialog(
                       backgroundColor: Theme.of(context).dialogBackgroundColor,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       title: Text(
                         "Are you sure you want to logout?",
                         style: Get.textTheme.titleMedium,
@@ -88,9 +90,11 @@ class SettingListScreen extends StatelessWidget {
                       content: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
+                          // CANCEL BUTTON
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () {
+                                print("❎ Logout cancelled by user");
                                 Get.back();
                               },
                               style: OutlinedButton.styleFrom(
@@ -100,23 +104,24 @@ class SettingListScreen extends StatelessWidget {
                               child: Text('No').tr(),
                             ),
                           ),
+
                           const SizedBox(width: 10),
+
+                          // CONFIRM LOGOUT BUTTON
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () async {
-                                // Changed to an async function
-                                // Close the dialog
-                                Get.back();
-                                // Clear all local data on the history controller
-                                historyController.chatHistoryList.clear();
-                                historyController.astroMallHistoryList.clear();
-                                historyController.reportHistoryList.clear();
-                                historyController.callHistoryList.clear();
-                                historyController.paymentLogsList.clear();
-                                historyController.walletTransactionList.clear();
+                                print("⚠️ Logout confirmed by user");
+                                Get.back(); // Close dialog
 
-                                // Call the new logout function from FastAPIServices
+                                print("🧹 Clearing local history controller data...");
+
+                                print("🧹 History controller lists cleared.");
+
+                                print("🚪 Calling FastAPIServices().logout()...");
                                 await FastAPIServices().logout();
+
+                                print("🔚 Logout flow completed.");
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Get.theme.primaryColor,
@@ -131,6 +136,7 @@ class SettingListScreen extends StatelessWidget {
                   );
                 },
               ),
+
               GetBuilder<SettingsController>(builder: (_) {
                 return _SettingListItem(
                   icon: Icons.delete_forever, // Stronger delete icon

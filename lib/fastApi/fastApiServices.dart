@@ -1100,37 +1100,15 @@ class FastAPIServices {
   Future<void> _loadCredentials() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Always attempt to load from storage first
+    // Load saved token and user id
     _accessToken = prefs.getString("access_token");
     _userId = prefs.getString("user_id");
 
-    bool needsLogin = false;
-
-    if (_accessToken == null) {
-      needsLogin = true;
-    } else if (_isTokenExpired(_accessToken!)) {
-      needsLogin = true;
-    }
-
-    // The re-login logic is now robust enough to handle _userId being null,
-    // so we keep the check here to trigger the login flow.
-    if (_userId == null) {
-      needsLogin = true;
-    }
-
-    if (needsLogin) {
-      await loginAndGetToken(); // This now correctly sets _userId and _accessToken
-
-      // Safety check: Re-read values just in case loginAndGetToken succeeded
-      // but didn't update the properties correctly (or read the ID from storage)
-      if (_userId == null) {
-        _accessToken = prefs.getString("access_token");
-        _userId = prefs.getString("user_id");
-      }
-    }
-
-    print("✅ _loadCredentials() completed -> _userId=$_userId, _accessToken=${_accessToken != null ? 'LOADED' : 'NULL'}");
+    print(
+        "🔑 _loadCredentials() → userId=$_userId, accessToken=$_accessToken"
+    );
   }
+
 
   Future<CustomerDetail> updateCustomerDetailFromPath({
     String? name,

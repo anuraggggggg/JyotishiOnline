@@ -1,11 +1,18 @@
 import 'dart:io';
+import 'package:AstrowayCustomer/views/settings/disclaimer_and_guidelines_screen.dart';
+import 'package:AstrowayCustomer/views/settings/termsAndConditionScreen.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:AstrowayCustomer/theme/appTheme.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/views/loginWithEmailScreen.dart';
+
+// If you have these pages later, uncomment navigation
+// import 'package:AstrowayCustomer/views/termsRefundScreen.dart';
+// import 'package:AstrowayCustomer/views/privacyPolicyScreen.dart';
 
 class SignupWithEmailScreen extends StatefulWidget {
   const SignupWithEmailScreen({super.key});
@@ -18,22 +25,27 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
   final _formKey = GlobalKey<FormState>();
   final _picker = ImagePicker();
 
-  // Controllers
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _contactController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _birthDateController = TextEditingController();
-  final _genderController = TextEditingController();
 
+  String? _selectedGender;
   File? _selectedImage;
+
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
+  // NEW CHECKBOX VARIABLE
+  bool _isTermsAccepted = false;
 
   final FastAPIServices _apiServices = FastAPIServices();
 
-  /// 📸 Pick profile image
+  // Pick profile picture
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
@@ -41,9 +53,36 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
     }
   }
 
-  /// 📝 Signup logic
+  // Birth Date Picker in English
+  Future<void> _pickBirthDate() async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000),
+      firstDate: DateTime(1950),
+      lastDate: DateTime.now(),
+      locale: const Locale('en', 'US'),
+    );
+
+    if (picked != null) {
+      _birthDateController.text =
+      "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+      setState(() {});
+    }
+  }
+
+  // Signup function
   Future<void> _signup() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (!_isTermsAccepted) {
+      Get.snackbar(
+        "Required",
+        "Please accept the Terms, Refund Policy & Privacy Policy",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     FocusScope.of(context).unfocus();
@@ -56,7 +95,7 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
       password: _passwordController.text.trim(),
       pincode: int.tryParse(_pincodeController.text.trim()) ?? 0,
       birthDate: _birthDateController.text.trim(),
-      gender: _genderController.text.trim(),
+      gender: _selectedGender ?? "",
       profilePicPath: _selectedImage?.path,
     );
 
@@ -65,18 +104,17 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
     if (response != null && response["error"] != true) {
       Get.snackbar(
         "Success",
-        "Account created successfully! Please log in to continue.",
+        "Account created successfully! Please log in.",
         backgroundColor: Colors.green,
         colorText: Colors.white,
       );
 
-      // ✅ Navigate to Login Screen after delay
       await Future.delayed(const Duration(seconds: 1));
       Get.offAll(() => const LoginWithEmailScreen());
     } else {
       Get.snackbar(
         "Error",
-        response?["message"] ?? "Signup failed. Try again.",
+        response?["message"] ?? "Signup failed",
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
@@ -89,9 +127,9 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
     _emailController.dispose();
     _contactController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _pincodeController.dispose();
     _birthDateController.dispose();
-    _genderController.dispose();
     super.dispose();
   }
 
@@ -99,24 +137,20 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
           child: SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.all(20),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // 🔹 Logo
+                // Logo
                 Image.asset(
                   "assets/images/newLogo.png",
                   height: MediaQuery.of(context).size.height * 0.20,
                 ),
                 const SizedBox(height: 30),
 
-                // 🔹 Title
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -130,12 +164,11 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // 🔹 Signup Form
                 Form(
                   key: _formKey,
                   child: Column(
                     children: [
-                      // 📸 Profile image picker
+                      // Profile Image
                       GestureDetector(
                         onTap: _pickImage,
                         child: CircleAvatar(
@@ -146,27 +179,50 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
                               : null,
                           child: _selectedImage == null
                               ? const Icon(Icons.camera_alt,
-                              color: Colors.black54, size: 30)
+                              color: Colors.black54)
                               : null,
                         ),
                       ),
                       const SizedBox(height: 20),
 
+                      // Name
                       _buildTextField(
                         controller: _nameController,
                         label: 'Full Name',
                         icon: Icons.person,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return "Please enter your name";
+                          }
+                          if (!RegExp(r"^[A-Za-z ]+$")
+                              .hasMatch(value.trim())) {
+                            return "Name must contain only alphabets";
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
 
+                      // Contact Number
                       _buildTextField(
                         controller: _contactController,
                         label: 'Contact Number',
                         icon: Icons.phone,
-                        keyboardType: TextInputType.phone,
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.trim().length != 10) {
+                            return "Enter a valid 10-digit mobile number";
+                          }
+                          if (!RegExp(r"^[0-9]{10}$")
+                              .hasMatch(value.trim())) {
+                            return "Only numbers allowed";
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
 
+                      // Email
                       _buildTextField(
                         controller: _emailController,
                         label: 'Email Address',
@@ -174,62 +230,183 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
+                            return "Enter your email";
                           }
                           if (!GetUtils.isEmail(value)) {
-                            return 'Enter a valid email';
+                            return "Enter a valid email";
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 16),
 
+                      // Password
                       _buildTextField(
                         controller: _passwordController,
                         label: 'Password',
                         icon: Icons.lock,
                         obscureText: _obscurePassword,
                         suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                            color: Colors.grey,
-                          ),
+                          icon: Icon(_obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility),
                           onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
+                            setState(
+                                    () => _obscurePassword = !_obscurePassword);
                           },
                         ),
+                        validator: (value) {
+                          if (value == null || value.length < 6) {
+                            return "Password must be at least 6 characters";
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
 
+                      // Confirm Password
+                      _buildTextField(
+                        controller: _confirmPasswordController,
+                        label: 'Confirm Password',
+                        icon: Icons.lock,
+                        obscureText: _obscureConfirmPassword,
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscureConfirmPassword
+                              ? Icons.visibility_off
+                              : Icons.visibility),
+                          onPressed: () {
+                            setState(() => _obscureConfirmPassword =
+                            !_obscureConfirmPassword);
+                          },
+                        ),
+                        validator: (value) {
+                          if (value != _passwordController.text) {
+                            return "Passwords do not match";
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Pincode
                       _buildTextField(
                         controller: _pincodeController,
                         label: 'Pincode',
                         icon: Icons.location_on,
                         keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.trim().length != 6) {
+                            return "Enter a valid 6-digit pincode";
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
 
-                      _buildTextField(
+                      // Birth Date
+                      TextFormField(
                         controller: _birthDateController,
-                        label: 'Birth Date (YYYY-MM-DD)',
-                        icon: Icons.calendar_today,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          labelText: "Birth Date",
+                          prefixIcon: Icon(Icons.calendar_today,
+                              color: buttonColor1),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onTap: _pickBirthDate,
+                        validator: (value) => value == null || value.isEmpty
+                            ? "Select your birth date"
+                            : null,
                       ),
                       const SizedBox(height: 16),
 
-                      _buildTextField(
-                        controller: _genderController,
-                        label: 'Gender',
-                        icon: Icons.male,
+                      // Gender Dropdown
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: "Gender",
+                          prefixIcon:
+                          Icon(Icons.person, color: buttonColor1),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        value: _selectedGender,
+                        items: const [
+                          DropdownMenuItem(
+                              value: "Male", child: Text("Male")),
+                          DropdownMenuItem(
+                              value: "Female", child: Text("Female")),
+                        ],
+                        onChanged: (value) {
+                          setState(() => _selectedGender = value);
+                        },
+                        validator: (value) =>
+                        value == null ? "Select your gender" : null,
                       ),
-                      const SizedBox(height: 24),
 
-                      // 🔹 Signup button
+                      const SizedBox(height: 20),
+
+                      // ⭐ Terms checkbox + text
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Checkbox(
+                            value: _isTermsAccepted,
+                            activeColor: buttonColor1,
+                            onChanged: (v) {
+                              setState(() => _isTermsAccepted = v ?? false);
+                            },
+                          ),
+                          Expanded(
+                            child: RichText(
+                              textAlign: TextAlign.start,
+                              text: TextSpan(
+                                style: const TextStyle(
+                                    fontSize: 13, color: Colors.black),
+                                children: [
+                                  const TextSpan(
+                                      text:
+                                      "By creating an account, you accept our "),
+                                  TextSpan(
+                                    text:
+                                    "Terms & Conditions & Refund Policy",
+                                    style: const TextStyle(
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () {
+                                        Get.to(() => TermAndConditionScreen());
+                                      },
+                                  ),
+                                  const TextSpan(text: " and "),
+                                  TextSpan(
+                                    text: "Privacy Policy",
+                                    style: const TextStyle(
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () {
+                                        Get.to(() => DisclaimerAndGuidelinesScreen());
+                                      },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Submit button
                       _isLoading
-                          ? const CircularProgressIndicator(color: appYellow)
+                          ? const CircularProgressIndicator(
+                        color: appYellow,
+                      )
                           : ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(double.infinity, 45),
@@ -241,23 +418,20 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
                         onPressed: _signup,
                         child: const Text(
                           "Sign Up",
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                          ),
+                          style: TextStyle(color: Colors.black),
                         ),
                       ),
+
                       const SizedBox(height: 16),
 
-                      // 🔹 Navigate to Login
+                      // Login redirect
                       RichText(
                         text: TextSpan(
                           style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 14,
-                          ),
+                              color: Colors.black, fontSize: 14),
                           children: [
-                            const TextSpan(text: "Already have an account? "),
+                            const TextSpan(
+                                text: "Already have an account? "),
                             TextSpan(
                               text: "Log In",
                               style: const TextStyle(
@@ -265,16 +439,15 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
                                 color: Colors.blue,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () {
-                                  Get.to(() => const LoginWithEmailScreen());
-                                },
+                                ..onTap = () => Get.to(
+                                        () => const LoginWithEmailScreen()),
                             ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                ),
+                )
               ],
             ),
           ),
@@ -283,7 +456,7 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
     );
   }
 
-  /// 🔹 Reusable Text Field Builder
+  // Reusable text field builder
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -296,15 +469,19 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
+      validator: validator,
       keyboardType: keyboardType,
-      validator: validator ??
-              (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter $label';
-            }
-            return null;
-          },
+      inputFormatters:
+      label == "Contact Number" || label == "Pincode"
+          ? [FilteringTextInputFormatter.digitsOnly]
+          : [],
+      maxLength: label == "Contact Number"
+          ? 10
+          : label == "Pincode"
+          ? 6
+          : null,
       decoration: InputDecoration(
+        counterText: "",
         labelText: label,
         prefixIcon: Icon(icon, color: buttonColor1),
         suffixIcon: suffixIcon,
