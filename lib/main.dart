@@ -10,7 +10,6 @@ import 'package:AstrowayCustomer/controllers/fastApiProvider/WalletProvider.dart
 import 'package:AstrowayCustomer/controllers/liveController.dart';
 import 'package:AstrowayCustomer/controllers/splashController.dart';
 import 'package:AstrowayCustomer/controllers/themeController.dart';
-import 'package:AstrowayCustomer/firebase_options.dart';
 import 'package:AstrowayCustomer/theme/nativeTheme.dart';
 import 'package:AstrowayCustomer/utils/CallUtils.dart';
 import 'package:AstrowayCustomer/utils/FallbackLocalizationDelegate.dart'; // Keep this for now, we'll address it later if needed
@@ -48,6 +47,7 @@ import 'controllers/fastApiProvider/LiveAstrologerProvider.dart';
 import 'controllers/splashController.dart';
 import 'controllers/timer_controller.dart';
 import 'fastApi/fastApiServices.dart';
+import 'firebase_options.dart';
 import 'newglobal.dart';
 
 bool isWeb = false;
@@ -66,6 +66,10 @@ final _localNotifications = FlutterLocalNotificationsPlugin();
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   log("_firebaseMessagingBackgroundHandler a background message: ${message.messageId}");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  print("🔥 Firebase Project ID: ${Firebase.app().options.projectId}");
+  print("🔥 Sender ID: ${Firebase.app().options.messagingSenderId}");
+  print("🔥 App ID: ${Firebase.app().options.appId}");
+
   await GetStorage.init();
 
   global.sp = await SharedPreferences.getInstance();
@@ -80,7 +84,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     if (message.data["title"] ==
         "For starting the timer in other audions for video and audio") {
       Future.delayed(Duration(milliseconds: 500)).then((value) async {
-        await _localNotifications.cancelAll();
+        // await _localNotifications.cancelAll();
       });
       if (liveController.isImInLive == true) {
         int waitListId = int.parse(message.data["waitListId"].toString());
@@ -99,7 +103,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       }
     } else if (message.data["title"] == "For Live accept/reject") {
       Future.delayed(Duration(milliseconds: 500)).then((value) async {
-        await _localNotifications.cancelAll();
+        // await _localNotifications.cancelAll();
       });
       if (liveController.isImInLive == true) {
         String astroName = message.data["astroName"];
@@ -141,7 +145,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     } else if (message.data["title"] ==
         "For accepting time while user already splitted") {
       Future.delayed(Duration(milliseconds: 500)).then((value) async {
-        await _localNotifications.cancelAll();
+        // await _localNotifications.cancelAll();
       });
       int timeInInt = int.parse(message.data["timeInInt"].toString());
 
@@ -153,7 +157,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     } else if (message.data["title"] ==
         "Notification for customer support status update") {
       Future.delayed(Duration(milliseconds: 500)).then((value) async {
-        await _localNotifications.cancelAll();
+        // await _localNotifications.cancelAll();
       });
       var message1 = jsonDecode(message.data['body']);
       if (customerSupportController.isIn) {
@@ -162,7 +166,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       }
     } else if (message.data["title"] == "End chat from astrologer") {
       Future.delayed(Duration(milliseconds: 500)).then((value) async {
-        await _localNotifications.cancelAll();
+        // await _localNotifications.cancelAll();
       });
       chatController.showBottomAcceptChat = false;
       global.sp = await SharedPreferences.getInstance();
@@ -173,7 +177,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       chatController.update();
     } else if (message.data["title"] == "Astrologer Leave call") {
       Future.delayed(Duration(milliseconds: 500)).then((value) async {
-        await _localNotifications.cancelAll();
+        // await _localNotifications.cancelAll();
       });
       callController.showBottomAcceptCall = false;
       global.sp!.remove('callBottom');
@@ -188,7 +192,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         //1 means user follow that astrologer
       } else {
         Future.delayed(Duration(milliseconds: 500)).then((value) async {
-          await _localNotifications.cancelAll();
+          // await _localNotifications.cancelAll();
         });
       }
     } else if (messageData['notificationType'] == 3) {
@@ -228,7 +232,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       );
     } else if (messageData['notificationType'] == 14) {
       Future.delayed(Duration(milliseconds: 500)).then((value) async {
-        await _localNotifications.cancelAll();
+        // await _localNotifications.cancelAll();
       });
       await bottomController.getLiveAstrologerList();
     } else {
@@ -236,72 +240,89 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     }
   } else {
     Future.delayed(Duration(milliseconds: 500)).then((value) async {
-      await _localNotifications.cancelAll();
+      // await _localNotifications.cancelAll();
     });
   }
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // String? token = await FirebaseMessaging.instance.getToken();
-  // print("✅ Latest FCM Token: $token");
 
-  // Initialize Shared Preferences first
-  global.sp = await SharedPreferences.getInstance();
-
-  await EasyLocalization.ensureInitialized();
-
-  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-    statusBarColor: Colors.white,
-    statusBarIconBrightness: Brightness.dark,
-  ));
-
-  if (kIsWeb) {
-    isWeb = true;
-    log('is on web running');
-  } else {
-    isWeb = false;
-  }
-
-  // ✅ Initialize Firebase
+  // 🚀 Initialize Firebase FIRST
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // ✅ Initialize FCM token
-  await initFcmToken();
+  print("🔥 Firebase Project ID: ${Firebase.app().options.projectId}");
+  print("🔥 Sender ID: ${Firebase.app().options.messagingSenderId}");
+  print("🔥 App ID: ${Firebase.app().options.appId}");
 
-  HttpOverrides.global = PostHttpOverrides();
+  // 🚀 Get FCM Token (NOW it works correctly)
+  String? token = await FirebaseMessaging.instance.getToken();
+  print("✅ Latest FCM Token: $token");
 
-  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  // Store token in global
+  updateFcmToken(token ?? "");
+
+  global.sp = await SharedPreferences.getInstance();
+  await EasyLocalization.ensureInitialized();
+
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.white,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+
+  if (kIsWeb) isWeb = true;
+
+  // 🚀 Register background handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  await messaging.requestPermission(
+  // 🚀 Request Notification Permission
+  await FirebaseMessaging.instance.requestPermission(
     alert: true,
-    announcement: false,
     badge: true,
-    carPlay: false,
-    criticalAlert: false,
-    provisional: false,
     sound: true,
   );
 
-  // Determine the initial locale based on stored preference
-  final String? storedLangCode = global.sp!.getString('currentLanguage');
-  final String? storedCountryCode = global.sp!.getString('currentCountry');
+  // 🚀 Create Notification Channel (VERY IMPORTANT)
+  const AndroidNotificationChannel mainChannel = AndroidNotificationChannel(
+    'astroway_main_channel',
+    'Astroway Notifications',
+    description: "High importance notifications for Astroway",
+    importance: Importance.max,
+    playSound: true,
+  );
 
-  Locale startLocale;
-  if (storedLangCode != null && storedCountryCode != null) {
-    startLocale = Locale(storedLangCode, storedCountryCode);
-  } else {
-    startLocale = const Locale('ml', 'IN');
-  }
+  final FlutterLocalNotificationsPlugin localNotif =
+  FlutterLocalNotificationsPlugin();
+
+  await localNotif
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(mainChannel);
+
+  // Allow notifications in foreground
+  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  // Set locale
+  final String? storedLang = global.sp!.getString('currentLanguage');
+  final String? storedCountry = global.sp!.getString('currentCountry');
+
+  Locale startLocale = (storedLang != null && storedCountry != null)
+      ? Locale(storedLang, storedCountry)
+      : const Locale('ml', 'IN');
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-            create: (context) => WalletProvider(FastAPIServices())),
+            create: (_) => WalletProvider(FastAPIServices())),
         ChangeNotifierProvider(
             create: (_) => GetAllAstrologerProvider()),
         ChangeNotifierProvider(
@@ -330,6 +351,8 @@ void main() async {
 }
 
 
+
+
 class MyApp extends StatefulWidget {
   @override
   State<MyApp> createState() => _MyAppState();
@@ -353,362 +376,393 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     super.initState();
 
+    // 🔥 Foreground Notifications
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      log("onMessageRecived foreground -> ${message.data}");
-      if (message.data["title"] == "For Live accept/reject") {
-        if (liveController.isImInLive == true) {
-          String astroName = message.data["astroName"];
-          int astroId = message.data['astroId'] != null
-              ? int.parse(message.data['astroId'].toString())
-              : 0;
-          String channel = message.data['channel'];
-          String token = message.data['token'];
-          String astrologerProfile = message.data['astroProfile'] ?? "";
-          String requestType = message.data['requestType'];
-          int id = message.data['id'] != null
-              ? int.parse(message.data['id'].toString())
-              : 0;
-          double charge = message.data['charge'] != null
-              ? double.parse(message.data['charge'].toString())
-              : 0;
-          double videoCallCharge = message.data['videoCallCharge'] != null
-              ? double.parse(message.data['videoCallCharge'].toString())
-              : 0;
-          String astrologerFcmToken =
-              message.data['fcmToken'] != null ? message.data['fcmToken'] : "";
-          await bottomController.getAstrologerbyId(astroId);
-          bool isFollow = bottomController.astrologerbyId[0].isFollow!;
-          liveController.accpetDeclineContfirmationDialogForLiveStreaming(
-            astroId: astroId,
-            astroName: astroName,
-            channel: channel,
-            token: token,
-            requestType: requestType,
-            id: id,
-            charge: charge,
-            astrologerFcmToken2: astrologerFcmToken,
-            astrologerProfile: astrologerProfile,
-            videoCallCharge: videoCallCharge,
-            isFollow: isFollow,
-          );
-        }
-      } else if (message.data["title"] ==
-          "For starting the timer in other audions for video and audio") {
-        if (liveController.isImInLive == true) {
-          int waitListId = int.parse(message.data["waitListId"].toString());
-          String channelName = message.data['channelName'];
-          liveController.joinUserName = message.data['name'] ?? "User";
-          liveController.joinUserProfile = message.data['profile'] ?? "";
-          await liveController.getWaitList(channelName);
+      print("📩 Foreground message received");
+      print("🔔 Title: ${message.notification?.title}");
+      print("📝 Body: ${message.notification?.body}");
+      print("📦 Data: ${message.data}");
 
-          int index5 = liveController.waitList
-              .indexWhere((element) => element.id == waitListId);
-          if (index5 != -1) {
-            liveController.endTime = DateTime.now().millisecondsSinceEpoch +
-                1000 * int.parse(liveController.waitList[index5].time);
-            liveController.update();
-          }
-        }
-      } else if (message.data["title"] ==
-          "For accepting time while user already splitted") {
-        int timeInInt = int.parse(message.data["timeInInt"].toString());
-        liveController.endTime = DateTime.now().millisecondsSinceEpoch +
-            1000 * int.parse(timeInInt.toString());
-        liveController.joinUserName = message.data["joinUserName"] ?? "";
-        liveController.joinUserProfile = message.data["joinUserProfile"] ?? "";
-        liveController.update();
-      } else if (message.data["title"] ==
-          "Notification for customer support status update") {
-        var message1 = jsonDecode(message.data['body']);
-        if (customerSupportController.isIn) {
-          customerSupportController.status = message1["status"] ?? "WAITING";
-          customerSupportController.update();
-        }
-      } else if (message.data["title"] == "End chat from astrologer") {
-        chatController.showBottomAcceptChat = false;
-        global.sp = await SharedPreferences.getInstance();
-        global.sp!.remove('chatBottom');
-        global.sp!.setInt('chatBottom', 0);
-        chatController.chatBottom = false;
-        chatController.isAstrologerEndedChat = true;
-        chatController.update();
-      } else if (message.data["title"] == "Astrologer Leave call") {
-        callController.showBottomAcceptCall = false;
-        global.sp!.remove('callBottom');
-        global.sp!.setInt('callBottom', 0);
-        callController.callBottom = false;
-        callController.update();
-      } else {
-        try {
-          if (message.data.isNotEmpty) {
-            var messageData = json.decode((message.data['body']));
-            if (messageData['notificationType'] != null) {
-              if (messageData['notificationType'] == 3) {
-                foregroundNotification(message, messageData['icon'] ?? "");
-                await player.setSource(AssetSource('ringtone.mp3'));
-                await player.resume();
-                showDialog(
-                    context: Get.context!,
-                    barrierDismissible:
-                        false, // user must tap button for close dialog!
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        backgroundColor: Colors.white,
-                        shape: const RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(10))),
-                        content: Container(
-                          height: 170,
-                          child: Column(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: Colors.white,
-                                radius: 30,
-                                child: messageData["profile"] == ""
-                                    ? Image.asset(
-                                        Images.deafultUser,
-                                        fit: BoxFit.fill,
-                                        height: 50,
-                                        width: 40,
-                                      )
-                                    : CachedNetworkImage(
-                                        imageUrl:
-                                            '${global.imgBaseurl}${messageData["profile"]}',
-                                        imageBuilder: (context,
-                                                imageProvider) =>
-                                            CircleAvatar(
-                                                radius: 48,
-                                                backgroundImage: imageProvider),
-                                        placeholder: (context, url) =>
-                                            const Center(
-                                                child:
-                                                    CircularProgressIndicator()),
-                                        errorWidget: (context, url, error) =>
-                                            Image.asset(
-                                          Images.deafultUser,
-                                          fit: BoxFit.fill,
-                                          height: 50,
-                                          width: 40,
-                                        ),
-                                      ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.only(top: 10),
-                                child: Text(
-                                  "${message.data["title"]}",
-                                  style: TextStyle(
-                                      color: Colors.grey, fontSize: 14),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.only(top: 10),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () async {
-                                        global.showOnlyLoaderDialog(context);
-                                        await chatController.rejectedChat(
-                                            messageData["chatId"].toString());
-                                        global.hideLoader();
-                                        global
-                                            .callOnFcmApiSendPushNotifications(
-                                                fcmTokem: [
-                                              messageData["fcmToken"]
-                                            ],
-                                                title:
-                                                    'End chat from customer');
-                                        BottomNavigationController
-                                            bottomNavigationController =
-                                            Get.find<
-                                                BottomNavigationController>();
-                                        bottomNavigationController.setIndex(
-                                            0, 0);
-                                        Get.back();
-                                        Get.to(() => BottomNavigationBarScreen(
-                                              index: 0,
-                                            ));
-                                      },
-                                      child: Container(
-                                        height: 40,
-                                        width: 100,
-                                        decoration: BoxDecoration(
-                                            color: Colors.grey,
-                                            borderRadius:
-                                                BorderRadius.circular(50)),
-                                        child: Center(
-                                          child: Text(
-                                            "Reject",
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 13),
-                                          ).tr(),
-                                        ),
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () async {
-                                        await _localNotifications.cancelAll();
-                                        global.showOnlyLoaderDialog(context);
-                                        await chatController.acceptedChat(
-                                            int.parse(messageData["chatId"]
-                                                .toString()));
+      // Show a simple notification for now
+      final FlutterLocalNotificationsPlugin fln = FlutterLocalNotificationsPlugin();
 
-                                        global
-                                            .callOnFcmApiSendPushNotifications(
-                                                fcmTokem: [
-                                              messageData["fcmToken"]
-                                            ],
-                                                title:
-                                                    'Start simple chat timer');
-                                        global.hideLoader();
-                                        chatController.isInchat = true;
-                                        chatController.isEndChat = false;
-                                        TimerController timerController =
-                                            Get.find<TimerController>();
-                                        timerController.startTimer();
-                                        chatController.update();
-                                        await player.stop();
-                                        Get.to(() => AcceptChatScreen(
-                                              flagId: 1,
-                                              astrologerName: messageData[
-                                                          "astrologerName"] ==
-                                                      null
-                                                  ? "Astrologer"
-                                                  : messageData[
-                                                      "astrologerName"],
-                                              profileImage:
-                                                  messageData["profile"] == null
-                                                      ? ""
-                                                      : messageData["profile"]
-                                                          .toString(),
-                                              fireBasechatId:
-                                                  messageData["firebaseChatId"]
-                                                      .toString(),
-                                              astrologerId:
-                                                  messageData["astrologerId"],
-                                              chatId: int.parse(
-                                                  messageData["chatId"]
-                                                      .toString()),
-                                              fcmToken: messageData["fcmToken"],
-                                              duration:
-                                                  messageData['chat_duration']
-                                                      .toString(),
-                                            ));
-                                      },
-                                      child: Container(
-                                        height: 40,
-                                        width: 100,
-                                        decoration: BoxDecoration(
-                                            color: Colors.red,
-                                            borderRadius:
-                                                BorderRadius.circular(50)),
-                                        child: Center(
-                                          child: Text(
-                                            "Accept",
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 13),
-                                          ).tr(),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            ],
-                          ),
-                        ),
-                        actionsAlignment: MainAxisAlignment.spaceBetween,
-                        actionsPadding: const EdgeInsets.only(
-                            bottom: 15, left: 15, right: 15),
-                      );
-                    });
-                chatController.showBottomAcceptChatRequest(
-                  astrologerId: messageData["astrologerId"],
-                  chatId: messageData["chatId"],
-                  astroName: messageData["astrologerName"] == null
-                      ? "Astrologer"
-                      : messageData["astrologerName"],
-                  astroProfile: messageData["profile"] == null
-                      ? ""
-                      : messageData["profile"],
-                  firebaseChatId: messageData["firebaseChatId"],
-                  fcmToken: messageData["fcmToken"],
-                  duration: messageData['call_duration'],
-                );
-                foregroundNotification(message, messageData['icon'] ?? "");
-                await FirebaseMessaging.instance
-                    .setForegroundNotificationPresentationOptions(
-                        alert: true, badge: true, sound: true);
-                log("check4");
-              } else if (messageData['notificationType'] == 1) {
-                //! calling code
-
-                CallUtils.showIncomingCall(messageData);
-                log("callid tpye is ${messageData['callId'].runtimeType}");
-                log("astrologerId tpye is ${messageData['astrologerId'].runtimeType}");
-                log("duration tpye is ${messageData['call_duration'].runtimeType}");
-                callController.showBottomAcceptCallRequest(
-                  channelName: messageData["channelName"] ?? "",
-                  astrologerId: messageData["astrologerId"] ?? 0,
-                  callId: messageData["callId"],
-                  token: messageData["token"] ?? "",
-                  astroName: messageData["astrologerName"] ?? "Astrologer",
-                  astroProfile: messageData["profile"] ?? "",
-                  fcmToken: messageData["fcmToken"] ?? "",
-                  callType: messageData['call_type'],
-                );
-
-                // foregroundNotification(message, messageData['icon']);
-                // await FirebaseMessaging.instance
-                //     .setForegroundNotificationPresentationOptions(
-                //         alert: true, badge: true, sound: true);
-              } else if (messageData['notificationType'] == 4) {
-                await bottomController.getLiveAstrologerList();
-                if (messageData['isFollow'] == 1) {
-                  //1 means user follow that astrologer
-                  foregroundNotification(message, messageData['icon'] ?? "");
-                  await FirebaseMessaging.instance
-                      .setForegroundNotificationPresentationOptions(
-                          alert: true, badge: true, sound: true);
-                }
-              } else if (messageData['notificationType'] == 14) {
-                await bottomController.getLiveAstrologerList();
-              } else {
-                foregroundNotification(message, messageData['icon'] ?? "");
-                await FirebaseMessaging.instance
-                    .setForegroundNotificationPresentationOptions(
-                        alert: true, badge: true, sound: true);
-              }
-              if (messageData['notificationType'] == 4) {
-              } else if (messageData['notificationType'] == 14) {
-              } else {
-                foregroundNotification(message, messageData['']);
-                await FirebaseMessaging.instance
-                    .setForegroundNotificationPresentationOptions(
-                        alert: true, badge: true, sound: true);
-              }
-            } else {
-              foregroundNotification(message, messageData['icon'] ?? "");
-              await FirebaseMessaging.instance
-                  .setForegroundNotificationPresentationOptions(
-                      alert: true, badge: true, sound: true);
-            }
-          } else {
-            foregroundNotification(
-                message, json.decode((message.data['body']))['icon'] ?? "");
-            await FirebaseMessaging.instance
-                .setForegroundNotificationPresentationOptions(
-                    alert: true, badge: true, sound: true);
-          }
-        } catch (e) {
-          print(e);
-        }
-      }
+      fln.show(
+        0,
+        message.notification?.title ?? "New Notification",
+        message.notification?.body ?? "",
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'astroway_main_channel',
+            'Astroway Notifications',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+          ),
+        ),
+      );
     });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      print("📲 Notification tapped: ${message.data}");
+    });
+
+    // FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    //   print("📩 Foreground message: ${message.notification?.title}");
+    //   log("onMessageRecived foreground -> ${message.data}");
+    //   if (message.data["title"] == "For Live accept/reject") {
+    //     if (liveController.isImInLive == true) {
+    //       String astroName = message.data["astroName"];
+    //       int astroId = message.data['astroId'] != null
+    //           ? int.parse(message.data['astroId'].toString())
+    //           : 0;
+    //       String channel = message.data['channel'];
+    //       String token = message.data['token'];
+    //       String astrologerProfile = message.data['astroProfile'] ?? "";
+    //       String requestType = message.data['requestType'];
+    //       int id = message.data['id'] != null
+    //           ? int.parse(message.data['id'].toString())
+    //           : 0;
+    //       double charge = message.data['charge'] != null
+    //           ? double.parse(message.data['charge'].toString())
+    //           : 0;
+    //       double videoCallCharge = message.data['videoCallCharge'] != null
+    //           ? double.parse(message.data['videoCallCharge'].toString())
+    //           : 0;
+    //       String astrologerFcmToken =
+    //           message.data['fcmToken'] != null ? message.data['fcmToken'] : "";
+    //       await bottomController.getAstrologerbyId(astroId);
+    //       bool isFollow = bottomController.astrologerbyId[0].isFollow!;
+    //       liveController.accpetDeclineContfirmationDialogForLiveStreaming(
+    //         astroId: astroId,
+    //         astroName: astroName,
+    //         channel: channel,
+    //         token: token,
+    //         requestType: requestType,
+    //         id: id,
+    //         charge: charge,
+    //         astrologerFcmToken2: astrologerFcmToken,
+    //         astrologerProfile: astrologerProfile,
+    //         videoCallCharge: videoCallCharge,
+    //         isFollow: isFollow,
+    //       );
+    //     }
+    //   } else if (message.data["title"] ==
+    //       "For starting the timer in other audions for video and audio") {
+    //     if (liveController.isImInLive == true) {
+    //       int waitListId = int.parse(message.data["waitListId"].toString());
+    //       String channelName = message.data['channelName'];
+    //       liveController.joinUserName = message.data['name'] ?? "User";
+    //       liveController.joinUserProfile = message.data['profile'] ?? "";
+    //       await liveController.getWaitList(channelName);
+    //
+    //       int index5 = liveController.waitList
+    //           .indexWhere((element) => element.id == waitListId);
+    //       if (index5 != -1) {
+    //         liveController.endTime = DateTime.now().millisecondsSinceEpoch +
+    //             1000 * int.parse(liveController.waitList[index5].time);
+    //         liveController.update();
+    //       }
+    //     }
+    //   } else if (message.data["title"] ==
+    //       "For accepting time while user already splitted") {
+    //     int timeInInt = int.parse(message.data["timeInInt"].toString());
+    //     liveController.endTime = DateTime.now().millisecondsSinceEpoch +
+    //         1000 * int.parse(timeInInt.toString());
+    //     liveController.joinUserName = message.data["joinUserName"] ?? "";
+    //     liveController.joinUserProfile = message.data["joinUserProfile"] ?? "";
+    //     liveController.update();
+    //   } else if (message.data["title"] ==
+    //       "Notification for customer support status update") {
+    //     var message1 = jsonDecode(message.data['body']);
+    //     if (customerSupportController.isIn) {
+    //       customerSupportController.status = message1["status"] ?? "WAITING";
+    //       customerSupportController.update();
+    //     }
+    //   } else if (message.data["title"] == "End chat from astrologer") {
+    //     chatController.showBottomAcceptChat = false;
+    //     global.sp = await SharedPreferences.getInstance();
+    //     global.sp!.remove('chatBottom');
+    //     global.sp!.setInt('chatBottom', 0);
+    //     chatController.chatBottom = false;
+    //     chatController.isAstrologerEndedChat = true;
+    //     chatController.update();
+    //   } else if (message.data["title"] == "Astrologer Leave call") {
+    //     callController.showBottomAcceptCall = false;
+    //     global.sp!.remove('callBottom');
+    //     global.sp!.setInt('callBottom', 0);
+    //     callController.callBottom = false;
+    //     callController.update();
+    //   } else {
+    //     try {
+    //       if (message.data.isNotEmpty) {
+    //         var messageData = json.decode((message.data['body']));
+    //         if (messageData['notificationType'] != null) {
+    //           if (messageData['notificationType'] == 3) {
+    //             foregroundNotification(message, messageData['icon'] ?? "");
+    //             await player.setSource(AssetSource('ringtone.mp3'));
+    //             await player.resume();
+    //             showDialog(
+    //                 context: Get.context!,
+    //                 barrierDismissible:
+    //                     false, // user must tap button for close dialog!
+    //                 builder: (BuildContext context) {
+    //                   return AlertDialog(
+    //                     backgroundColor: Colors.white,
+    //                     shape: const RoundedRectangleBorder(
+    //                         borderRadius:
+    //                             BorderRadius.all(Radius.circular(10))),
+    //                     content: Container(
+    //                       height: 170,
+    //                       child: Column(
+    //                         children: [
+    //                           CircleAvatar(
+    //                             backgroundColor: Colors.white,
+    //                             radius: 30,
+    //                             child: messageData["profile"] == ""
+    //                                 ? Image.asset(
+    //                                     Images.deafultUser,
+    //                                     fit: BoxFit.fill,
+    //                                     height: 50,
+    //                                     width: 40,
+    //                                   )
+    //                                 : CachedNetworkImage(
+    //                                     imageUrl:
+    //                                         '${global.imgBaseurl}${messageData["profile"]}',
+    //                                     imageBuilder: (context,
+    //                                             imageProvider) =>
+    //                                         CircleAvatar(
+    //                                             radius: 48,
+    //                                             backgroundImage: imageProvider),
+    //                                     placeholder: (context, url) =>
+    //                                         const Center(
+    //                                             child:
+    //                                                 CircularProgressIndicator()),
+    //                                     errorWidget: (context, url, error) =>
+    //                                         Image.asset(
+    //                                       Images.deafultUser,
+    //                                       fit: BoxFit.fill,
+    //                                       height: 50,
+    //                                       width: 40,
+    //                                     ),
+    //                                   ),
+    //                           ),
+    //                           Padding(
+    //                             padding: EdgeInsets.only(top: 10),
+    //                             child: Text(
+    //                               "${message.data["title"]}",
+    //                               style: TextStyle(
+    //                                   color: Colors.grey, fontSize: 14),
+    //                               textAlign: TextAlign.center,
+    //                             ),
+    //                           ),
+    //                           Padding(
+    //                             padding: EdgeInsets.only(top: 10),
+    //                             child: Row(
+    //                               mainAxisAlignment:
+    //                                   MainAxisAlignment.spaceBetween,
+    //                               children: [
+    //                                 GestureDetector(
+    //                                   onTap: () async {
+    //                                     global.showOnlyLoaderDialog(context);
+    //                                     await chatController.rejectedChat(
+    //                                         messageData["chatId"].toString());
+    //                                     global.hideLoader();
+    //                                     global
+    //                                         .callOnFcmApiSendPushNotifications(
+    //                                             fcmTokem: [
+    //                                           messageData["fcmToken"]
+    //                                         ],
+    //                                             title:
+    //                                                 'End chat from customer');
+    //                                     BottomNavigationController
+    //                                         bottomNavigationController =
+    //                                         Get.find<
+    //                                             BottomNavigationController>();
+    //                                     bottomNavigationController.setIndex(
+    //                                         0, 0);
+    //                                     Get.back();
+    //                                     Get.to(() => BottomNavigationBarScreen(
+    //                                           index: 0,
+    //                                         ));
+    //                                   },
+    //                                   child: Container(
+    //                                     height: 40,
+    //                                     width: 100,
+    //                                     decoration: BoxDecoration(
+    //                                         color: Colors.grey,
+    //                                         borderRadius:
+    //                                             BorderRadius.circular(50)),
+    //                                     child: Center(
+    //                                       child: Text(
+    //                                         "Reject",
+    //                                         style: TextStyle(
+    //                                             color: Colors.white,
+    //                                             fontSize: 13),
+    //                                       ).tr(),
+    //                                     ),
+    //                                   ),
+    //                                 ),
+    //                                 GestureDetector(
+    //                                   onTap: () async {
+    //                                     await _localNotifications.cancelAll();
+    //                                     global.showOnlyLoaderDialog(context);
+    //                                     await chatController.acceptedChat(
+    //                                         int.parse(messageData["chatId"]
+    //                                             .toString()));
+    //
+    //                                     global
+    //                                         .callOnFcmApiSendPushNotifications(
+    //                                             fcmTokem: [
+    //                                           messageData["fcmToken"]
+    //                                         ],
+    //                                             title:
+    //                                                 'Start simple chat timer');
+    //                                     global.hideLoader();
+    //                                     chatController.isInchat = true;
+    //                                     chatController.isEndChat = false;
+    //                                     TimerController timerController =
+    //                                         Get.find<TimerController>();
+    //                                     timerController.startTimer();
+    //                                     chatController.update();
+    //                                     await player.stop();
+    //                                     Get.to(() => AcceptChatScreen(
+    //                                           flagId: 1,
+    //                                           astrologerName: messageData[
+    //                                                       "astrologerName"] ==
+    //                                                   null
+    //                                               ? "Astrologer"
+    //                                               : messageData[
+    //                                                   "astrologerName"],
+    //                                           profileImage:
+    //                                               messageData["profile"] == null
+    //                                                   ? ""
+    //                                                   : messageData["profile"]
+    //                                                       .toString(),
+    //                                           fireBasechatId:
+    //                                               messageData["firebaseChatId"]
+    //                                                   .toString(),
+    //                                           astrologerId:
+    //                                               messageData["astrologerId"],
+    //                                           chatId: int.parse(
+    //                                               messageData["chatId"]
+    //                                                   .toString()),
+    //                                           fcmToken: messageData["fcmToken"],
+    //                                           duration:
+    //                                               messageData['chat_duration']
+    //                                                   .toString(),
+    //                                         ));
+    //                                   },
+    //                                   child: Container(
+    //                                     height: 40,
+    //                                     width: 100,
+    //                                     decoration: BoxDecoration(
+    //                                         color: Colors.red,
+    //                                         borderRadius:
+    //                                             BorderRadius.circular(50)),
+    //                                     child: Center(
+    //                                       child: Text(
+    //                                         "Accept",
+    //                                         style: TextStyle(
+    //                                             color: Colors.white,
+    //                                             fontSize: 13),
+    //                                       ).tr(),
+    //                                     ),
+    //                                   ),
+    //                                 ),
+    //                               ],
+    //                             ),
+    //                           )
+    //                         ],
+    //                       ),
+    //                     ),
+    //                     actionsAlignment: MainAxisAlignment.spaceBetween,
+    //                     actionsPadding: const EdgeInsets.only(
+    //                         bottom: 15, left: 15, right: 15),
+    //                   );
+    //                 });
+    //             chatController.showBottomAcceptChatRequest(
+    //               astrologerId: messageData["astrologerId"],
+    //               chatId: messageData["chatId"],
+    //               astroName: messageData["astrologerName"] == null
+    //                   ? "Astrologer"
+    //                   : messageData["astrologerName"],
+    //               astroProfile: messageData["profile"] == null
+    //                   ? ""
+    //                   : messageData["profile"],
+    //               firebaseChatId: messageData["firebaseChatId"],
+    //               fcmToken: messageData["fcmToken"],
+    //               duration: messageData['call_duration'],
+    //             );
+    //             foregroundNotification(message, messageData['icon'] ?? "");
+    //             await FirebaseMessaging.instance
+    //                 .setForegroundNotificationPresentationOptions(
+    //                     alert: true, badge: true, sound: true);
+    //             log("check4");
+    //           } else if (messageData['notificationType'] == 1) {
+    //             //! calling code
+    //
+    //             CallUtils.showIncomingCall(messageData);
+    //             log("callid tpye is ${messageData['callId'].runtimeType}");
+    //             log("astrologerId tpye is ${messageData['astrologerId'].runtimeType}");
+    //             log("duration tpye is ${messageData['call_duration'].runtimeType}");
+    //             callController.showBottomAcceptCallRequest(
+    //               channelName: messageData["channelName"] ?? "",
+    //               astrologerId: messageData["astrologerId"] ?? 0,
+    //               callId: messageData["callId"],
+    //               token: messageData["token"] ?? "",
+    //               astroName: messageData["astrologerName"] ?? "Astrologer",
+    //               astroProfile: messageData["profile"] ?? "",
+    //               fcmToken: messageData["fcmToken"] ?? "",
+    //               callType: messageData['call_type'],
+    //             );
+    //
+    //             // foregroundNotification(message, messageData['icon']);
+    //             // await FirebaseMessaging.instance
+    //             //     .setForegroundNotificationPresentationOptions(
+    //             //         alert: true, badge: true, sound: true);
+    //           } else if (messageData['notificationType'] == 4) {
+    //             await bottomController.getLiveAstrologerList();
+    //             if (messageData['isFollow'] == 1) {
+    //               //1 means user follow that astrologer
+    //               foregroundNotification(message, messageData['icon'] ?? "");
+    //               await FirebaseMessaging.instance
+    //                   .setForegroundNotificationPresentationOptions(
+    //                       alert: true, badge: true, sound: true);
+    //             }
+    //           } else if (messageData['notificationType'] == 14) {
+    //             await bottomController.getLiveAstrologerList();
+    //           } else {
+    //             foregroundNotification(message, messageData['icon'] ?? "");
+    //             await FirebaseMessaging.instance
+    //                 .setForegroundNotificationPresentationOptions(
+    //                     alert: true, badge: true, sound: true);
+    //           }
+    //           if (messageData['notificationType'] == 4) {
+    //           } else if (messageData['notificationType'] == 14) {
+    //           } else {
+    //             foregroundNotification(message, messageData['']);
+    //             await FirebaseMessaging.instance
+    //                 .setForegroundNotificationPresentationOptions(
+    //                     alert: true, badge: true, sound: true);
+    //           }
+    //         } else {
+    //           foregroundNotification(message, messageData['icon'] ?? "");
+    //           await FirebaseMessaging.instance
+    //               .setForegroundNotificationPresentationOptions(
+    //                   alert: true, badge: true, sound: true);
+    //         }
+    //       } else {
+    //         foregroundNotification(
+    //             message, json.decode((message.data['body']))['icon'] ?? "");
+    //         await FirebaseMessaging.instance
+    //             .setForegroundNotificationPresentationOptions(
+    //                 alert: true, badge: true, sound: true);
+    //       }
+    //     } catch (e) {
+    //       print(e);
+    //     }
+    //   }
+    // });
     //Perform On Tap Operation On Notification Click when app is in backgroud Or in Kill Mode
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       onSelectNotification(json.encode(message.data));

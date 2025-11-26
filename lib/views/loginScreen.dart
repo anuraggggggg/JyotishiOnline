@@ -16,7 +16,6 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
-import 'package:responsive_sizer/responsive_sizer.dart';
 
 import 'newSignUp.dart';
 
@@ -32,9 +31,6 @@ class _LoginScreenState extends State<LoginScreen> {
   late final HomeController homeController;
 
   final Rx<PhoneNumber> _selectedPhoneNumber = PhoneNumber(isoCode: "IN").obs;
-
-  // Terms Checkbox
-  final RxBool acceptTerms = false.obs;
 
   @override
   void initState() {
@@ -56,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
           body: SingleChildScrollView(
             child: Column(
               children: [
-                // LOGO
+                /// LOGO + Title
                 Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -82,7 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                // PHONE INPUT
+                /// PHONE INPUT
                 Padding(
                   padding: const EdgeInsets.all(10),
                   child: Obx(() {
@@ -100,31 +96,35 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Theme(
                               data: ThemeData(
                                 dialogTheme: DialogTheme(
-                                  contentTextStyle: const TextStyle(color: Colors.white),
+                                  contentTextStyle:
+                                  const TextStyle(color: Colors.white),
                                   backgroundColor: Colors.grey[800],
                                   surfaceTintColor: Colors.grey[800],
                                 ),
                               ),
                               child: InternationalPhoneNumberInput(
-                                key: ValueKey(_selectedPhoneNumber.value.isoCode!),
-                                textFieldController: loginController.phoneController,
+                                key: ValueKey(
+                                    _selectedPhoneNumber.value.isoCode!),
+                                textFieldController:
+                                loginController.phoneController,
                                 inputDecoration: const InputDecoration(
                                   border: InputBorder.none,
                                   hintText: 'Phone number',
                                   hintStyle: TextStyle(color: Colors.grey),
                                 ),
                                 selectorConfig: SelectorConfig(
-                                  selectorType: PhoneInputSelectorType.BOTTOM_SHEET,
+                                  selectorType:
+                                  PhoneInputSelectorType.BOTTOM_SHEET,
                                   showFlags: true,
                                 ),
                                 initialValue: _selectedPhoneNumber.value,
                                 formatInput: false,
-                                keyboardType: TextInputType.numberWithOptions(
-                                  signed: true,
-                                  decimal: false,
-                                ),
+                                keyboardType:
+                                TextInputType.numberWithOptions(
+                                    signed: true, decimal: false),
                                 onInputChanged: (PhoneNumber number) {
-                                  loginController.updateCountryCode(number.dialCode);
+                                  loginController
+                                      .updateCountryCode(number.dialCode);
                                   _selectedPhoneNumber.value = number;
                                 },
                               ),
@@ -134,20 +134,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         SizedBox(height: 20),
 
-                        // SEND OTP BUTTON
+                        /// SEND OTP BUTTON
                         GestureDetector(
                           onTap: () async {
                             FocusScope.of(context).unfocus();
-
-                            // T&C check
-                            if (!acceptTerms.value) {
-                              global.showToast(
-                                message: "Please accept Terms & Conditions",
-                                textColor: Colors.white,
-                                bgColor: Colors.red,
-                              );
-                              return;
-                            }
 
                             bool isValid = loginController.validedPhone();
                             if (!isValid) {
@@ -161,9 +151,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             }
 
                             try {
-                              final response = await FastAPIServices().sendOtp(
-                                contactNo:
-                                loginController.phoneController.text.trim(),
+                              final response =
+                              await FastAPIServices().sendOtp(
+                                contactNo: loginController.phoneController.text
+                                    .trim(),
                                 countryCode: "+91",
                                 sendWhatsapp: true,
                                 sendSms: true,
@@ -180,16 +171,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => VerifyPhoneScreen(
-                                      phoneNumber:
-                                      loginController.phoneController.text.trim(),
+                                      phoneNumber: loginController
+                                          .phoneController.text
+                                          .trim(),
                                       countryCode: '+91',
                                     ),
                                   ),
                                 );
                               } else {
                                 global.showToast(
-                                  message:
-                                  response.body.isNotEmpty ? response.body : "Failed",
+                                  message: response.body.isNotEmpty
+                                      ? response.body
+                                      : "Failed",
                                   textColor: Colors.white,
                                   bgColor: Colors.red,
                                 );
@@ -220,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         SizedBox(height: 20),
 
-                        // SIGN UP TEXT
+                        /// SIGN UP BUTTON
                         Center(
                           child: GestureDetector(
                             onTap: () {
@@ -228,14 +221,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                             child: RichText(
                               text: TextSpan(
-                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                                style:
+                                TextStyle(fontSize: 14, color: Colors.grey),
                                 children: [
                                   TextSpan(text: "Don't have an account? "),
                                   TextSpan(
                                     text: "Sign Up",
                                     style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue),
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -245,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         SizedBox(height: 20),
 
-                        // LOGIN WITH EMAIL
+                        /// LOGIN WITH EMAIL
                         Center(
                           child: GestureDetector(
                             onTap: () {
@@ -258,14 +253,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                             child: RichText(
                               text: const TextSpan(
-                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                                style:
+                                TextStyle(fontSize: 14, color: Colors.grey),
                                 children: [
-                                  TextSpan(text: "Login with Email & Password "),
+                                  TextSpan(
+                                      text:
+                                      "Login with Email & Password "),
                                   TextSpan(
                                     text: "Click Here",
                                     style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue),
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -274,51 +273,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
 
                         SizedBox(height: 25),
-
-                        // TERMS & CONDITIONS CHECKBOX
-                        // Obx(() {
-                        //   return Row(
-                        //     crossAxisAlignment: CrossAxisAlignment.center,
-                        //     children: [
-                        //       Checkbox(
-                        //         value: acceptTerms.value,
-                        //         activeColor: appYellow,
-                        //         onChanged: (value) {
-                        //           acceptTerms.value = value ?? false;
-                        //         },
-                        //       ),
-                        //       // Expanded(
-                        //       //   child: RichText(
-                        //       //     text: TextSpan(
-                        //       //       style: TextStyle(
-                        //       //         color: Colors.black,
-                        //       //         fontSize: 14,
-                        //       //       ),
-                        //       //       children: [
-                        //       //         const TextSpan(
-                        //       //             text:
-                        //       //             "By creating account, you accept the "),
-                        //       //         TextSpan(
-                        //       //           text: "Terms & Conditions",
-                        //       //           style: const TextStyle(
-                        //       //             color: Colors.blue,
-                        //       //             fontWeight: FontWeight.bold,
-                        //       //             decoration: TextDecoration.underline,
-                        //       //           ),
-                        //       //           recognizer: TapGestureRecognizer()
-                        //       //             ..onTap = () {
-                        //       //               print("Open Terms & Conditions screen");
-                        //       //             },
-                        //       //         ),
-                        //       //       ],
-                        //       //     ),
-                        //       //   ),
-                        //       // ),
-                        //     ],
-                        //   );
-                        // }),
-
-                        SizedBox(height: 20),
                       ],
                     );
                   }),

@@ -1,4 +1,0 @@
-#Fri Jul 18 12:02:44 IST 2025
-base.0=C\:\\Users\\anurag\\Downloads\\anuragggg-jyotishionline-b005086187a5\\apk\\build\\app\\intermediates\\dex\\release\\minifyReleaseWithR8\\classes.dex
-renamed.0=classes.dex
-path.0=classes.dex
