@@ -1,3 +1,5 @@
+// FULL UPDATED CODE — VALIDATIONS FIXED
+
 import 'dart:io';
 import 'package:AstrowayCustomer/views/settings/disclaimer_and_guidelines_screen.dart';
 import 'package:AstrowayCustomer/views/settings/termsAndConditionScreen.dart';
@@ -9,10 +11,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:AstrowayCustomer/theme/appTheme.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/views/loginWithEmailScreen.dart';
-
-// If you have these pages later, uncomment navigation
-// import 'package:AstrowayCustomer/views/termsRefundScreen.dart';
-// import 'package:AstrowayCustomer/views/privacyPolicyScreen.dart';
 
 class SignupWithEmailScreen extends StatefulWidget {
   const SignupWithEmailScreen({super.key});
@@ -39,13 +37,11 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-
-  // NEW CHECKBOX VARIABLE
   bool _isTermsAccepted = false;
 
   final FastAPIServices _apiServices = FastAPIServices();
 
-  // Pick profile picture
+  // Pick image
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
@@ -53,7 +49,7 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
     }
   }
 
-  // Birth Date Picker in English
+  // Birth date
   Future<void> _pickBirthDate() async {
     DateTime? picked = await showDatePicker(
       context: context,
@@ -70,17 +66,14 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
     }
   }
 
-  // Signup function
+  // SIGNUP
   Future<void> _signup() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (!_isTermsAccepted) {
-      Get.snackbar(
-        "Required",
-        "Please accept the Terms, Refund Policy & Privacy Policy",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      Get.snackbar("Required",
+          "Please accept the Terms, Refund Policy & Privacy Policy",
+          backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
 
@@ -102,22 +95,14 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
     setState(() => _isLoading = false);
 
     if (response != null && response["error"] != true) {
-      Get.snackbar(
-        "Success",
-        "Account created successfully! Please log in.",
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
+      Get.snackbar("Success", "Account created successfully! Please log in.",
+          backgroundColor: Colors.green, colorText: Colors.white);
 
       await Future.delayed(const Duration(seconds: 1));
       Get.offAll(() => const LoginWithEmailScreen());
     } else {
-      Get.snackbar(
-        "Error",
-        response?["message"] ?? "Signup failed",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      Get.snackbar("Error", response?["message"] ?? "Signup failed",
+          backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
 
@@ -136,327 +121,331 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                // Logo
-                Image.asset(
-                  "assets/images/newLogo.png",
-                  height: MediaQuery.of(context).size.height * 0.20,
-                ),
-                const SizedBox(height: 30),
+        backgroundColor: Colors.white,
+        body: SafeArea(
+            child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(children: [
+                      Image.asset("assets/images/newLogo.png",
+                          height: MediaQuery.of(context).size.height * 0.20),
+                      const SizedBox(height: 30),
 
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    "Create your account",
-                    style: TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.w500,
-                      color: buttonColor1,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      // Profile Image
-                      GestureDetector(
-                        onTap: _pickImage,
-                        child: CircleAvatar(
-                          radius: 45,
-                          backgroundColor: appYellow.withOpacity(0.3),
-                          backgroundImage: _selectedImage != null
-                              ? FileImage(_selectedImage!)
-                              : null,
-                          child: _selectedImage == null
-                              ? const Icon(Icons.camera_alt,
-                              color: Colors.black54)
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Name
-                      _buildTextField(
-                        controller: _nameController,
-                        label: 'Full Name',
-                        icon: Icons.person,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return "Please enter your name";
-                          }
-                          if (!RegExp(r"^[A-Za-z ]+$")
-                              .hasMatch(value.trim())) {
-                            return "Name must contain only alphabets";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Contact Number
-                      _buildTextField(
-                        controller: _contactController,
-                        label: 'Contact Number',
-                        icon: Icons.phone,
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.trim().length != 10) {
-                            return "Enter a valid 10-digit mobile number";
-                          }
-                          if (!RegExp(r"^[0-9]{10}$")
-                              .hasMatch(value.trim())) {
-                            return "Only numbers allowed";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Email
-                      _buildTextField(
-                        controller: _emailController,
-                        label: 'Email Address',
-                        icon: Icons.email,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Enter your email";
-                          }
-                          if (!GetUtils.isEmail(value)) {
-                            return "Enter a valid email";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Password
-                      _buildTextField(
-                        controller: _passwordController,
-                        label: 'Password',
-                        icon: Icons.lock,
-                        obscureText: _obscurePassword,
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility),
-                          onPressed: () {
-                            setState(
-                                    () => _obscurePassword = !_obscurePassword);
-                          },
-                        ),
-                        validator: (value) {
-                          if (value == null || value.length < 6) {
-                            return "Password must be at least 6 characters";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Confirm Password
-                      _buildTextField(
-                        controller: _confirmPasswordController,
-                        label: 'Confirm Password',
-                        icon: Icons.lock,
-                        obscureText: _obscureConfirmPassword,
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscureConfirmPassword
-                              ? Icons.visibility_off
-                              : Icons.visibility),
-                          onPressed: () {
-                            setState(() => _obscureConfirmPassword =
-                            !_obscureConfirmPassword);
-                          },
-                        ),
-                        validator: (value) {
-                          if (value != _passwordController.text) {
-                            return "Passwords do not match";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Pincode
-                      _buildTextField(
-                        controller: _pincodeController,
-                        label: 'Pincode',
-                        icon: Icons.location_on,
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.trim().length != 6) {
-                            return "Enter a valid 6-digit pincode";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Birth Date
-                      TextFormField(
-                        controller: _birthDateController,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          labelText: "Birth Date",
-                          prefixIcon: Icon(Icons.calendar_today,
-                              color: buttonColor1),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onTap: _pickBirthDate,
-                        validator: (value) => value == null || value.isEmpty
-                            ? "Select your birth date"
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Gender Dropdown
-                      DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          labelText: "Gender",
-                          prefixIcon:
-                          Icon(Icons.person, color: buttonColor1),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        value: _selectedGender,
-                        items: const [
-                          DropdownMenuItem(
-                              value: "Male", child: Text("Male")),
-                          DropdownMenuItem(
-                              value: "Female", child: Text("Female")),
-                        ],
-                        onChanged: (value) {
-                          setState(() => _selectedGender = value);
-                        },
-                        validator: (value) =>
-                        value == null ? "Select your gender" : null,
-                      ),
+                      Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("Create your account",
+                              style: TextStyle(
+                                fontSize: 25,
+                                fontWeight: FontWeight.w500,
+                                color: buttonColor1,
+                              ))),
 
                       const SizedBox(height: 20),
 
-                      // ⭐ Terms checkbox + text
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Checkbox(
-                            value: _isTermsAccepted,
-                            activeColor: buttonColor1,
-                            onChanged: (v) {
-                              setState(() => _isTermsAccepted = v ?? false);
-                            },
-                          ),
-                          Expanded(
-                            child: RichText(
-                              textAlign: TextAlign.start,
+                      Form(
+                          key: _formKey,
+                          child: Column(children: [
+                            // Profile pic
+                            GestureDetector(
+                                onTap: _pickImage,
+                                child: CircleAvatar(
+                                    radius: 45,
+                                    backgroundColor:
+                                    appYellow.withOpacity(0.3),
+                                    backgroundImage: _selectedImage != null
+                                        ? FileImage(_selectedImage!)
+                                        : null,
+                                    child: _selectedImage == null
+                                        ? const Icon(Icons.camera_alt,
+                                        color: Colors.black54)
+                                        : null)),
+                            const SizedBox(height: 20),
+
+                            // ---------------- NAME VALIDATION UPDATED ----------------
+                            _buildTextField(
+                              controller: _nameController,
+                              label: 'Full Name',
+                              icon: Icons.person,
+                              validator: (value) {
+                                if (value == null ||
+                                    value.trim().isEmpty) {
+                                  return "Please enter your name";
+                                }
+                                if (!RegExp(r"^[A-Za-z ]+$")
+                                    .hasMatch(value.trim())) {
+                                  return "Name should contain only alphabets, numbers and special characters are not allowed";
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // ---------------- CONTACT VALIDATION UPDATED ----------------
+                            _buildTextField(
+                              controller: _contactController,
+                              label: 'Contact Number',
+                              icon: Icons.phone,
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null ||
+                                    value.trim().isEmpty) {
+                                  return "Enter a valid contact number";
+                                }
+                                if (!RegExp(r"^[0-9]{10}$")
+                                    .hasMatch(value.trim())) {
+                                  return "Enter a valid 10-digit contact number";
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // EMAIL
+                            _buildTextField(
+                              controller: _emailController,
+                              label: 'Email Address',
+                              icon: Icons.email,
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return "Enter your email";
+                                }
+                                if (!GetUtils.isEmail(value)) {
+                                  return "Enter a valid email";
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // PASSWORD
+                            _buildTextField(
+                                controller: _passwordController,
+                                label: 'Password',
+                                icon: Icons.lock,
+                                obscureText: _obscurePassword,
+                                suffixIcon: IconButton(
+                                    icon: Icon(_obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility),
+                                    onPressed: () {
+                                      setState(() => _obscurePassword =
+                                      !_obscurePassword);
+                                    }),
+                                validator: (value) {
+                                  if (value == null || value.length < 6) {
+                                    return "Password must be at least 6 characters";
+                                  }
+                                  return null;
+                                }),
+
+                            const SizedBox(height: 16),
+
+                            // CONFIRM PASSWORD
+                            _buildTextField(
+                                controller: _confirmPasswordController,
+                                label: 'Confirm Password',
+                                icon: Icons.lock,
+                                obscureText: _obscureConfirmPassword,
+                                suffixIcon: IconButton(
+                                    icon: Icon(_obscureConfirmPassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility),
+                                    onPressed: () {
+                                      setState(() => _obscureConfirmPassword =
+                                      !_obscureConfirmPassword);
+                                    }),
+                                validator: (value) {
+                                  if (value != _passwordController.text) {
+                                    return "Passwords do not match";
+                                  }
+                                  return null;
+                                }),
+
+                            const SizedBox(height: 16),
+
+                            // PINCODE
+                            _buildTextField(
+                              controller: _pincodeController,
+                              label: 'Pincode',
+                              icon: Icons.location_on,
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null ||
+                                    value.trim().length != 6) {
+                                  return "Enter a valid 6-digit pincode";
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // ---------------- DOB VALIDATION UPDATED ----------------
+                            TextFormField(
+                                controller: _birthDateController,
+                                readOnly: true,
+                                decoration: InputDecoration(
+                                  labelText: "Birth Date",
+                                  prefixIcon: Icon(Icons.calendar_today,
+                                      color: buttonColor1),
+                                  border: OutlineInputBorder(
+                                    borderRadius:
+                                    BorderRadius.circular(10),
+                                  ),
+                                ),
+                                onTap: _pickBirthDate,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return "Enter your date of birth";
+                                  }
+                                  if (!RegExp(
+                                      r"^\d{4}-\d{2}-\d{2}$")
+                                      .hasMatch(value)) {
+                                    return "Enter a valid date of birth in YYYY-MM-DD format";
+                                  }
+                                  return null;
+                                }),
+
+                            const SizedBox(height: 16),
+
+                            // GENDER
+                            DropdownButtonFormField<String>(
+                              decoration: InputDecoration(
+                                labelText: "Gender",
+                                prefixIcon: Icon(Icons.person,
+                                    color: buttonColor1),
+                                border: OutlineInputBorder(
+                                  borderRadius:
+                                  BorderRadius.circular(10),
+                                ),
+                              ),
+                              value: _selectedGender,
+                              items: const [
+                                DropdownMenuItem(
+                                    value: "Male", child: Text("Male")),
+                                DropdownMenuItem(
+                                    value: "Female", child: Text("Female")),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedGender = value);
+                              },
+                              validator: (value) =>
+                              value == null ? "Select your gender" : null,
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // TERMS CHECKBOX
+                            Row(
+                              crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                              children: [
+                                Checkbox(
+                                  value: _isTermsAccepted,
+                                  activeColor: buttonColor1,
+                                  onChanged: (v) {
+                                    setState(() => _isTermsAccepted =
+                                        v ?? false);
+                                  },
+                                ),
+                                Expanded(
+                                  child: RichText(
+                                      textAlign: TextAlign.start,
+                                      text: TextSpan(
+                                          style: const TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.black),
+                                          children: [
+                                            const TextSpan(
+                                                text:
+                                                "By creating an account, you accept our "),
+                                            TextSpan(
+                                                text:
+                                                "Terms & Conditions & Refund Policy",
+                                                style: const TextStyle(
+                                                  color: Colors.blue,
+                                                  fontWeight:
+                                                  FontWeight.bold,
+                                                ),
+                                                recognizer:
+                                                TapGestureRecognizer()
+                                                  ..onTap = () {
+                                                    Get.to(() =>
+                                                        TermAndConditionScreen());
+                                                  }),
+                                            const TextSpan(text: " and "),
+                                            TextSpan(
+                                                text: "Privacy Policy",
+                                                style: const TextStyle(
+                                                  color: Colors.blue,
+                                                  fontWeight:
+                                                  FontWeight.bold,
+                                                ),
+                                                recognizer:
+                                                TapGestureRecognizer()
+                                                  ..onTap = () {
+                                                    Get.to(() =>
+                                                        DisclaimerAndGuidelinesScreen());
+                                                  })
+                                          ])),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // SUBMIT BUTTON
+                            _isLoading
+                                ? const CircularProgressIndicator(
+                              color: appYellow,
+                            )
+                                : ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                minimumSize:
+                                const Size(double.infinity, 45),
+                                backgroundColor: appYellow,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                  BorderRadius.circular(16),
+                                ),
+                              ),
+                              onPressed: _signup,
+                              child: const Text("Sign Up",
+                                  style:
+                                  TextStyle(color: Colors.black)),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            RichText(
                               text: TextSpan(
                                 style: const TextStyle(
-                                    fontSize: 13, color: Colors.black),
+                                    color: Colors.black, fontSize: 14),
                                 children: [
                                   const TextSpan(
-                                      text:
-                                      "By creating an account, you accept our "),
+                                      text: "Already have an account? "),
                                   TextSpan(
-                                    text:
-                                    "Terms & Conditions & Refund Policy",
-                                    style: const TextStyle(
-                                      color: Colors.blue,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    recognizer: TapGestureRecognizer()
-                                      ..onTap = () {
-                                        Get.to(() => TermAndConditionScreen());
-                                      },
-                                  ),
-                                  const TextSpan(text: " and "),
-                                  TextSpan(
-                                    text: "Privacy Policy",
-                                    style: const TextStyle(
-                                      color: Colors.blue,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    recognizer: TapGestureRecognizer()
-                                      ..onTap = () {
-                                        Get.to(() => DisclaimerAndGuidelinesScreen());
-                                      },
-                                  ),
+                                      text: "Log In",
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue),
+                                      recognizer:
+                                      TapGestureRecognizer()
+                                        ..onTap = () => Get.to(
+                                                () => const LoginWithEmailScreen()))
                                 ],
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Submit button
-                      _isLoading
-                          ? const CircularProgressIndicator(
-                        color: appYellow,
-                      )
-                          : ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 45),
-                          backgroundColor: appYellow,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        onPressed: _signup,
-                        child: const Text(
-                          "Sign Up",
-                          style: TextStyle(color: Colors.black),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Login redirect
-                      RichText(
-                        text: TextSpan(
-                          style: const TextStyle(
-                              color: Colors.black, fontSize: 14),
-                          children: [
-                            const TextSpan(
-                                text: "Already have an account? "),
-                            TextSpan(
-                              text: "Log In",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
-                              ),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () => Get.to(
-                                        () => const LoginWithEmailScreen()),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+                          ]))
+                    ])))));
   }
 
-  // Reusable text field builder
+  // TEXT FIELD BUILDER
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -471,8 +460,7 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
       obscureText: obscureText,
       validator: validator,
       keyboardType: keyboardType,
-      inputFormatters:
-      label == "Contact Number" || label == "Pincode"
+      inputFormatters: label == "Contact Number" || label == "Pincode"
           ? [FilteringTextInputFormatter.digitsOnly]
           : [],
       maxLength: label == "Contact Number"
@@ -481,14 +469,13 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
           ? 6
           : null,
       decoration: InputDecoration(
-        counterText: "",
-        labelText: label,
-        prefixIcon: Icon(icon, color: buttonColor1),
-        suffixIcon: suffixIcon,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
+          counterText: "",
+          labelText: label,
+          prefixIcon: Icon(icon, color: buttonColor1),
+          suffixIcon: suffixIcon,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+          )),
     );
   }
 }
