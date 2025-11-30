@@ -17,12 +17,15 @@ import 'package:AstrowayCustomer/utils/binding/networkBinding.dart';
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:AstrowayCustomer/utils/global.dart';
 import 'package:AstrowayCustomer/utils/images.dart';
+import 'package:AstrowayCustomer/views/audioCall/newAudioCall.dart';
 import 'package:AstrowayCustomer/views/bottomNavigationBarScreen.dart';
 import 'package:AstrowayCustomer/views/call/accept_call_screen.dart';
 import 'package:AstrowayCustomer/views/call/incoming_call_request.dart';
 import 'package:AstrowayCustomer/views/call/oneToOneVideo/onetooneVideo.dart';
 import 'package:AstrowayCustomer/views/chat/chat_screen.dart';
 import 'package:AstrowayCustomer/views/chat/incoming_chat_request.dart';
+import 'package:AstrowayCustomer/views/chat/newChatScreen.dart';
+import 'package:AstrowayCustomer/views/chat/video_call_page.dart';
 import 'package:AstrowayCustomer/views/live_astrologer/live_astrologer_screen.dart';
 import 'package:AstrowayCustomer/views/splashScreen.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -293,6 +296,7 @@ void main() async {
     description: "High importance notifications for Astroway",
     importance: Importance.max,
     playSound: true,
+
   );
 
   final FlutterLocalNotificationsPlugin localNotif =
@@ -364,10 +368,12 @@ final customerSupportController = Get.put(CustomerSupportController());
 final chatController = Get.put(ChatController());
 final callController = Get.put(CallController());
 AndroidNotificationChannel channel = const AndroidNotificationChannel(
-  'Astroway local notifications',
-  'High Importance Notifications for Atroguru',
-  importance: Importance.defaultImportance,
+  'astroway_main_channel',
+  'Astroway Notifications',
+  importance: Importance.max,
+  playSound: true,
 );
+
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   FlutterLocalNotificationsPlugin? flutterLocalNotificationsPlugin;
@@ -383,9 +389,27 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       print("📝 Body: ${message.notification?.body}");
       print("📦 Data: ${message.data}");
 
-      // Show a simple notification for now
-      final FlutterLocalNotificationsPlugin fln = FlutterLocalNotificationsPlugin();
+      final data = message.data;
 
+      // ------------------ CALL ACCEPT POPUP -------------------
+      if (data["type"] == "audio_accept") {
+        _showAudioAcceptPopup(data);
+        return;
+      }
+
+      if (data["type"] == "video_accept") {
+        _showVideoAcceptPopup(data);
+        return;
+      }
+
+      // ------------------ CHAT ACCEPT POPUP -------------------
+      if (data["type"] == "chat_accept") {
+        _showChatAcceptPopup(data);
+        return;
+      }
+
+      // ------------------ NORMAL NOTIFICATION -------------------
+      final FlutterLocalNotificationsPlugin fln = FlutterLocalNotificationsPlugin();
       fln.show(
         0,
         message.notification?.title ?? "New Notification",
@@ -401,6 +425,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
       );
     });
+
 
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       print("📲 Notification tapped: ${message.data}");
@@ -837,6 +862,98 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 }
 
+void _showChatAcceptPopup(Map data) {
+  if (Get.context == null) return;
+
+  showDialog(
+    context: Get.context!,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Text("Chat Accepted", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text("The astrologer has accepted your chat request."),
+        actions: [
+          TextButton(
+            child: Text("Start Chat"),
+            onPressed: () {
+              Navigator.pop(context);
+
+              Get.to(() => CustomerChatPage(
+                roomId: data["room_id"],
+                // requestId: data["request_id"].toString(),
+                astrologerUid: '', myUserId: '', astrologerName: '',
+                chatRate: 0,
+              ));
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
+void _showVideoAcceptPopup(Map data) {
+  if (Get.context == null) return;
+
+  showDialog(
+    context: Get.context!,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Text("Video Call Accepted", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text("The astrologer has accepted your video call. Please continue."),
+        actions: [
+          TextButton(
+            child: Text("Continue"),
+            onPressed: () {
+              Navigator.pop(context);
+
+              // Navigate to video call page
+              Get.to(() => CustomerVideoCallPage(
+                astroId: data["request_id"].toString(),
+              ));
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
+void _showAudioAcceptPopup(Map data) {
+  if (Get.context == null) return;
+
+  showDialog(
+    context: Get.context!,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Text("Audio Call Accepted", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text("The astrologer has accepted your audio call. Please continue."),
+        actions: [
+          TextButton(
+            child: Text("Continue"),
+            onPressed: () {
+              Navigator.pop(context);
+
+              // Navigate to your audio call page
+              Get.to(() => AudioCallPage(
+                otherUserId: data["request_id"].toString(),
+              ));
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
 @pragma('vm:entry-point')
 void initializeCallKitEventHandlers() {
   FlutterCallkitIncoming.onEvent.listen((CallEvent? event) async {
@@ -1004,15 +1121,18 @@ Future<void> foregroundNotificatioCustomAuddio(RemoteMessage payload) async {
     onSelectNotification(json.encode(payload.data));
   });
   final customSound = 'app_sound.wav';
-  AndroidNotificationDetails androidDetails = const AndroidNotificationDetails(
-    'channel_id_17',
-    'channel.name',
-    importance: Importance.max,
-    icon: "@mipmap/ic_launcher",
+  AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    'astroway_main_channel',        // SAME ID everywhere
+    'Astroway Notifications',       // SAME name
+    importance: Importance.max,     // 🔥 required for heads-up
+    priority: Priority.high,        // 🔥 required for heads-up
     playSound: true,
     enableVibration: true,
-    sound: RawResourceAndroidNotificationSound('app_sound'),
+    icon: '@mipmap/ic_launcher',
+    fullScreenIntent: false,        // true only if you want full-screen (like incoming call)
   );
+
+
 
   final iOSDetails = DarwinNotificationDetails(
     sound: customSound,
@@ -1062,16 +1182,14 @@ Future<void> foregroundNotification(
   });
 
   AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      channel.id, channel.name,
-      importance: Importance.max,
-      priority: Priority.high,
-      icon: "@mipmap/ic_launcher",
-      playSound: true,
-      largeIcon: FilePathAndroidBitmap(largeIconPath!)
-      // styleInformation: BigPictureStyleInformation(
-      //   FilePathAndroidBitmap("assets/images/whatsapp.png"), // Big image (Android-specific)
-      // ),
-      );
+    'astroway_main_channel',
+    'Astroway Notifications',
+    importance: Importance.max,
+    priority: Priority.high,
+    playSound: true,
+    enableVibration: true,
+  );
+
   const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails();
 
   NotificationDetails platformChannelSpecifics = NotificationDetails(
