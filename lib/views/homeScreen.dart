@@ -92,6 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? userName;
   String? profileImageUrl;
   bool _isLoadingUser = true;
+  List<Map<String, dynamic>> banners = [];
 
   // AppEventsLogger logger = AppEventsLogger.newLogger(this);
   @override
@@ -103,6 +104,9 @@ class _HomeScreenState extends State<HomeScreen> {
     FastAPIServices().fetchCurrentWallet();
     FastAPIServices().fetchAllAstrologers();
     FastAPIServices().fetchCurrentUserDetails();
+    loadBanners();
+
+
     Provider.of<LiveAstrologerProvider>(context, listen: false)
         .fetchLiveAstrologers();
 
@@ -110,9 +114,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _fetchAllData();
 
+
+
+
     Future.microtask(() =>
         Provider.of<GetAllAstrologerProvider>(context, listen: false)
             .getAstrologers());
+  }
+
+
+  Future<void> loadBanners() async {
+    banners = await FastAPIServices().getHomeBanners();
+    setState(() {});
   }
 
 
@@ -1153,27 +1166,40 @@ class _HomeScreenState extends State<HomeScreen> {
                       Container(
                         height: 40,
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          Get.to(() => AstrologyServicesPage());
-                        },
-                        child: Container(
-                          height: 130,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          width: double.infinity, // Fills the available width
-                          // height: 100, // Set a fixed height
-
-                          child: Image.asset(
-                            "assets/images/banner2.png",
-                            fit: BoxFit
-                                .cover, // Makes the image fill the container
-                          ),
-                        ),
+                  GestureDetector(
+                    onTap: () {
+                      Get.to(() => AstrologyServicesPage());
+                    },
+                    child: Container(
+                      height: 130,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
                       ),
 
-                      ///freeservice
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: (banners.isNotEmpty && banners.first["image_url"] != null)
+                            ? Image.network(
+                          "https://fastapi.jyotishionline.com${banners.first["image_url"]}",
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              "assets/images/banner2.png",
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        )
+                            : Image.asset(
+                          "assets/images/banner2.png",
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+
+
+                  ///freeservice
                       Card(
                         elevation: 0,
                         margin: EdgeInsets.all(0),

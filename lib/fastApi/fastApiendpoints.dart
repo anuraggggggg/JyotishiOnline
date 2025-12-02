@@ -171,5 +171,6 @@ class FastApiEndpoints {
   static const String sendAstrologerNotification =
       "$fastApiBaseUrl/Astrologer_notification/send-notification";
 
-
+  // --------------- BANNERS ----------------
+  static const String homeBanners = "$fastApiBaseUrl/api/v1/astro/home-banner";
 }
