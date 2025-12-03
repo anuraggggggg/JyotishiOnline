@@ -1115,80 +1115,80 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
 
                           _showRequestSentDialog(
                             callType,
-                            onOk: () {
-                              final type =
-                              apiType.toLowerCase();
-                              _d(
-                                  "➡️ navigate type=$type");
-                              if (type == 'chat') {
-                                Navigator.of(
-                                    pageContext,
-                                    rootNavigator: true)
-                                    .push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        CustomerChatPage(
-                                          chatRate: astrologer.chatCharge,
-                                          astrologerUid:
-                                          astrologerUid,
-                                          myUserId: userUid,
-                                          roomId: roomId,
-                                          astrologerName:
-                                          astrologer
-                                              .name,
-                                        ),
-                                  ),
-                                );
-                              } else if (type ==
-                                  'video_call') {
-                                Navigator.of(
-                                    pageContext,
-                                    rootNavigator: true)
-                                    .push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        CustomerVideoCallPage(
-                                          astroId: astrologerUid,
-                                        ),
-                                  ),
-                                );
-                              } else if (type ==
-                                  'audio_call') {
-                                Navigator.of(
-                                    pageContext,
-                                    rootNavigator: true)
-                                    .push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        AudioCallPage(
-                                          otherUserId:
-                                          astrologerUid,
-                                        ),
-                                  ),
-                                );
-                              } else {
-                                _d(
-                                    "⚠️ unknown session_type=$type, fallback chat");
-                                Navigator.of(
-                                    pageContext,
-                                    rootNavigator: true)
-                                    .push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        CustomerChatPage(
-                                          chatRate: astrologer.chatCharge,
-                                          astrologerUid:
-                                          astrologerUid,
-                                          myUserId: userUid,
-                                          roomId: roomId,
-                                          astrologerName:
-                                          astrologer
-                                              .name,
-                                        ),
-                                  ),
-                                );
-                              }
-                            },
+                            // onOk: () {
+                            //   final type =
+                            //   apiType.toLowerCase();
+                            //   _d(
+                            //       "➡️ navigate type=$type");
+                            //   if (type == 'chat') {
+                            //     Navigator.of(
+                            //         pageContext,
+                            //         rootNavigator: true)
+                            //         .push(
+                            //       MaterialPageRoute(
+                            //         builder: (_) =>
+                            //             CustomerChatPage(
+                            //               chatRate: astrologer.chatCharge,
+                            //               astrologerUid:
+                            //               astrologerUid,
+                            //               myUserId: userUid,
+                            //               roomId: roomId,
+                            //               astrologerName:
+                            //               astrologer
+                            //                   .name,
+                            //             ),
+                            //       ),
+                            //     );
+                            //   } else if (type ==
+                            //       'video_call') {
+                            //     Navigator.of(
+                            //         pageContext,
+                            //         rootNavigator: true)
+                            //         .push(
+                            //       MaterialPageRoute(
+                            //         builder: (_) =>
+                            //             CustomerVideoCallPage(
+                            //               astroId: astrologerUid,
+                            //             ),
+                            //       ),
+                            //     );
+                            //   } else if (type ==
+                            //       'audio_call') {
+                            //     Navigator.of(
+                            //         pageContext,
+                            //         rootNavigator: true)
+                            //         .push(
+                            //       MaterialPageRoute(
+                            //         builder: (_) =>
+                            //             AudioCallPage(
+                            //               otherUserId:
+                            //               astrologerUid,
+                            //             ),
+                            //       ),
+                            //     );
+                            //   } else {
+                            //     _d(
+                            //         "⚠️ unknown session_type=$type, fallback chat");
+                            //     Navigator.of(
+                            //         pageContext,
+                            //         rootNavigator: true)
+                            //         .push(
+                            //       MaterialPageRoute(
+                            //         builder: (_) =>
+                            //             CustomerChatPage(
+                            //               chatRate: astrologer.chatCharge,
+                            //               astrologerUid:
+                            //               astrologerUid,
+                            //               myUserId: userUid,
+                            //               roomId: roomId,
+                            //               astrologerName:
+                            //               astrologer
+                            //                   .name,
+                            //             ),
+                            //       ),
+                            //     );
+                            //   }
+                            // },
                           );
                         } catch (e, st) {
                           _d(
@@ -1444,8 +1444,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     return imageUrl;
   }
 
-  void _showRequestSentDialog(String requestType,
-      {VoidCallback? onOk}) {
+  void _showRequestSentDialog(String requestType) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1459,26 +1458,24 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             ],
           ),
           content: Text(
-            "Your $requestType request has been sent successfully. You will be notified when the astrologer accepts your request.",
+            "Your $requestType request has been sent.\n\n"
+                "You will be notified when the astrologer accepts the request. "
+                "Once accepted, the session will automatically start.",
           ),
           actions: [
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: appColor),
               onPressed: () {
                 Navigator.of(dialogContext).pop();
-                if (onOk != null) onOk();
               },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: appColor),
-              child: const Text(
-                "OK",
-                style: TextStyle(color: Colors.white),
-              ),
+              child: const Text("OK", style: TextStyle(color: Colors.white)),
             ),
           ],
         );
       },
     );
   }
+
 
   void _showReportDialog() {
     String? selectedReason;

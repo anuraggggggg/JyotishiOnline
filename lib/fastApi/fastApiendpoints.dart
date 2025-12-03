@@ -1,6 +1,9 @@
 // lib/utils/fastapi_endpoints.dart
 
 class FastApiEndpoints {
+
+
+
   // Base URL
   static const String fastApiBaseUrl = "https://fastapi.jyotishionline.com";
 
@@ -173,4 +176,8 @@ class FastApiEndpoints {
 
   // --------------- BANNERS ----------------
   static const String homeBanners = "$fastApiBaseUrl/api/v1/astro/home-banner";
+
+  // ---------------- ONLINE ASTROLOGERS ----------------
+  static const String onlineAstrologers =
+      "$fastApiBaseUrl/astro_online/astrologers/online";
 }

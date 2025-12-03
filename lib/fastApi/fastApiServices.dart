@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../model/fastApiModel/LiveAstrologerModel.dart';
 import '../model/fastApiModel/NotificationModel.dart';
+import '../model/fastApiModel/OnlineAstrologerModel.dart';
 import '../model/fastApiModel/astrologerProfileModel.dart';
 import '../model/fastApiModel/newChatModel.dart';
 import '../model/fastApiModel/sendMoneyModel.dart';
@@ -1715,4 +1716,42 @@ class FastAPIServices {
       throw Exception('Send money failed (${response.statusCode}): $details');
     }
   }
+
+  /// 🔹 Fetch Online Astrologers
+  Future<List<OnlineAstrologerModel>> fetchOnlineAstrologers() async {
+    final url = Uri.parse(FastApiEndpoints.onlineAstrologers);
+
+    print("📡 [ONLINE ASTROLOGERS] GET → $url");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          "accept": "application/json",
+        },
+      );
+
+      print("📡 Status: ${response.statusCode}");
+      print("📩 Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+
+        final astrologers = data
+            .map((json) => OnlineAstrologerModel.fromJson(json))
+            .toList();
+
+        print("✅ Online astrologers fetched: ${astrologers.length}");
+        return astrologers;
+      } else {
+        print("❌ Failed to fetch online astrologers: ${response.body}");
+        throw Exception("Failed to fetch online astrologers: ${response.body}");
+      }
+    } catch (e, st) {
+      print("🔥 Exception in fetchOnlineAstrologers: $e");
+      print(st);
+      rethrow;
+    }
+  }
+
 }

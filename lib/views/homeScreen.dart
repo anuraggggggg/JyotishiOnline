@@ -49,12 +49,14 @@ import 'package:responsive_sizer/responsive_sizer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/IntakeController.dart';
 import '../controllers/chatController.dart';
+import '../controllers/fastApiProvider/GetOnlineAstrologerProvider.dart';
 import '../controllers/fastApiProvider/LiveAstrologerProvider.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/splashController.dart';
 import '../controllers/walletController.dart';
 import '../model/fastApiModel/CustomerDetailModel.dart';
 import '../model/fastApiModel/LiveAstrologerModel.dart';
+import '../model/fastApiModel/OnlineAstrologerModel.dart';
 import '../theme/appTheme.dart';
 import '../utils/fonts.dart';
 import 'CustomText.dart';
@@ -105,6 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
     FastAPIServices().fetchAllAstrologers();
     FastAPIServices().fetchCurrentUserDetails();
     loadBanners();
+    FastAPIServices().fetchOnlineAstrologers();
 
 
     Provider.of<LiveAstrologerProvider>(context, listen: false)
@@ -120,6 +123,9 @@ class _HomeScreenState extends State<HomeScreen> {
     Future.microtask(() =>
         Provider.of<GetAllAstrologerProvider>(context, listen: false)
             .getAstrologers());
+
+    Provider.of<GetOnlineAstrologerProvider>(context, listen: false)
+        .fetchOnlineAstrologers();
   }
 
 
@@ -2096,6 +2102,90 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                       ),
 
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Online Astrologers",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            // GestureDetector(
+                            //   onTap: () {
+                            //     // Navigator.push(
+                            //     //   context,
+                            //     //   MaterialPageRoute(
+                            //     //     builder: (context) => ViewAllOnlineAstrologersPage(),
+                            //     //   ),
+                            //     // );
+                            //   },
+                            //   child: Text(
+                            //     "View all",
+                            //     style: TextStyle(
+                            //       fontSize: 14,
+                            //       fontWeight: FontWeight.w500,
+                            //       color: Colors.blue,
+                            //     ),
+                            //   ),
+                            // ),
+                          ],
+                        ),
+                      ),
+
+                      Container(
+                        height: 150,
+                        width: double.infinity,
+                        child: Consumer<GetOnlineAstrologerProvider>(
+                          builder: (context, provider, child) {
+                            if (provider.isLoading) {
+                              return const Center(child: CircularProgressIndicator());
+                            }
+
+                            if (provider.astrologers.isEmpty) {
+                              return const Center(child: Text("No astrologers online"));
+                            }
+
+                            return SizedBox(
+                              height: 100,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.all(12),
+                                itemCount: provider.astrologers.length,
+                                itemBuilder: (context, index) {
+                                  final astro = provider.astrologers[index];
+                                  return InkWell(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => AstrologerDetailPage(
+                                            astroId: astro.id,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      height: 40,
+                                      width: 90,
+                                      child: _buildOnlineAstroTile(astro),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+
+
 
 
                       Padding(
@@ -2917,6 +3007,74 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 }
+
+Widget _buildOnlineAstroTile(OnlineAstrologerModel astro) {
+  // ---- SAFE IMAGE URL HANDLING ----
+  final String imageUrl = (astro.profileImage.isNotEmpty)
+      ? (astro.profileImage.startsWith("http")
+      ? astro.profileImage
+      : "https://fastapi.jyotishionline.com${astro.profileImage}")
+      : "https://via.placeholder.com/150";
+
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      // ---- IMAGE ----
+      ClipRRect(
+        borderRadius: BorderRadius.circular(50),
+        child: Image.network(
+          imageUrl,
+          height: 60,
+          width: 60,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              height: 60,
+              width: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey.shade300,
+              ),
+              child: const Icon(Icons.person, size: 30, color: Colors.white),
+            );
+          },
+        ),
+      ),
+
+      const SizedBox(height: 6),
+
+      // ---- NAME ----
+      SizedBox(
+        width: 80,
+        child: Text(
+          astro.name.isNotEmpty ? astro.name : "Unknown",
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+
+      const SizedBox(height: 3),
+
+      // ---- STATUS ----
+      const Text(
+        "Online",
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: Colors.green,
+        ),
+      ),
+    ],
+  );
+}
+
+
+
 
 class LiveAstroCard extends StatelessWidget {
   final LiveAstrologerModel astro;

@@ -46,6 +46,7 @@ import 'package:provider/provider.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'controllers/fastApiProvider/GetOnlineAstrologerProvider.dart';
 import 'controllers/fastApiProvider/LiveAstrologerProvider.dart';
 import 'controllers/splashController.dart';
 import 'controllers/timer_controller.dart';
@@ -332,6 +333,8 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => LiveAstrologerProvider(),
         ),
+
+        ChangeNotifierProvider(create: (_) => GetOnlineAstrologerProvider())
       ],
       child: EasyLocalization(
         supportedLocales: const [

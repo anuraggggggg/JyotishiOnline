@@ -7,25 +7,6 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:104464591304:android:40980a3ac0db2ef7ca38fd",
-        "android_client_info": {
-          "package_name": "com.astrowaydiploy.user"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDjThV41crAEVSyqB31GJwSlDn3eK7otSE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:104464591304:android:a30891c73eccfbc8ca38fd",
         "android_client_info": {
           "package_name": "com.jyotishi2025.user"
