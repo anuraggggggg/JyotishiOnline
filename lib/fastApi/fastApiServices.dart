@@ -10,6 +10,7 @@ import 'package:AstrowayCustomer/model/fastApiModel/currentUserWalletModel.dart'
 import 'package:AstrowayCustomer/model/fastApiModel/loginResponseModel.dart';
 import 'package:AstrowayCustomer/views/bottomNavigationBarScreen.dart';
 import 'package:AstrowayCustomer/views/loginScreen.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -163,6 +164,45 @@ class FastAPIServices {
     }
     throw Exception("Customer detail failed (${res.statusCode}): ${res.body}");
   }
+
+  /// 🔔 Register FCM token for logged-in customer
+  Future<void> registerCustomerFcmToken(String userId) async {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      print("📲 Current FCM Token → $fcmToken");
+
+      if (fcmToken == null || fcmToken.isEmpty) {
+        print("⚠️ No FCM token available, skipping registration.");
+        return;
+      }
+
+      final url = Uri.parse(FastApiEndpoints.registerCustomerFcmToken);
+
+      final body = jsonEncode({
+        "user_id": userId,
+        "fcm_token": fcmToken,
+      });
+
+      print("🚀 Registering FCM token for user: $userId");
+      print("🌐 URL: $url");
+      print("📦 Body: $body");
+
+      final response = await http.post(
+        url,
+        headers: {
+          "accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: body,
+      );
+
+      print("📡 FCM Register Status: ${response.statusCode}");
+      print("📩 FCM Register Response: ${response.body}");
+    } catch (e) {
+      print("❌ Error while registering FCM token: $e");
+    }
+  }
+
 
 
 
@@ -665,25 +705,35 @@ class FastAPIServices {
 
   // ---------------- LOGIN WITH EMAIL ----------------
   Future<void> loginWithEmail({
-    required String username,
+    required String email,
     required String password,
   }) async {
     try {
+      final url = Uri.parse(FastApiEndpoints.login); // → /api/v1/auth/login
+
+      print("🔗 Login URL → $url");
+
       final response = await http.post(
-        Uri.parse(FastApiEndpoints.login),
+        url,
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "accept": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
         },
         body: {
-          'username': username,
-          'password': password,
+          // ⚠️ MUST be 'username' as per /auth/login, NOT 'email'
+          "username": email,
+          "password": password,
         },
       );
 
+      print("🔍 Status Code: ${response.statusCode}");
+      print("📩 Body: ${response.body}");
+
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        final accessToken = responseData['access_token'];
-        final userJson = responseData['user'];
+        final data = jsonDecode(response.body);
+
+        final accessToken = data["access_token"];
+        final userJson = data["user"];
 
         final user = UserModel.fromJson(userJson);
 
@@ -692,15 +742,11 @@ class FastAPIServices {
         await prefs.setString("user_id", user.id);
         await prefs.setString("user_name", user.name);
 
-        print("===== 👤 USER DETAILS =====");
-        print("🆔 ID         : ${user.id}");
-        print("📛 Name       : ${user.name}");
-        print("📧 Email      : ${user.email}");
-        print("📱 Contact No : ${user.contactNo}");
-        print("🚻 Gender     : ${user.gender}");
-        print("🕒 Last Seen  : ${user.lastSeen}");
-        print("🔑 AccessToken: $accessToken");
-        print("===========================");
+        print("✅ Login success for user: ${user.id}");
+        print("🔐 Stored access_token (length): ${accessToken.length}");
+
+        // 🔔 Register FCM token for this logged-in user
+        await registerCustomerFcmToken(user.id);
 
         Get.snackbar(
           'Success',
@@ -713,39 +759,39 @@ class FastAPIServices {
         bottomNavController.setBottomIndex(0, 0);
         Get.offAll(() => BottomNavigationBarScreen(index: 0));
       } else if (response.statusCode == 422) {
-        final responseData = jsonDecode(response.body);
-        final details = responseData['detail'] as List;
-        final errorMessage = details.isNotEmpty
-            ? details.first['msg']
-            : 'Invalid email or password.';
+        final details = jsonDecode(response.body)["detail"];
+        final errorMessage = details is List && details.isNotEmpty
+            ? details.first["msg"]
+            : "Invalid email or password";
 
-        print('Validation Error: $errorMessage');
         Get.snackbar(
-          'Error',
+          "Error",
           errorMessage,
           backgroundColor: Colors.red,
           colorText: Colors.white,
         );
       } else {
-        print('HTTP Error: ${response.statusCode}');
-        print('Response Body: ${response.body}');
         Get.snackbar(
-          'Error',
-          'Login failed. Please check your credentials.',
+          "Error",
+          "Login failed. Please check your credentials.",
           backgroundColor: Colors.red,
           colorText: Colors.white,
         );
       }
     } catch (e) {
-      print('Network Error: $e');
+      print("❌ Network error: $e");
       Get.snackbar(
-        'Error',
-        'Failed to connect to the server. Please check your internet connection.',
+        "Error",
+        "Failed to connect to the server.",
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
     }
   }
+
+
+
+
 
   Future<String?> getUserName() async {
     final prefs = await SharedPreferences.getInstance();
@@ -834,6 +880,10 @@ class FastAPIServices {
   // ---------------- LOGOUT ----------------
   Future<void> logout() async {
     try {
+      // 🔥 Delete FCM token
+      await FirebaseMessaging.instance.deleteToken();
+      print("🧨 FCM token deleted");
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove("access_token");
       await prefs.remove("user_id");
@@ -843,64 +893,11 @@ class FastAPIServices {
       _accessToken = null;
       _userId = null;
 
-      print("✅ User logged out successfully. SharedPreferences cleared.");
+      print("✅ User logged out successfully.");
 
       Get.offAll(() => LoginScreen());
     } catch (e) {
       print("❌ Failed to log out: $e");
-    }
-  }
-
-  // ---------------- LOGIN & TOKEN ----------------
-  Future<void> loginAndGetToken() async {
-    final url = Uri.parse(FastApiEndpoints.login);
-    print("🔑 Logging in user (for re-authentication)...");
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: {
-          "username": "Jincy@gmail.com",
-          "password": "Jincy@12345",
-        },
-      );
-
-      print("📡 Login Status: ${response.statusCode}");
-      print("📩 Login Body: ${response.body}");
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        // 1️⃣ Access Token
-        _accessToken = data["access_token"];
-
-        // 2️⃣ Extract and set User ID safely
-        final userJson = data["user"];
-        if (userJson != null) {
-          final user = UserModel.fromJson(userJson);
-          _userId = user.id?.toString();
-        }
-
-        // 3️⃣ Save credentials locally
-        final prefs = await SharedPreferences.getInstance();
-        if (_accessToken != null) {
-          await prefs.setString("access_token", _accessToken!);
-        }
-        if (_userId != null) {
-          await prefs.setString("user_id", _userId!);
-        }
-
-        print("✅ Token and UserId saved successfully!");
-      } else {
-        print("🚨 Login failed with status: ${response.statusCode}");
-        throw Exception("Login failed: ${response.body}");
-      }
-    } catch (e) {
-      print("❌ Exception during login: $e");
-      rethrow;
     }
   }
 
@@ -1100,15 +1097,11 @@ class FastAPIServices {
 // ---------------- LOAD TOKEN & USER ID FROM STORAGE (REFINED) ----------------
   Future<void> _loadCredentials() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // Load saved token and user id
     _accessToken = prefs.getString("access_token");
     _userId = prefs.getString("user_id");
-
-    print(
-        "🔑 _loadCredentials() → userId=$_userId, accessToken=$_accessToken"
-    );
+    print("🔑 _loadCredentials() → userId=$_userId, accessToken=$_accessToken");
   }
+
 
 
   Future<CustomerDetail> updateCustomerDetailFromPath({

@@ -591,7 +591,7 @@ void _showAudioAcceptPopup(Map data) {
               Navigator.pop(context);
 
               Get.to(() => AudioCallPage(
-                otherUserId: data["request_id"].toString(),
+                otherUserId: data["astrologerUid"].toString(),
               ));
             },
           ),

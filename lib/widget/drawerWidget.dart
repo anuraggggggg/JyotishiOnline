@@ -199,24 +199,36 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                         }
                       },
                     ),
-                    _buildMenuItem(
-                      icon: Icons.logout,
-                      title: 'Logout my account',
-                      onTap: () async {
-                        bool isLogin = await global.isLogin();
-                        if (isLogin) {
-                          historyController.chatHistoryList.clear();
-                          historyController.astroMallHistoryList.clear();
-                          historyController.reportHistoryList.clear();
-                          historyController.callHistoryList.clear();
-                          historyController.paymentLogsList.clear();
-                          historyController.walletTransactionList.clear();
-                          await FastAPIServices().logout();
-                          Get.back();
-                        }
-                      },
-                    ),
-                  ],
+          _buildMenuItem(
+          icon: Icons.logout,
+          title: 'Logout my account',
+          onTap: () async {
+          bool isLogin = await global.isLogin();
+
+          if (isLogin) {
+          // 🧹 Clear all history controllers
+          historyController.chatHistoryList.clear();
+          historyController.astroMallHistoryList.clear();
+          historyController.reportHistoryList.clear();
+          historyController.callHistoryList.clear();
+          historyController.paymentLogsList.clear();
+          historyController.walletTransactionList.clear();
+
+          // 🔥 Logout and delete FCM token
+          await FastAPIServices().logout();
+
+          // 🚪 Close drawer before redirecting (optional but better UX)
+          if (Get.isOverlaysOpen) {
+          Get.back(); // close drawer if open
+          }
+
+          // ⬅️ Navigate to Login Screen
+          Get.offAll(() => LoginScreen());
+          }
+          },
+          ),
+
+          ],
                 ),
               ),
 

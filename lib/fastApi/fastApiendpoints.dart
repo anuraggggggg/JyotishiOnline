@@ -16,6 +16,7 @@ class FastApiEndpoints {
   // ---------------- LOGIN ----------------
   static const String login = "$fastApiBaseUrl/api/v1/auth/login";
   static const String loginOtp = "$fastApiBaseUrl/api/v1/auth/login-otp";
+
   static const String sendMobileOtp = "$fastApiBaseUrl/api/v1/auth/send-otp";
   static const String verifyMobileOtp =
       "$fastApiBaseUrl/api/v1/auth/verify-otp";
@@ -148,6 +149,10 @@ class FastApiEndpoints {
   static const String contactForm = "$fastApiBaseUrl/api/v1/users/contact";
   static const String checkAndSendMessage =
       "$fastApiBaseUrl/api/v1/users/chat/check-send/"; // Append receiver_id
+
+  // 🔔 Register customer FCM token
+  static const String registerCustomerFcmToken =
+      "$fastApiBaseUrl/Customer_notification/register-token";
 
 
   // ---------------- ADMIN ----------------

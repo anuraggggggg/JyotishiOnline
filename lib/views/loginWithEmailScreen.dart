@@ -23,7 +23,7 @@ class _LoginWithEmailScreenState extends State<LoginWithEmailScreen> {
   void _login() async {
     if (_formKey.currentState!.validate()) {
       await _apiServices.loginWithEmail(
-        username: _usernameController.text.trim(),
+        email: _usernameController.text.trim(),
         password: _passwordController.text.trim(),
       );
     }
