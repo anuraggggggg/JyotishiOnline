@@ -590,11 +590,15 @@ void _showAudioAcceptPopup(Map data) {
             onPressed: () {
               Navigator.pop(context);
 
+              print("📌 Notification Data → $data");
+              print("📌 astrologerUid → ${data["astrologerUid"]}");
+
               Get.to(() => AudioCallPage(
                 otherUserId: data["astrologerUid"].toString(),
               ));
             },
           ),
+
         ],
       );
     },
