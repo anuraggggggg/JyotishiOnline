@@ -394,25 +394,28 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
       final data = message.data;
 
-      // ------------------ CALL ACCEPT POPUP -------------------
+      // ------------------ AUDIO CALL ACCEPT -------------------
       if (data["type"] == "audio_accept") {
-        _showAudioAcceptPopup(data);
+        _handleAudioAccept(data);
         return;
       }
 
+      // ------------------ VIDEO CALL ACCEPT -------------------
       if (data["type"] == "video_accept") {
-        _showVideoAcceptPopup(data);
+        _handleVideoAccept(data);
         return;
       }
 
-      // ------------------ CHAT ACCEPT POPUP -------------------
+      // ------------------ CHAT ACCEPT -------------------
       if (data["type"] == "chat_accept") {
-        _showChatAcceptPopup(data);
+        // _handleChatAccept(data);
         return;
       }
 
       // ------------------ NORMAL NOTIFICATION -------------------
-      final FlutterLocalNotificationsPlugin fln = FlutterLocalNotificationsPlugin();
+      final FlutterLocalNotificationsPlugin fln =
+      FlutterLocalNotificationsPlugin();
+
       fln.show(
         0,
         message.notification?.title ?? "New Notification",
@@ -428,6 +431,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
       );
     });
+
 
 
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
@@ -508,6 +512,53 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 }
 
+// void _handleChatAccept(Map<String, dynamic> data) {
+//   final requestId = data["request_id"]?.toString() ?? "";
+//
+//   print("📌 Chat request_id → $requestId");
+//
+//   if (requestId.isEmpty) {
+//     print("❌ ERROR: request_id missing in chat_accept");
+//     return;
+//   }
+//
+//   Future.delayed(const Duration(milliseconds: 300), () {
+//     Get.to(() => CustomerChatPage(requestId: requestId));
+//   });
+// }
+
+
+void _handleVideoAccept(Map<String, dynamic> data) {
+  final astroId = data["astro_id"] ?? data["astrologerUid"] ?? "";
+
+  print("📌 FINAL astrologerUid (video) → $astroId");
+
+  if (astroId.isEmpty) {
+    print("❌ ERROR: astro_id missing in video_accept");
+    return;
+  }
+
+  Future.delayed(const Duration(milliseconds: 300), () {
+    Get.to(() => CustomerVideoCallPage(astroId: astroId));
+  });
+}
+
+void _handleAudioAccept(Map<String, dynamic> data) {
+  final astroId = data["astro_id"] ?? data["astrologerUid"] ?? "";
+
+  print("📌 FINAL astrologerUid → $astroId");
+
+  if (astroId.isEmpty) {
+    print("❌ ERROR: astro_id missing in audio_accept");
+    return;
+  }
+
+  Future.delayed(const Duration(milliseconds: 300), () {
+    Get.to(() => AudioCallPage(otherUserId: astroId));
+  });
+}
+
+
 void _showChatAcceptPopup(Map data) {
   if (Get.context == null) return;
 
@@ -573,37 +624,41 @@ void _showVideoAcceptPopup(Map data) {
 
 
 
-void _showAudioAcceptPopup(Map data) {
-  if (Get.context == null) return;
+  void _showAudioAcceptPopup(Map data) {
+    if (Get.context == null) return;
 
-  showDialog(
-    context: Get.context!,
-    barrierDismissible: false,
-    builder: (context) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Text("Audio Call Accepted", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text("The astrologer has accepted your audio call. Please continue."),
-        actions: [
-          TextButton(
-            child: Text("Continue"),
-            onPressed: () {
-              Navigator.pop(context);
+    showDialog(
+      context: Get.context!,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: Text("Audio Call Accepted", style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Text("The astrologer has accepted your audio call. Please continue."),
+          actions: [
+            TextButton(
+              child: Text("Continue"),
+              onPressed: () {
+                Navigator.pop(context);
 
-              print("📌 Notification Data → $data");
-              print("📌 astrologerUid → ${data["astrologerUid"]}");
+                print("📌 Notification Data → $data");
 
-              Get.to(() => AudioCallPage(
-                otherUserId: data["astrologerUid"].toString(),
-              ));
-            },
-          ),
+                final astroId = data["astrologerUid"]?.toString() ?? "";
+                print("📌 FINAL astrologerUid → $astroId");
 
-        ],
-      );
-    },
-  );
-}
+                Get.to(() => AudioCallPage(
+                  otherUserId: data["astrologerUid"].toString(),
+                ));
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+
 
 
 

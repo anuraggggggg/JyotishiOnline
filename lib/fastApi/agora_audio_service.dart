@@ -1,20 +1,16 @@
 // lib/fastApi/agora_voice_service.dart
-import 'dart:async';
+
 import 'dart:convert';
-import 'dart:io';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
-// Use your existing video-token service
-import 'agora_service.dart'; // <- provides AgoraService.getVideoTokens(...)
-
-/// Unified model that your audio page expects.
+/// Model for unified voice token
 class AgoraVoiceAuth {
-  final String appId;        // e.g. "appID"
-  final String channelName;  // e.g. "channelName"
-  final String token;        // we will map from video tokens
-  final String account;      // string userAccount to use with joinChannelWithUserAccount
-  final int ttl;             // seconds (video API doesn't provide; we default 7200)
+  final String appId;
+  final String channelName;
+  final String token;
+  final String account;
+  final int ttl;
 
   const AgoraVoiceAuth({
     required this.appId,
@@ -25,74 +21,71 @@ class AgoraVoiceAuth {
   });
 
   Map<String, dynamic> toJson() => {
-    'appId': appId,
-    'channelName': channelName,
-    'token': token,
-    'account': account,
-    'ttl': ttl,
+    "appId": appId,
+    "channelName": channelName,
+    "token": token,
+    "account": account,
+    "ttl": ttl,
   };
 
   @override
   String toString() =>
-      'AgoraVoiceAuth(appId=$appId, channel=$channelName, tokenLen=${token.length}, account=$account, ttl=$ttl)';
+      "AgoraVoiceAuth(appId=$appId, channel=$channelName, tokenLen=${token.length}, "
+          "account=$account, ttl=$ttl)";
 }
 
-/// Who is initiating the call? We need this to choose the right token/account
-enum VoiceCallerRole { customer, astrologer }
-
 class AgoraVoiceService {
-  // If you still need the original voice endpoint elsewhere, keep a thin wrapper.
-  // But for audio calling we’ll use the video token API via the method below.
+  static const String baseUrl =
+      "https://fastapi.jyotishionline.com/agora/token/voice";
 
-  /// Build voice auth **using the video token API** response.
-  ///
-  /// - `astroId`: the astrologer’s user id (what your video API expects)
-  /// - `role`: whether the caller is the customer app or the astrologer app
-  /// - returns: AgoraVoiceAuth with the proper token/account mapped
-  static Future<AgoraVoiceAuth> getVoiceAuthViaVideo({
-    required String astroId,
-    required VoiceCallerRole role,
-    int fallbackTtlSeconds = 7200,
-  }) async {
-    // 1) Fetch the existing video tokens (single source of truth)
-    final video = await AgoraService.getVideoTokens(astroId);
+  /// 🔥 NEW METHOD — Uses the FastAPI voice token endpoint
+  static Future<AgoraVoiceAuth> getVoiceToken(String otherUserId) async {
+    print("🎧[VoiceService] Requesting voice token for other_user_id=$otherUserId");
 
-    // video fields you exposed:
-    // appId, channelName, currentUserToken, astroToken, currentUserId, astroId
+    final prefs = await SharedPreferences.getInstance();
+    final bearerToken = prefs.getString("access_token") ?? "";
 
-    // 2) Map to audio fields depending on role
-    late final String token;
-    late final String account;
+    final url = Uri.parse("$baseUrl?other_user_id=$otherUserId");
 
-    if (role == VoiceCallerRole.customer) {
-      // Customer side uses "current user" credentials
-      token = video.currentUserToken;
-      account = video.currentUserId; // string account from server
-      if (account.isEmpty) {
-        // As a safe fallback, you could also use the astrologer id or "user_<something>"
-        // but the preferred is the server-provided currentUserId.
-        throw Exception('Video API did not return currentUserId for customer.');
-      }
-    } else {
-      // Astrologer side uses "astro" credentials
-      token = video.astroToken;
-      account = video.astroId; // server provides astroId string
-      if (account.isEmpty) {
-        throw Exception('Video API did not return astroId for astrologer.');
-      }
-    }
+    print("🌐 GET → $url");
+    print("🔐 [VoiceService] Loaded token from prefs (len=${bearerToken.length}): $bearerToken");
 
-    if (video.appId.isEmpty || video.channelName.isEmpty || token.isEmpty) {
-      throw Exception('Invalid video token response (missing appId/channel/token).');
-    }
+    print("🔐 Authorization → Bearer ${bearerToken.substring(0, bearerToken.length > 10 ? 10 : bearerToken.length)}...");
 
-    // 3) Return unified voice auth (ttl unknown from video API -> fallback)
-    return AgoraVoiceAuth(
-      appId: video.appId,
-      channelName: video.channelName,
-      token: token,
-      account: account,
-      ttl: fallbackTtlSeconds,
+    final res = await http.get(
+      url,
+      headers: {
+        "accept": "application/json",
+        "Authorization": "Bearer $bearerToken",
+      },
     );
+
+    print("📥 Response status: ${res.statusCode}");
+    print("📥 Raw response: ${res.body}");
+
+    if (res.statusCode != 200) {
+      throw Exception("Voice token API failed → ${res.body}");
+    }
+
+    final data = jsonDecode(res.body);
+
+    // Validate required fields
+    if (!data.containsKey("voice_token") ||
+        !data.containsKey("channelName") ||
+        !data.containsKey("appID") ||
+        !data.containsKey("user")) {
+      throw Exception("Incomplete voice token response → $data");
+    }
+
+    final auth = AgoraVoiceAuth(
+      appId: data["appID"].toString(),
+      channelName: data["channelName"].toString(),
+      token: data["voice_token"].toString(),
+      account: data["user"].toString(),
+      ttl: int.tryParse(data["timer"].toString()) ?? 900,
+    );
+
+    print("✅ Voice token parsed → $auth");
+    return auth;
   }
 }
