@@ -528,20 +528,163 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 // }
 
 
-void _handleVideoAccept(Map<String, dynamic> data) {
-  final astroId = data["astro_id"] ?? data["astrologerUid"] ?? "";
 
-  print("📌 FINAL astrologerUid (video) → $astroId");
+
+
+
+// Handler
+Future<void> _handleVideoAccept(Map<String, dynamic> data) async {
+  final astroId = (data["astro_id"] ?? data["astrologerUid"] ?? "").toString();
+  debugPrint("📌 FINAL astrologerUid (video) → $astroId");
 
   if (astroId.isEmpty) {
-    print("❌ ERROR: astro_id missing in video_accept");
+    debugPrint("❌ ERROR: astro_id missing in video_accept");
     return;
   }
 
-  Future.delayed(const Duration(milliseconds: 300), () {
-    Get.to(() => CustomerVideoCallPage(astroId: astroId));
-  });
+  // Prefer channel/token/account/appId straight from push payload if present
+  String channelFromPush = (data['agora_channel'] ?? data['room_id'] ?? data['roomId'] ?? '').toString();
+  String tokenFromPush = (data['agora_token'] ?? data['token'] ?? '').toString();
+  String accountFromPush = (data['agora_account'] ?? data['account'] ?? data['user'] ?? '').toString();
+  String appIdFromPush = (data['appID'] ?? data['appId'] ?? data['agora_appid'] ?? '').toString();
+  final requestId = (data['request_id'] ?? data['requestId'] ?? '').toString();
+
+  // If push contains channel info, navigate immediately with overrides (best-case)
+  if (channelFromPush.isNotEmpty) {
+    debugPrint("🔔 Push contains channel -> navigating: channel=$channelFromPush tokenPresent=${tokenFromPush.isNotEmpty} account=$accountFromPush appId=$appIdFromPush");
+    Get.to(() => CustomerVideoCallPage(
+      astroId: astroId,
+      overrideRoomId: channelFromPush,
+      overrideToken: tokenFromPush.isNotEmpty ? tokenFromPush : null,
+      overrideAccount: accountFromPush.isNotEmpty ? accountFromPush : null,
+      overrideAppId: appIdFromPush.isNotEmpty ? appIdFromPush : null,
+    ));
+    return;
+  }
+
+  // If push gave a request_id, fetch that exact session object from server (preferred)
+  if (requestId.isNotEmpty) {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bearer = prefs.getString('access_token') ?? '';
+      final uri = Uri.parse("https://fastapi.jyotishionline.com/api/v1/$requestId");
+
+      debugPrint("🔎 Fetching session by request_id -> GET $uri");
+      final resp = await http.get(uri, headers: {
+        "accept": "application/json",
+        if (bearer.isNotEmpty) "Authorization": "Bearer $bearer",
+      });
+
+      if (resp.statusCode == 200) {
+        final Map<String, dynamic> session = jsonDecode(resp.body) as Map<String, dynamic>;
+        debugPrint("✅ Session fetched id=${session['id']} room_id=${session['room_id']} status=${session['status']}");
+
+        final roomId = (session['room_id'] ?? session['agora_channel'] ?? '').toString();
+        final agoraToken = (session['agora_token'] ?? session['token'] ?? session['current_user_token'] ?? '').toString();
+        final agoraAccount = (session['agora_account'] ?? session['user_account'] ?? session['current_user_id'] ?? '').toString();
+        final appId = (session['appID'] ?? session['appId'] ?? '').toString();
+
+        if (roomId.isNotEmpty) {
+          debugPrint("➡️ Navigating with room_id=$roomId tokenPresent=${agoraToken.isNotEmpty} account=$agoraAccount appId=$appId");
+          Get.to(() => CustomerVideoCallPage(
+            astroId: astroId,
+            overrideRoomId: roomId,
+            overrideToken: (agoraToken.isNotEmpty ? agoraToken : null),
+            overrideAccount: (agoraAccount.isNotEmpty ? agoraAccount : null),
+            overrideAppId: (appId.isNotEmpty ? appId : null),
+          ));
+          return;
+        } else {
+          debugPrint("⚠️ Session returned but no room_id/agora_channel present. session JSON keys: ${session.keys.toList()}");
+        }
+      } else {
+        debugPrint("⚠️ Failed to fetch session $requestId: ${resp.statusCode} ${resp.body}");
+      }
+    } catch (e, st) {
+      debugPrint("⚠️ Exception fetching session by id: $e\n$st");
+    }
+  } else {
+    debugPrint("⚠️ No request_id present in push; will try polling fallback.");
+  }
+
+  // 3) Fallback: short polling (only if you have a valid list endpoint)
+  const int maxAttempts = 5;
+  const Duration delayBetween = Duration(seconds: 1);
+  bool found = false;
+  Map<String, dynamic>? matchedSession;
+
+  for (int attempt = 1; attempt <= maxAttempts && !found; attempt++) {
+    try {
+      debugPrint("🔎 Polling for sessions for astro ($astroId) — attempt $attempt/$maxAttempts");
+      final prefs = await SharedPreferences.getInstance();
+      final bearer = prefs.getString('access_token') ?? '';
+
+      final uri = Uri.parse("https://fastapi.jyotishionline.com/api/v1/sessions")
+          .replace(queryParameters: {"astrologer_id": astroId});
+      final resp = await http.get(uri, headers: {
+        "accept": "application/json",
+        if (bearer.isNotEmpty) "Authorization": "Bearer $bearer",
+      });
+
+      if (resp.statusCode == 200) {
+        final body = jsonDecode(resp.body);
+        if (body is List) {
+          debugPrint("🔎 sessions fetched: count=${body.length}");
+          final match = body.firstWhere(
+                (s) =>
+            s is Map<String, dynamic> &&
+                (s["session_type"] == "video_call") &&
+                (s["status"] == "pending" || s["status"] == "accepted"),
+            orElse: () => null,
+          );
+          if (match != null && match is Map<String, dynamic>) {
+            matchedSession = match;
+            found = true;
+            debugPrint("✅ Found matching session (id=${matchedSession['id']}, room_id=${matchedSession['room_id']})");
+            break;
+          }
+        } else {
+          debugPrint("⚠️ Unexpected sessions payload (not a list): ${resp.body}");
+        }
+      } else {
+        debugPrint("⚠️ Failed to fetch sessions: ${resp.statusCode} ${resp.body}");
+        if (resp.statusCode == 405) {
+          debugPrint("❌ Server responded 405 for sessions list — polling aborted.");
+          break;
+        }
+      }
+    } catch (e, st) {
+      debugPrint("⚠️ Exception while polling sessions: $e\n$st");
+    }
+
+    await Future.delayed(delayBetween);
+  }
+
+  if (!found || matchedSession == null) {
+    debugPrint("❌ Could not find a matching video session for astro=$astroId after fallback. Aborting navigation.");
+    return;
+  }
+
+  final roomId = (matchedSession['room_id'] ?? matchedSession['agora_channel'] ?? '').toString();
+  final agoraToken = (matchedSession['agora_token'] ?? matchedSession['token'] ?? matchedSession['current_user_token'] ?? '').toString();
+  final agoraAccount = (matchedSession['agora_account'] ?? matchedSession['user_account'] ?? matchedSession['current_user_id'] ?? '').toString();
+  final appId = (matchedSession['appID'] ?? matchedSession['appId'] ?? '').toString();
+
+  if (roomId.isNotEmpty) {
+    debugPrint("➡️ Navigating to CustomerVideoCallPage with session room_id=$roomId tokenPresent=${agoraToken.isNotEmpty} account=$agoraAccount appId=$appId");
+    Get.to(() => CustomerVideoCallPage(
+      astroId: astroId,
+      overrideRoomId: roomId,
+      overrideToken: (agoraToken.isNotEmpty ? agoraToken : null),
+      overrideAccount: (agoraAccount.isNotEmpty ? agoraAccount : null),
+      overrideAppId: (appId.isNotEmpty ? appId : null),
+    ));
+  } else {
+    debugPrint("❌ Matching session found but no room_id present. Aborting.");
+  }
 }
+
+
 
 void _handleAudioAccept(Map<String, dynamic> data) {
   final astroId = data["astro_id"] ?? data["astrologerUid"] ?? "";
