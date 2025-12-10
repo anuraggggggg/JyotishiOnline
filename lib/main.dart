@@ -687,19 +687,39 @@ Future<void> _handleVideoAccept(Map<String, dynamic> data) async {
 
 
 void _handleAudioAccept(Map<String, dynamic> data) {
-  final astroId = data["astro_id"] ?? data["astrologerUid"] ?? "";
-
-  print("📌 FINAL astrologerUid → $astroId");
+  final astroId = (data["astro_id"] ?? data["astrologerUid"] ?? "").toString();
+  debugPrint("📌 FINAL astrologerUid → $astroId");
 
   if (astroId.isEmpty) {
-    print("❌ ERROR: astro_id missing in audio_accept");
+    debugPrint("❌ ERROR: astro_id missing in audio_accept");
     return;
   }
 
+  // Extract overrides that may be present in the push
+  final channelFromPush = (data['agora_channel'] ?? data['room_id'] ?? data['roomId'] ?? '').toString();
+  final tokenFromPush = (data['agora_token'] ?? data['token'] ?? '').toString();
+  final accountFromPush = (data['agora_account'] ?? data['agora_account'] ?? data['user'] ?? '').toString();
+  final appIdFromPush = (data['appID'] ?? data['appId'] ?? '').toString();
+  int? timerFromPush;
+  try {
+    final t = data['timer'] ?? data['duration'] ?? data['expireIn'];
+    if (t != null) timerFromPush = int.tryParse(t.toString());
+  } catch (_) {}
+
+  debugPrint("🔔 audio_accept payload overrides -> channel:$channelFromPush tokenPresent:${tokenFromPush.isNotEmpty} account:$accountFromPush appId:$appIdFromPush timer:$timerFromPush");
+
   Future.delayed(const Duration(milliseconds: 300), () {
-    Get.to(() => AudioCallPage(otherUserId: astroId));
+    Get.to(() => AudioCallPage(
+      otherUserId: astroId,
+      overrideChannel: channelFromPush.isNotEmpty ? channelFromPush : null,
+      overrideToken: tokenFromPush.isNotEmpty ? tokenFromPush : null,
+      overrideAccount: accountFromPush.isNotEmpty ? accountFromPush : null,
+      overrideAppId: appIdFromPush.isNotEmpty ? appIdFromPush : null,
+      overrideTimerSeconds: timerFromPush,
+    ));
   });
 }
+
 
 
 void _showChatAcceptPopup(Map data) {

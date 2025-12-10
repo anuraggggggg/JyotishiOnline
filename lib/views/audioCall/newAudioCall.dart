@@ -8,7 +8,22 @@ import '../../fastApi/agora_service.dart';
 class AudioCallPage extends StatefulWidget {
   final String otherUserId;  // astrologer ID
 
-  const AudioCallPage({super.key, required this.otherUserId});
+  // Optional overrides provided by push notification:
+  final String? overrideChannel;
+  final String? overrideToken;
+  final String? overrideAccount;
+  final String? overrideAppId;
+  final int? overrideTimerSeconds;
+
+  const AudioCallPage({
+    super.key,
+    required this.otherUserId,
+    this.overrideChannel,
+    this.overrideToken,
+    this.overrideAccount,
+    this.overrideAppId,
+    this.overrideTimerSeconds,
+  });
 
   @override
   State<AudioCallPage> createState() => _AudioCallPageState();
@@ -29,6 +44,8 @@ class _AudioCallPageState extends State<AudioCallPage> {
   Duration remaining = Duration(minutes: 10);
   Timer? ticker;
 
+  void _d(Object m) => debugPrint('🎧 [AudioCallPage] $m');
+
   @override
   void initState() {
     super.initState();
@@ -38,22 +55,61 @@ class _AudioCallPageState extends State<AudioCallPage> {
   @override
   void dispose() {
     ticker?.cancel();
-    _engine?.leaveChannel();
-    _engine?.release();
+    try {
+      _engine?.leaveChannel();
+    } catch (_) {}
+    try {
+      _engine?.release();
+    } catch (_) {}
     super.dispose();
   }
 
   Future<void> initCall() async {
     try {
+      _d('initCall start — prefer overrides if present');
+
       await Permission.microphone.request();
+      if (await Permission.microphone.isDenied) {
+        throw 'Microphone permission denied';
+      }
 
-      // 🔥 Fetch correct AUDIO token
-      final voice = await AgoraService.getVoiceToken(widget.otherUserId);
+      // Use overrides from notification if provided
+      final ovCh = (widget.overrideChannel ?? '').trim();
+      final ovTok = (widget.overrideToken ?? '').trim();
+      final ovAcc = (widget.overrideAccount ?? '').trim();
+      final ovApp = (widget.overrideAppId ?? '').trim();
+      final ovTimer = widget.overrideTimerSeconds;
 
-      appId = voice.appId;
-      channel = voice.channelName;
-      token = voice.token;
-      account = voice.userAccount; // MUST MATCH BACKEND
+      if (ovTimer != null && ovTimer > 0) {
+        remaining = Duration(seconds: ovTimer);
+        _d('Using override timer: ${remaining.inSeconds}s');
+      }
+
+      if (ovCh.isNotEmpty && ovAcc.isNotEmpty) {
+        // use overrides
+        _d('Overrides present — using push params channel=$ovCh account=$ovAcc tokenPresent=${ovTok.isNotEmpty} appId=${ovApp.isNotEmpty}');
+        channel = ovCh;
+        token = ovTok;
+        account = ovAcc;
+        if (ovApp.isNotEmpty) appId = ovApp;
+      } else {
+        // fallback: ask server for voice token
+        _d('Overrides missing/incomplete — fetching voice token from server for astro=${widget.otherUserId}');
+        final voice = await AgoraService.getVoiceToken(widget.otherUserId);
+        appId = voice.appId;
+        channel = voice.channelName;
+        token = voice.token;
+        account = voice.userAccount;
+        if (voice.duration != null && voice.duration! > 0) remaining = Duration(seconds: voice.duration!);
+        _d('Voice token fetched: channel=$channel user=$account timer=${remaining.inSeconds}s appId=$appId tokenPresent=${token.isNotEmpty}');
+      }
+
+      if (appId.isEmpty) {
+        _d('WARN: appId empty — trying default from AgoraService or continue if SDK allows');
+      }
+      if (channel.isEmpty || account.isEmpty) {
+        throw 'Missing required join fields (channel/account)';
+      }
 
       final engine = createAgoraRtcEngine();
       await engine.initialize(RtcEngineContext(appId: appId));
@@ -66,22 +122,25 @@ class _AudioCallPageState extends State<AudioCallPage> {
       engine.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (_, __) {
-            setState(() => joined = true);
-            startTimer();
+            _d('joined channel success');
+            if (mounted) setState(() => joined = true);
+            _startTimerIfNeeded();
           },
           onUserJoined: (_, uid, __) {
-            setState(() => remoteUid = uid);
+            _d('remote user joined uid=$uid');
+            if (mounted) setState(() => remoteUid = uid);
+            _startTimerIfNeeded();
           },
-          onUserOffline: (_, __, ___) {
-            setState(() => remoteUid = null);
+          onUserOffline: (_, uid, __) {
+            _d('remote user offline uid=$uid');
+            if (mounted) setState(() => remoteUid = null);
           },
+          onError: (err, msg) => _d('Agora error: $err $msg'),
         ),
       );
 
-      await engine.registerLocalUserAccount(
-        appId: appId,
-        userAccount: account,
-      );
+      // register local account (ensures joinChannelWithUserAccount works)
+      await engine.registerLocalUserAccount(appId: appId, userAccount: account);
 
       await engine.joinChannelWithUserAccount(
         token: token,
@@ -93,23 +152,40 @@ class _AudioCallPageState extends State<AudioCallPage> {
           autoSubscribeAudio: true,
         ),
       );
+
+      _d('joinChannelWithUserAccount called (channel=$channel account=$account)');
+
+    } catch (e, st) {
+      _d('INIT FAILED: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Audio init failed: $e')));
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
-  void startTimer() {
+  void _startTimerIfNeeded() {
+    if (ticker != null) return;
+    // Start only when somebody joined (or immediately if we already joined)
     ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
-        remaining -= const Duration(seconds: 1);
-        if (remaining <= Duration.zero) leave();
+        if (remaining > Duration.zero) {
+          remaining -= const Duration(seconds: 1);
+        } else {
+          ticker?.cancel();
+          leave();
+        }
       });
     });
   }
 
   Future<void> leave() async {
-    await _engine?.leaveChannel();
-    Navigator.pop(context);
+    _d('leave called');
+    try {
+      await _engine?.leaveChannel();
+    } catch (_) {}
+    if (mounted) Navigator.pop(context);
   }
 
   @override

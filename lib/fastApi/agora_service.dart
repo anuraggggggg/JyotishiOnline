@@ -45,8 +45,8 @@ class VoiceTokenResponse {
   final String appId;
   final String channelName;
   final String token;
-  final String userAccount;
-  final int duration;
+  final String userAccount;   // "user" field from API
+  final int? duration;        // API field: "timer"
 
   VoiceTokenResponse({
     required this.appId,
@@ -56,13 +56,13 @@ class VoiceTokenResponse {
     required this.duration,
   });
 
-  factory VoiceTokenResponse.fromJson(Map<String, dynamic> j) {
+  factory VoiceTokenResponse.fromJson(Map<String, dynamic> json) {
     return VoiceTokenResponse(
-      appId: j["appID"] ?? "",
-      channelName: j["channelName"] ?? "",
-      token: j["voice_token"] ?? "",
-      userAccount: j["user"] ?? "",
-      duration: j["timer"] ?? 900,
+      appId: (json["appID"] ?? "").toString(),
+      channelName: (json["channelName"] ?? "").toString(),
+      token: (json["voice_token"] ?? "").toString(),
+      userAccount: (json["user"] ?? "").toString(),
+      duration: json["timer"] is int ? json["timer"] : int.tryParse("${json["timer"]}"),
     );
   }
 }
@@ -92,12 +92,12 @@ class AgoraService {
     );
 
     if (res.statusCode != 200) {
-      throw Exception(
-          "Voice token API failed: ${res.statusCode} ${res.body}");
+      throw Exception("Voice token API failed: ${res.statusCode} ${res.body}");
     }
 
     return VoiceTokenResponse.fromJson(jsonDecode(res.body));
   }
+
 
   /// -----------------------------
   /// 🎥 VIDEO CALL TOKEN API
