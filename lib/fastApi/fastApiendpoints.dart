@@ -185,4 +185,7 @@ class FastApiEndpoints {
   // ---------------- ONLINE ASTROLOGERS ----------------
   static const String onlineAstrologers =
       "$fastApiBaseUrl/astro_online/astrologers/online";
+
+  // ---------------- COSMIC SERVICES ----------------
+  static const String cosmicServices = "$fastApiBaseUrl/api/v1/cosmic-services";
 }

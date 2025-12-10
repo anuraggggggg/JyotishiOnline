@@ -7,6 +7,7 @@ import 'package:AstrowayCustomer/controllers/chatController.dart';
 import 'package:AstrowayCustomer/controllers/customer_support_controller.dart';
 import 'package:AstrowayCustomer/controllers/fastApiProvider/GetAllAstrologerProvider.dart';
 import 'package:AstrowayCustomer/controllers/fastApiProvider/WalletProvider.dart';
+import 'package:AstrowayCustomer/controllers/fastApiProvider/cosmic_services_provider.dart';
 import 'package:AstrowayCustomer/controllers/liveController.dart';
 import 'package:AstrowayCustomer/controllers/splashController.dart';
 import 'package:AstrowayCustomer/controllers/themeController.dart';
@@ -332,6 +333,9 @@ void main() async {
             create: (_) => GetAllAstrologerProvider()),
         ChangeNotifierProvider(
           create: (_) => LiveAstrologerProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => CosmicServicesProvider()..loadCosmicServices(),
         ),
 
         ChangeNotifierProvider(create: (_) => GetOnlineAstrologerProvider())
@@ -686,39 +690,120 @@ Future<void> _handleVideoAccept(Map<String, dynamic> data) async {
 
 
 
-void _handleAudioAccept(Map<String, dynamic> data) {
+Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
   final astroId = (data["astro_id"] ?? data["astrologerUid"] ?? "").toString();
-  debugPrint("📌 FINAL astrologerUid → $astroId");
+  debugPrint("📌 FINAL astrologerUid (audio) → $astroId");
 
   if (astroId.isEmpty) {
     debugPrint("❌ ERROR: astro_id missing in audio_accept");
     return;
   }
 
-  // Extract overrides that may be present in the push
-  final channelFromPush = (data['agora_channel'] ?? data['room_id'] ?? data['roomId'] ?? '').toString();
-  final tokenFromPush = (data['agora_token'] ?? data['token'] ?? '').toString();
-  final accountFromPush = (data['agora_account'] ?? data['agora_account'] ?? data['user'] ?? '').toString();
-  final appIdFromPush = (data['appID'] ?? data['appId'] ?? '').toString();
+  // ---------------------------
+  // 1️⃣ Extract PUSH OVERRIDES
+  // ---------------------------
+  String channelFromPush =
+  (data['agora_channel'] ?? data['room_id'] ?? data['roomId'] ?? '').toString();
+
+  String tokenFromPush =
+  (data['agora_token'] ?? data['token'] ?? '').toString();
+
+  String accountFromPush =
+  (data['agora_account'] ?? data['account'] ?? data['user'] ?? '').toString();
+
+  String appIdFromPush =
+  (data['appID'] ?? data['appId'] ?? data['agora_appid'] ?? '').toString();
+
+  final requestId =
+  (data['request_id'] ?? data['requestId'] ?? '').toString();
+
   int? timerFromPush;
   try {
     final t = data['timer'] ?? data['duration'] ?? data['expireIn'];
     if (t != null) timerFromPush = int.tryParse(t.toString());
   } catch (_) {}
 
-  debugPrint("🔔 audio_accept payload overrides -> channel:$channelFromPush tokenPresent:${tokenFromPush.isNotEmpty} account:$accountFromPush appId:$appIdFromPush timer:$timerFromPush");
+  debugPrint(
+      "🔔 audio_accept overrides -> channel:$channelFromPush tokenPresent:${tokenFromPush.isNotEmpty} account:$accountFromPush appId:$appIdFromPush timer:$timerFromPush");
 
-  Future.delayed(const Duration(milliseconds: 300), () {
+
+  // -----------------------------------------------------
+  // 2️⃣ If push NOTIFICATION has channel → Navigate directly
+  // -----------------------------------------------------
+  if (channelFromPush.isNotEmpty) {
+    debugPrint("➡️ Using PUSH override to navigate (audio)");
     Get.to(() => AudioCallPage(
       otherUserId: astroId,
-      overrideChannel: channelFromPush.isNotEmpty ? channelFromPush : null,
-      overrideToken: tokenFromPush.isNotEmpty ? tokenFromPush : null,
-      overrideAccount: accountFromPush.isNotEmpty ? accountFromPush : null,
-      overrideAppId: appIdFromPush.isNotEmpty ? appIdFromPush : null,
+      overrideChannel: channelFromPush,
+      overrideToken: tokenFromPush,
+      overrideAccount: accountFromPush,
+      overrideAppId: appIdFromPush,
       overrideTimerSeconds: timerFromPush,
     ));
-  });
+
+    return;
+  }
+
+  // -----------------------------------------------------
+  // 3️⃣ If request_id available → Fetch the EXACT session
+  // -----------------------------------------------------
+  if (requestId.isNotEmpty) {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bearer = prefs.getString('access_token') ?? '';
+
+      final uri =
+      Uri.parse("https://fastapi.jyotishionline.com/api/v1/$requestId");
+      debugPrint("🔎 Fetching AUDIO session by id -> GET $uri");
+
+      final resp = await http.get(uri, headers: {
+        "accept": "application/json",
+        if (bearer.isNotEmpty) "Authorization": "Bearer $bearer",
+      });
+
+      if (resp.statusCode == 200) {
+        final Map<String, dynamic> session =
+        jsonDecode(resp.body) as Map<String, dynamic>;
+
+        debugPrint(
+            "✅ Session fetched audio id=${session['id']} room_id=${session['room_id']} status=${session['status']}");
+
+        final roomId =
+        (session['room_id'] ?? session['agora_channel'] ?? '').toString();
+        final token =
+        (session['agora_token'] ?? session['token'] ?? session['current_user_token'] ?? '').toString();
+        final account =
+        (session['agora_account'] ?? session['user_account'] ?? session['current_user_id'] ?? '').toString();
+        final appId =
+        (session['appID'] ?? session['appId'] ?? '').toString();
+
+        if (roomId.isNotEmpty) {
+          debugPrint("➡️ Navigating via session fetch (audio)");
+
+          Get.to(() => AudioCallPage(
+            otherUserId: astroId,
+            overrideChannel: roomId,
+            overrideToken: token.isNotEmpty ? token : null,
+            overrideAccount: account.isNotEmpty ? account : null,
+            overrideAppId: appId.isNotEmpty ? appId : null,
+            overrideTimerSeconds: timerFromPush,
+          ));
+          return;
+        }
+      } else {
+        debugPrint("⚠️ Failed to fetch audio session $requestId: ${resp.statusCode} ${resp.body}");
+      }
+    } catch (e, st) {
+      debugPrint("⚠️ Exception while fetching audio session: $e\n$st");
+    }
+  }
+
+  // -----------------------------------------------------
+  // 4️⃣ No channel + no session → Fail safely
+  // -----------------------------------------------------
+  debugPrint("❌ No agora_channel found & no session fallback. Cannot navigate.");
 }
+
 
 
 

@@ -6,9 +6,8 @@ import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import '../../fastApi/agora_service.dart';
 
 class AudioCallPage extends StatefulWidget {
-  final String otherUserId;  // astrologer ID
+  final String otherUserId;
 
-  // Optional overrides provided by push notification:
   final String? overrideChannel;
   final String? overrideToken;
   final String? overrideAccount;
@@ -30,7 +29,7 @@ class AudioCallPage extends StatefulWidget {
 }
 
 class _AudioCallPageState extends State<AudioCallPage> {
-  RtcEngine? _engine;
+  RtcEngine? engine;
 
   String appId = "";
   String channel = "";
@@ -41,10 +40,10 @@ class _AudioCallPageState extends State<AudioCallPage> {
   bool joined = false;
   int? remoteUid;
 
-  Duration remaining = Duration(minutes: 10);
-  Timer? ticker;
+  Duration remaining = const Duration(minutes: 15);
+  Timer? timer;
 
-  void _d(Object m) => debugPrint('🎧 [AudioCallPage] $m');
+  void logm(String msg) => debugPrint("🎧 [AudioCallPage] $msg");
 
   @override
   void initState() {
@@ -54,95 +53,88 @@ class _AudioCallPageState extends State<AudioCallPage> {
 
   @override
   void dispose() {
-    ticker?.cancel();
-    try {
-      _engine?.leaveChannel();
+    timer?.cancel();
+    () async {
+      try {
+        await engine?.leaveChannel();
+    await engine?.release();
     } catch (_) {}
-    try {
-      _engine?.release();
-    } catch (_) {}
+    engine = null;
+    }();
     super.dispose();
   }
 
   Future<void> initCall() async {
     try {
-      _d('initCall start — prefer overrides if present');
+      logm("initCall started…");
 
-      await Permission.microphone.request();
-      if (await Permission.microphone.isDenied) {
-        throw 'Microphone permission denied';
+      final mic = await Permission.microphone.request();
+      if (mic != PermissionStatus.granted) {
+        throw "Microphone permission denied";
       }
 
-      // Use overrides from notification if provided
-      final ovCh = (widget.overrideChannel ?? '').trim();
-      final ovTok = (widget.overrideToken ?? '').trim();
-      final ovAcc = (widget.overrideAccount ?? '').trim();
-      final ovApp = (widget.overrideAppId ?? '').trim();
-      final ovTimer = widget.overrideTimerSeconds;
+      // FIRST PRIORITY → OVERRIDE FROM PUSH
+      if (widget.overrideChannel != null &&
+          widget.overrideChannel!.trim().isNotEmpty) {
+        channel = widget.overrideChannel!.trim();
+        token = widget.overrideToken ?? "";
+        account = widget.overrideAccount ?? "";
+        appId = widget.overrideAppId ?? "";
 
-      if (ovTimer != null && ovTimer > 0) {
-        remaining = Duration(seconds: ovTimer);
-        _d('Using override timer: ${remaining.inSeconds}s');
-      }
+        if (widget.overrideTimerSeconds != null) {
+          remaining = Duration(seconds: widget.overrideTimerSeconds!);
+        }
 
-      if (ovCh.isNotEmpty && ovAcc.isNotEmpty) {
-        // use overrides
-        _d('Overrides present — using push params channel=$ovCh account=$ovAcc tokenPresent=${ovTok.isNotEmpty} appId=${ovApp.isNotEmpty}');
-        channel = ovCh;
-        token = ovTok;
-        account = ovAcc;
-        if (ovApp.isNotEmpty) appId = ovApp;
+        logm("Using PUSH override → channel=$channel account=$account");
       } else {
-        // fallback: ask server for voice token
-        _d('Overrides missing/incomplete — fetching voice token from server for astro=${widget.otherUserId}');
-        final voice = await AgoraService.getVoiceToken(widget.otherUserId);
-        appId = voice.appId;
-        channel = voice.channelName;
-        token = voice.token;
-        account = voice.userAccount;
-        if (voice.duration != null && voice.duration! > 0) remaining = Duration(seconds: voice.duration!);
-        _d('Voice token fetched: channel=$channel user=$account timer=${remaining.inSeconds}s appId=$appId tokenPresent=${token.isNotEmpty}');
+        // OTHERWISE → USE VIDEO TOKEN API (UNIVERSAL)
+        logm("Fetching universal token → astro = ${widget.otherUserId}");
+
+        final auth = await AgoraService.getTokens(widget.otherUserId);
+
+        final params =
+        AgoraService.buildJoinParams(auth: auth, isAstrologer: false);
+
+        appId = params["appId"]!;
+        channel = params["channel"]!;
+        token = params["token"]!;
+        account = params["account"]!;
+
+        remaining = Duration(seconds: auth.expireIn);
+
+        logm("Token fetched → channel=$channel user=$account");
       }
 
-      if (appId.isEmpty) {
-        _d('WARN: appId empty — trying default from AgoraService or continue if SDK allows');
-      }
-      if (channel.isEmpty || account.isEmpty) {
-        throw 'Missing required join fields (channel/account)';
-      }
+      engine = createAgoraRtcEngine();
+      await engine!.initialize(RtcEngineContext(appId: appId));
+      await engine!.enableAudio();
+      await engine!.disableVideo();
+      await engine!.setDefaultAudioRouteToSpeakerphone(true);
 
-      final engine = createAgoraRtcEngine();
-      await engine.initialize(RtcEngineContext(appId: appId));
-      await engine.enableAudio();
-      await engine.disableVideo();
-      await engine.setDefaultAudioRouteToSpeakerphone(true);
+      engine!.registerEventHandler(RtcEngineEventHandler(
+        onJoinChannelSuccess: (RtcConnection c, int elapsed) {
+          logm("onJoinChannelSuccess");
+          setState(() => joined = true);
+          startTimer();
+        },
+        onUserJoined: (RtcConnection c, int uid, int elapsed) {
+          logm("Remote user joined: $uid");
+          remoteUid = uid;
+          setState(() {});
+        },
+        onUserOffline: (RtcConnection c, int uid, UserOfflineReasonType r) {
+          logm("Remote left");
+          remoteUid = null;
+          setState(() {});
+        },
+      ));
 
-      _engine = engine;
-
-      engine.registerEventHandler(
-        RtcEngineEventHandler(
-          onJoinChannelSuccess: (_, __) {
-            _d('joined channel success');
-            if (mounted) setState(() => joined = true);
-            _startTimerIfNeeded();
-          },
-          onUserJoined: (_, uid, __) {
-            _d('remote user joined uid=$uid');
-            if (mounted) setState(() => remoteUid = uid);
-            _startTimerIfNeeded();
-          },
-          onUserOffline: (_, uid, __) {
-            _d('remote user offline uid=$uid');
-            if (mounted) setState(() => remoteUid = null);
-          },
-          onError: (err, msg) => _d('Agora error: $err $msg'),
-        ),
+      await engine!.registerLocalUserAccount(
+        appId: appId,
+        userAccount: account,
       );
 
-      // register local account (ensures joinChannelWithUserAccount works)
-      await engine.registerLocalUserAccount(appId: appId, userAccount: account);
-
-      await engine.joinChannelWithUserAccount(
+      await engine!.joinChannelWithUserAccount(
         token: token,
         channelId: channel,
         userAccount: account,
@@ -153,45 +145,41 @@ class _AudioCallPageState extends State<AudioCallPage> {
         ),
       );
 
-      _d('joinChannelWithUserAccount called (channel=$channel account=$account)');
-
+      logm("joinChannelWithUserAccount complete");
     } catch (e, st) {
-      _d('INIT FAILED: $e\n$st');
+      logm("ERROR: $e\n$st");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Audio init failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Call failed: $e")),
+        );
       }
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
-  void _startTimerIfNeeded() {
-    if (ticker != null) return;
-    // Start only when somebody joined (or immediately if we already joined)
-    ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() {
-        if (remaining > Duration.zero) {
-          remaining -= const Duration(seconds: 1);
-        } else {
-          ticker?.cancel();
-          leave();
-        }
-      });
+  void startTimer() {
+    timer ??= Timer.periodic(const Duration(seconds: 1), (_) {
+      if (remaining > Duration.zero) {
+        setState(() => remaining -= const Duration(seconds: 1));
+      } else {
+        timer?.cancel();
+        leave();
+      }
     });
   }
 
   Future<void> leave() async {
-    _d('leave called');
     try {
-      await _engine?.leaveChannel();
+      await engine?.leaveChannel();
     } catch (_) {}
     if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final mm = remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final ss = remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final mm = remaining.inMinutes.remainder(60).toString().padLeft(2, "0");
+    final ss = remaining.inSeconds.remainder(60).toString().padLeft(2, "0");
 
     return Scaffold(
       appBar: AppBar(title: const Text("Audio Call")),
@@ -201,32 +189,15 @@ class _AudioCallPageState extends State<AudioCallPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.phone_in_talk, size: 90),
-          const SizedBox(height: 10),
-          Text(remoteUid == null ? "Waiting..." : "Connected"),
-          const SizedBox(height: 20),
+          Text(remoteUid == null ? "Connecting…" : "Connected"),
+          const SizedBox(height: 12),
           Text("$mm:$ss", style: const TextStyle(fontSize: 32)),
           const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.mic),
-                onPressed: () {
-                  _engine?.muteLocalAudioStream(true);
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.volume_up),
-                onPressed: () {
-                  _engine?.setEnableSpeakerphone(true);
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.call_end, color: Colors.red),
-                onPressed: leave,
-              ),
-            ],
-          )
+          IconButton(
+            icon: const Icon(Icons.call_end, color: Colors.red),
+            iconSize: 48,
+            onPressed: leave,
+          ),
         ],
       ),
     );

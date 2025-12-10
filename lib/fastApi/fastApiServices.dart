@@ -39,6 +39,28 @@ class FastAPIServices {
   String? get userId => _userId;
   String? get accessToken => _accessToken;
 
+
+  Future<List<dynamic>> getCosmicServices() async {
+    try {
+      final response = await http.get(
+        Uri.parse(FastApiEndpoints.cosmicServices),
+        headers: {"Accept": "application/json"},
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        return body["services"] ?? [];
+      } else {
+        print("❌ API Error: ${response.statusCode}");
+        return [];
+      }
+    } catch (e) {
+      print("❌ getCosmicServices Error: $e");
+      return [];
+    }
+  }
+
+
   /// 🗂️ Get Chat History (Refactored to use internal credentials)
   Future<List<ChatMessage>> getChatHistory(String otherUserId) async {
     await _loadCredentials();
@@ -1646,6 +1668,9 @@ class FastAPIServices {
       return [];
     }
   }
+
+
+
   Future<SendMoneyResponse> sendMoney({
     required String astrologerId,
     required num amount,

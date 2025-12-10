@@ -4,18 +4,22 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// --------------------------------------
-/// MODEL FOR VIDEO API
+/// UNIVERSAL AGORA TOKEN MODEL
+/// For BOTH Audio + Video calls.
 /// --------------------------------------
-class AgoraVideoAuth {
+class AgoraAuth {
   final String appId;
   final String channelName;
+
   final String astroId;
   final String astroToken;
+
   final String currentUserId;
   final String currentUserToken;
+
   final int expireIn;
 
-  AgoraVideoAuth({
+  AgoraAuth({
     required this.appId,
     required this.channelName,
     required this.astroId,
@@ -25,63 +29,32 @@ class AgoraVideoAuth {
     required this.expireIn,
   });
 
-  factory AgoraVideoAuth.fromJson(Map<String, dynamic> j) {
-    return AgoraVideoAuth(
-      appId: j['appID'] ?? "",
-      channelName: j['channelName'] ?? "",
-      astroId: j['astro_id'] ?? "",
-      astroToken: j['astro_token'] ?? "",
-      currentUserId: j['current_user_id'] ?? "",
-      currentUserToken: j['current_user_token'] ?? "",
+  factory AgoraAuth.fromJson(Map<String, dynamic> j) {
+    return AgoraAuth(
+      appId: (j['appID'] ?? j['appId'] ?? "").toString(),
+      channelName: (j['channelName'] ?? "").toString(),
+      astroId: (j['astro_id'] ?? "").toString(),
+      astroToken: (j['astro_token'] ?? "").toString(),
+      currentUserId: (j['current_user_id'] ?? "").toString(),
+      currentUserToken: (j['current_user_token'] ?? "").toString(),
       expireIn: j['expireIn'] ?? 900,
     );
   }
 }
 
 /// --------------------------------------
-/// MODEL FOR VOICE API
-/// --------------------------------------
-class VoiceTokenResponse {
-  final String appId;
-  final String channelName;
-  final String token;
-  final String userAccount;   // "user" field from API
-  final int? duration;        // API field: "timer"
-
-  VoiceTokenResponse({
-    required this.appId,
-    required this.channelName,
-    required this.token,
-    required this.userAccount,
-    required this.duration,
-  });
-
-  factory VoiceTokenResponse.fromJson(Map<String, dynamic> json) {
-    return VoiceTokenResponse(
-      appId: (json["appID"] ?? "").toString(),
-      channelName: (json["channelName"] ?? "").toString(),
-      token: (json["voice_token"] ?? "").toString(),
-      userAccount: (json["user"] ?? "").toString(),
-      duration: json["timer"] is int ? json["timer"] : int.tryParse("${json["timer"]}"),
-    );
-  }
-}
-
-/// --------------------------------------
-/// AGORA SERVICE
+/// AGORA SERVICE (Unified)
 /// --------------------------------------
 class AgoraService {
   static const String _base = 'https://fastapi.jyotishionline.com';
 
-  /// -----------------------------
-  /// 🔥 AUDIO CALL TOKEN API
-  /// -----------------------------
-  static Future<VoiceTokenResponse> getVoiceToken(String otherUserId) async {
+  /// GET /agora/token/video → UNIVERSAL TOKEN FOR AUDIO + VIDEO
+  static Future<AgoraAuth> getTokens(String astroId) async {
     final prefs = await SharedPreferences.getInstance();
     final bearer = prefs.getString("access_token") ?? "";
 
-    final uri = Uri.parse("$_base/agora/token/voice")
-        .replace(queryParameters: {"other_user_id": otherUserId});
+    final uri = Uri.parse("$_base/agora/token/video")
+        .replace(queryParameters: {"astro_id": astroId});
 
     final res = await http.get(
       uri,
@@ -92,43 +65,16 @@ class AgoraService {
     );
 
     if (res.statusCode != 200) {
-      throw Exception("Voice token API failed: ${res.statusCode} ${res.body}");
+      throw Exception(
+          "Failed to fetch universal Agora token: ${res.statusCode} ${res.body}");
     }
 
-    return VoiceTokenResponse.fromJson(jsonDecode(res.body));
+    return AgoraAuth.fromJson(jsonDecode(res.body));
   }
 
-
-  /// -----------------------------
-  /// 🎥 VIDEO CALL TOKEN API
-  /// -----------------------------
-  static Future<AgoraVideoAuth> getVideoTokens(String astroId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final bearer = prefs.getString('access_token') ?? '';
-
-    final uri = Uri.parse('$_base/agora/token/video')
-        .replace(queryParameters: {'astro_id': astroId});
-
-    final res = await http.get(
-      uri,
-      headers: {
-        'accept': 'application/json',
-        if (bearer.isNotEmpty) 'Authorization': 'Bearer $bearer',
-      },
-    );
-
-    if (res.statusCode != 200) {
-      throw Exception('Video token fetch failed: ${res.statusCode} ${res.body}');
-    }
-
-    return AgoraVideoAuth.fromJson(jsonDecode(res.body));
-  }
-
-  /// -----------------------------
-  /// 🎯 BUILDER FOR VIDEO CALL
-  /// -----------------------------
-  static Map<String, String> buildVideoJoin({
-    required AgoraVideoAuth auth,
+  /// Convert model to actual Agora join params
+  static Map<String, String> buildJoinParams({
+    required AgoraAuth auth,
     required bool isAstrologer,
   }) {
     return {

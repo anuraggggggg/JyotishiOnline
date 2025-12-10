@@ -114,7 +114,7 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> {
       // If any critical field missing, fetch from server
       if (_channel.isEmpty || _token.isEmpty || _account.isEmpty) {
         debugPrint('🔎 [CustomerVC] Overrides incomplete or missing fields — fetching auth from server');
-        final auth = await AgoraService.getVideoTokens(widget.astroId);
+        final auth = await AgoraService.getTokens(widget.astroId);
         _channel = _channel.isNotEmpty ? _channel : auth.channelName;
         _token = _token.isNotEmpty ? _token : auth.currentUserToken;
         _account = _account.isNotEmpty ? _account : (auth.currentUserId.isNotEmpty ? auth.currentUserId : 'viewer_${DateTime.now().millisecondsSinceEpoch}');
