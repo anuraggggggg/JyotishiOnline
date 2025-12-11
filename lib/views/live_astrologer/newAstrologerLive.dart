@@ -856,7 +856,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
                                 ).push(
                                   MaterialPageRoute(
                                     builder: (_) => AudioCallPage(
-                                      otherUserId: astrologerUid,
+                                      astroId: astrologerUid,
                                     ),
                                   ),
                                 );

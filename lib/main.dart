@@ -412,7 +412,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
       // ------------------ CHAT ACCEPT -------------------
       if (data["type"] == "chat_accept") {
-        // _handleChatAccept(data);
+        _handleChatAccept(data);
         return;
       }
 
@@ -515,21 +515,37 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     });
   }
 }
+void _handleChatAccept(Map<String, dynamic> data) {
+  print("🔥 CHAT_ACCEPT handler triggered");
+  print("📦 DATA: $data");
 
-// void _handleChatAccept(Map<String, dynamic> data) {
-//   final requestId = data["request_id"]?.toString() ?? "";
-//
-//   print("📌 Chat request_id → $requestId");
-//
-//   if (requestId.isEmpty) {
-//     print("❌ ERROR: request_id missing in chat_accept");
-//     return;
-//   }
-//
-//   Future.delayed(const Duration(milliseconds: 300), () {
-//     Get.to(() => CustomerChatPage(requestId: requestId));
-//   });
-// }
+  final roomId = data["roomId"]?.toString() ?? "";
+  final astrologerUid = data["astrologerUid"]?.toString() ?? "";
+  final astrologerName = data["astrologerName"]?.toString() ?? "Astrologer";
+  final myUserId = data["myUserId"]?.toString() ?? "";
+  final chatRate =
+      double.tryParse(data["chatRate"]?.toString() ?? "0") ?? 0;
+  final token = data["token"]?.toString();
+
+  if (roomId.isEmpty || astrologerUid.isEmpty || myUserId.isEmpty) {
+    print("❌ Missing navigation fields → Cannot open chat");
+    return;
+  }
+
+  Future.delayed(const Duration(milliseconds: 300), () {
+    Get.to(() => CustomerChatPage(
+      roomId: roomId,
+      astrologerUid: astrologerUid,
+      myUserId: myUserId,
+      astrologerName: astrologerName,
+      chatRate: chatRate,
+      token: token,
+    ));
+  });
+}
+
+
+
 
 
 
@@ -692,69 +708,106 @@ Future<void> _handleVideoAccept(Map<String, dynamic> data) async {
 
 Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
   final astroId = (data["astro_id"] ?? data["astrologerUid"] ?? "").toString();
-  debugPrint("📌 FINAL astrologerUid (audio) → $astroId");
 
   if (astroId.isEmpty) {
     debugPrint("❌ ERROR: astro_id missing in audio_accept");
     return;
   }
 
-  // ---------------------------
-  // 1️⃣ Extract PUSH OVERRIDES
-  // ---------------------------
+  // Extract from push (BEST CASE)
   String channelFromPush =
   (data['agora_channel'] ?? data['room_id'] ?? data['roomId'] ?? '').toString();
-
   String tokenFromPush =
   (data['agora_token'] ?? data['token'] ?? '').toString();
-
   String accountFromPush =
   (data['agora_account'] ?? data['account'] ?? data['user'] ?? '').toString();
-
   String appIdFromPush =
   (data['appID'] ?? data['appId'] ?? data['agora_appid'] ?? '').toString();
 
-  final requestId =
-  (data['request_id'] ?? data['requestId'] ?? '').toString();
+  final requestId = (data['request_id'] ?? data['requestId'] ?? '').toString();
 
-  int? timerFromPush;
-  try {
-    final t = data['timer'] ?? data['duration'] ?? data['expireIn'];
-    if (t != null) timerFromPush = int.tryParse(t.toString());
-  } catch (_) {}
+  int? timerSeconds = int.tryParse("${data['timer'] ?? ''}");
 
   debugPrint(
-      "🔔 audio_accept overrides -> channel:$channelFromPush tokenPresent:${tokenFromPush.isNotEmpty} account:$accountFromPush appId:$appIdFromPush timer:$timerFromPush");
-
+      "🔔 audio_accept PUSH → channel=$channelFromPush tokenPresent=${tokenFromPush.isNotEmpty} account=$accountFromPush appId=$appIdFromPush timer=$timerSeconds");
 
   // -----------------------------------------------------
-  // 2️⃣ If push NOTIFICATION has channel → Navigate directly
+  // 1️⃣ BEST CASE — PUSH ALREADY HAS channel
   // -----------------------------------------------------
   if (channelFromPush.isNotEmpty) {
-    debugPrint("➡️ Using PUSH override to navigate (audio)");
-    Get.to(() => AudioCallPage(
-      otherUserId: astroId,
-      overrideChannel: channelFromPush,
-      overrideToken: tokenFromPush,
-      overrideAccount: accountFromPush,
-      overrideAppId: appIdFromPush,
-      overrideTimerSeconds: timerFromPush,
-    ));
+    debugPrint("➡️ Using PUSH override for AUDIO call");
 
+    Get.to(() => AudioCallPage(
+      astroId: astroId,
+      overrideChannel: channelFromPush,
+      overrideToken: tokenFromPush.isNotEmpty ? tokenFromPush : null,
+      overrideAccount: accountFromPush.isNotEmpty ? accountFromPush : null,
+      overrideAppId: appIdFromPush.isNotEmpty ? appIdFromPush : null,
+      overrideTimerSeconds: timerSeconds,
+    ));
     return;
   }
 
   // -----------------------------------------------------
-  // 3️⃣ If request_id available → Fetch the EXACT session
+  // 2️⃣ If push provided request_id → fetch exact session
   // -----------------------------------------------------
   if (requestId.isNotEmpty) {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final bearer = prefs.getString('access_token') ?? '';
+      final bearer = prefs.getString("access_token") ?? '';
 
-      final uri =
-      Uri.parse("https://fastapi.jyotishionline.com/api/v1/$requestId");
-      debugPrint("🔎 Fetching AUDIO session by id -> GET $uri");
+      final uri = Uri.parse("https://fastapi.jyotishionline.com/api/v1/$requestId");
+      final resp = await http.get(uri, headers: {
+        "accept": "application/json",
+        if (bearer.isNotEmpty) "Authorization": "Bearer $bearer",
+      });
+
+      if (resp.statusCode == 200) {
+        final session = jsonDecode(resp.body);
+
+        final roomId =
+        (session["room_id"] ?? session["agora_channel"] ?? "").toString();
+        final token =
+        (session["agora_token"] ?? session["current_user_token"] ?? "").toString();
+        final acc =
+        (session["agora_account"] ?? session["current_user_id"] ?? "").toString();
+        final app =
+        (session["appID"] ?? session["appId"] ?? "").toString();
+
+        if (roomId.isNotEmpty) {
+          debugPrint("➡️ Navigating via session fetch (audio)");
+
+          Get.to(() => AudioCallPage(
+            astroId: astroId,
+            overrideChannel: roomId,
+            overrideToken: token.isNotEmpty ? token : null,
+            overrideAccount: acc.isNotEmpty ? acc : null,
+            overrideAppId: app.isNotEmpty ? app : null,
+            overrideTimerSeconds: timerSeconds,
+          ));
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint("❌ Session fetch failed: $e");
+    }
+  }
+
+  // -----------------------------------------------------
+  // 3️⃣ Fallback → Polling (same logic as video)
+  // -----------------------------------------------------
+  const maxAttempts = 5;
+  const delayBetween = Duration(seconds: 1);
+
+  Map<String, dynamic>? found;
+
+  for (int i = 1; i <= maxAttempts; i++) {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bearer = prefs.getString("access_token") ?? '';
+
+      final uri = Uri.parse("https://fastapi.jyotishionline.com/api/v1/sessions")
+          .replace(queryParameters: {"astrologer_id": astroId});
 
       final resp = await http.get(uri, headers: {
         "accept": "application/json",
@@ -762,47 +815,59 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
       });
 
       if (resp.statusCode == 200) {
-        final Map<String, dynamic> session =
-        jsonDecode(resp.body) as Map<String, dynamic>;
+        final list = jsonDecode(resp.body);
 
-        debugPrint(
-            "✅ Session fetched audio id=${session['id']} room_id=${session['room_id']} status=${session['status']}");
+        if (list is List) {
+          final match = list.firstWhere(
+                (s) =>
+            s is Map &&
+                s["session_type"] == "audio_call" &&
+                (s["status"] == "pending" || s["status"] == "accepted"),
+            orElse: () => null,
+          );
 
-        final roomId =
-        (session['room_id'] ?? session['agora_channel'] ?? '').toString();
-        final token =
-        (session['agora_token'] ?? session['token'] ?? session['current_user_token'] ?? '').toString();
-        final account =
-        (session['agora_account'] ?? session['user_account'] ?? session['current_user_id'] ?? '').toString();
-        final appId =
-        (session['appID'] ?? session['appId'] ?? '').toString();
-
-        if (roomId.isNotEmpty) {
-          debugPrint("➡️ Navigating via session fetch (audio)");
-
-          Get.to(() => AudioCallPage(
-            otherUserId: astroId,
-            overrideChannel: roomId,
-            overrideToken: token.isNotEmpty ? token : null,
-            overrideAccount: account.isNotEmpty ? account : null,
-            overrideAppId: appId.isNotEmpty ? appId : null,
-            overrideTimerSeconds: timerFromPush,
-          ));
-          return;
+          if (match != null) {
+            found = Map<String, dynamic>.from(match);
+            break;
+          }
         }
-      } else {
-        debugPrint("⚠️ Failed to fetch audio session $requestId: ${resp.statusCode} ${resp.body}");
       }
-    } catch (e, st) {
-      debugPrint("⚠️ Exception while fetching audio session: $e\n$st");
-    }
+    } catch (_) {}
+
+    await Future.delayed(delayBetween);
   }
 
-  // -----------------------------------------------------
-  // 4️⃣ No channel + no session → Fail safely
-  // -----------------------------------------------------
-  debugPrint("❌ No agora_channel found & no session fallback. Cannot navigate.");
+  if (found == null) {
+    debugPrint("❌ No matching audio session found.");
+    return;
+  }
+
+  final roomId = (found["room_id"] ?? "").toString();
+  final token =
+  (found["agora_token"] ?? found["current_user_token"] ?? "").toString();
+  final acc =
+  (found["agora_account"] ?? found["current_user_id"] ?? "").toString();
+  final app =
+  (found["appID"] ?? found["appId"] ?? "").toString();
+
+  if (roomId.isEmpty) {
+    debugPrint("❌ Audio session found but room_id missing.");
+    return;
+  }
+
+  debugPrint("➡️ Navigating with POLLED audio session");
+
+  Get.to(() => AudioCallPage(
+    astroId: astroId,
+    overrideChannel: roomId,
+    overrideToken: token.isNotEmpty ? token : null,
+    overrideAccount: acc.isNotEmpty ? acc : null,
+    overrideAppId: app.isNotEmpty ? app : null,
+    overrideTimerSeconds: timerSeconds,
+  ));
 }
+
+
 
 
 
@@ -895,7 +960,7 @@ void _showVideoAcceptPopup(Map data) {
                 print("📌 FINAL astrologerUid → $astroId");
 
                 Get.to(() => AudioCallPage(
-                  otherUserId: data["astrologerUid"].toString(),
+                  astroId: astroId,
                 ));
               },
             ),
