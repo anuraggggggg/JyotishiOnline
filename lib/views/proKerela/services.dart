@@ -3,16 +3,18 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
 
+// Models & Provider
+import '../../controllers/fastApiProvider/cosmic_services_provider.dart';
+
+
 // Screens
-import 'package:AstrowayCustomer/views/proKerela/birthdayNumberInputScreen.dart';
 import 'package:AstrowayCustomer/views/proKerela/dailyPredictionInputScreen.dart';
+import 'package:AstrowayCustomer/views/proKerela/birthdayNumberInputScreen.dart';
 import 'package:AstrowayCustomer/views/proKerela/kundli_input_screen.dart';
 import 'package:AstrowayCustomer/views/proKerela/planetInputScreen.dart';
-import '../../controllers/fastApiProvider/cosmic_services_provider.dart';
+import '../../model/fastApiModel/cosmic_service_model.dart';
 import 'LoveCompatibilityInputScreen.dart';
 import 'daily_panchang_screen.dart';
-
-
 
 class AstrologyServicesPage extends StatelessWidget {
   const AstrologyServicesPage({super.key});
@@ -37,16 +39,44 @@ class AstrologyServicesPage extends StatelessWidget {
     }
   }
 
-  // NAVIGATION MAPPER
-  Widget navigateTo(String name) {
-    if (name == "Daily Horoscope") return DailyPredictionInputScreen();
-    if (name == "Detailed Kundli") return KundliInputScreen();
-    if (name == "Daily Prediction") return DailyPanchangScreen();
-    if (name == "Planet Position") return PlanetInputScreen();
-    if (name == "Love Compatibility") return LoveCompatibilityInputScreen();
-    if (name == "Birthday Number") return BirthdayNumberInputScreen();
+  // ✅ NAVIGATION USING MODEL (CORRECT)
+  Widget navigateTo(CosmicService service) {
+    if (service.name == "Daily Horoscope") {
+      return DailyPredictionInputScreen(
+        serviceName: service.name,
+        servicePrice: service.finalPrice.toDouble(),
 
-    return DailyPredictionInputScreen(); // fallback
+      );
+    }
+
+    if (service.name == "Detailed Kundli") {
+      return KundliInputScreen(
+        // serviceName : service.name,
+        // servicePrice : service.finalPrice.toDouble(),
+      );
+    }
+
+    if (service.name == "Daily Prediction") {
+      return DailyPanchangScreen();
+    }
+
+    if (service.name == "Planet Position") {
+      return PlanetInputScreen();
+    }
+
+    if (service.name == "Love Compatibility") {
+      return LoveCompatibilityInputScreen();
+    }
+
+    if (service.name == "Birthday Number") {
+      return BirthdayNumberInputScreen();
+    }
+
+    // fallback (safe)
+    return DailyPredictionInputScreen(
+      serviceName: service.name,
+      servicePrice: service.finalPrice.toDouble(),
+    );
   }
 
   @override
@@ -71,7 +101,6 @@ class AstrologyServicesPage extends StatelessWidget {
         ).tr(),
         backgroundColor: cosmicBlue,
       ),
-
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -80,7 +109,6 @@ class AstrologyServicesPage extends StatelessWidget {
             colors: [cosmicBlue, darkAccent, mediumAccent],
           ),
         ),
-
         child: Consumer<CosmicServicesProvider>(
           builder: (context, provider, _) {
             if (provider.isLoading) {
@@ -89,7 +117,7 @@ class AstrologyServicesPage extends StatelessWidget {
               );
             }
 
-            final services = provider.services;
+            final List<CosmicService> services = provider.services;
 
             return Padding(
               padding: const EdgeInsets.all(20.0),
@@ -102,25 +130,23 @@ class AstrologyServicesPage extends StatelessWidget {
                   childAspectRatio: 0.75,
                 ),
                 itemBuilder: (context, index) {
-                  final service = services[index];
+                  final CosmicService service = services[index];
 
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => navigateTo(service.name),
+                          builder: (_) => navigateTo(service),
                         ),
                       );
                     },
-
                     child: Card(
                       elevation: 10,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
                       color: cosmicBlue.withOpacity(0.7),
-
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(30),
@@ -129,7 +155,6 @@ class AstrologyServicesPage extends StatelessWidget {
                             width: 1.5,
                           ),
                         ),
-
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -138,12 +163,12 @@ class AstrologyServicesPage extends StatelessWidget {
                               size: 50,
                               color: celestialGold,
                             ),
-
                             const SizedBox(height: 12),
 
-                            // TITLE
+                            // SERVICE NAME
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              padding:
+                              const EdgeInsets.symmetric(horizontal: 8.0),
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
@@ -160,7 +185,7 @@ class AstrologyServicesPage extends StatelessWidget {
 
                             const SizedBox(height: 12),
 
-                            // PRICE
+                            // PRICE (FINAL PRICE)
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 6),
@@ -183,7 +208,7 @@ class AstrologyServicesPage extends StatelessWidget {
                                     ),
                                   ),
                                   Text(
-                                    "+ GST",
+                                    "GST ${service.gst}" ,
                                     style: GoogleFonts.poppins(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,

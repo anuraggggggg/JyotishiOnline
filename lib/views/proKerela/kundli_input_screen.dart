@@ -16,7 +16,10 @@ import 'package:AstrowayCustomer/utils/global.dart' as global;
 // import '../../utils/services/payment_service.dart'; // Removed: Not needed if no payment
 
 class KundliInputScreen extends StatefulWidget {
-  const KundliInputScreen({super.key});
+
+
+
+  const KundliInputScreen({super.key, });
 
   @override
   State<KundliInputScreen> createState() => _KundliInputScreenState();
@@ -714,7 +717,7 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
                                 ],
                               )
                                   : Text(
-                                "Get Kundli – ₹599 + GST",
+                                "Get Kundli –  }",
                                 style: GoogleFonts.poppins(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

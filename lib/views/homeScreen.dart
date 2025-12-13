@@ -51,6 +51,7 @@ import '../controllers/IntakeController.dart';
 import '../controllers/chatController.dart';
 import '../controllers/fastApiProvider/GetOnlineAstrologerProvider.dart';
 import '../controllers/fastApiProvider/LiveAstrologerProvider.dart';
+import '../controllers/fastApiProvider/cosmic_services_provider.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/splashController.dart';
 import '../controllers/walletController.dart';
@@ -1222,55 +1223,62 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 Column(
                                   children: [
-                                    GestureDetector(
-                                      onTap: () async {
-                                        Get.to(DailyPredictionInputScreen());
-                                      },
-                                      child: Column(
-                                        children: [
-                                          Container(
-                                              height: 8.h,
-                                              width: 8.h,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: appYellow,
+
+                                    Consumer<CosmicServicesProvider>(
+                                      builder: (context, provider, _) {
+                                        if (provider.isLoading) {
+                                          return const SizedBox(); // or loader
+                                        }
+
+                                        // 🔍 Find Daily Horoscope service from API
+                                        final dailyService = provider.services.firstWhere(
+                                              (e) => e.name == 'Daily Horoscope',
+                                          orElse: () => throw Exception('Daily Horoscope service not found'),
+                                        );
+
+                                        return GestureDetector(
+                                          onTap: () {
+                                            Get.to(
+                                                  () => DailyPredictionInputScreen(
+                                                serviceName: dailyService.name,
+                                                servicePrice: dailyService.finalPrice.toDouble(), // ✅ INT
                                               ),
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Center(
-                                                    child: SizedBox(
-                                                      height: 5.h,
-                                                      width: 5.h,
-                                                      child: ClipRRect(
-                                                        clipBehavior: Clip.none,
-                                                        child: Image.asset(
-                                                            "assets/images/star.png"),
-                                                      ),
-                                                    ),
+                                            );
+                                          },
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                height: 8.h,
+                                                width: 8.h,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: appYellow,
+                                                ),
+                                                child: Center(
+                                                  child: SizedBox(
+                                                    height: 5.h,
+                                                    width: 5.h,
+                                                    child: Image.asset("assets/images/star.png"),
                                                   ),
-                                                  // SizedBox(height: 2.w),
-                                                ],
-                                              )),
-                                          SizedBox(
-                                            height: 5,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 5),
+                                              Text(
+                                                'Daily\nHoroscope',
+                                                textAlign: TextAlign.center,
+                                                style: Get.theme.textTheme.titleSmall!.copyWith(
+                                                  height: 1,
+                                                  fontSize: 15.sp,
+                                                  fontWeight: FontWeight.w400,
+                                                  letterSpacing: 0,
+                                                ),
+                                              ).tr(),
+                                            ],
                                           ),
-                                          Text(
-                                            'Daily\nHoroscope',
-                                            textAlign: TextAlign.center,
-                                            style: Get
-                                                .theme.textTheme.titleSmall!
-                                                .copyWith(
-                                              height: 1,
-                                              fontSize: 15.sp,
-                                              fontWeight: FontWeight.w400,
-                                              letterSpacing: 0,
-                                            ),
-                                          ).tr(),
-                                        ],
-                                      ),
+                                        );
+                                      },
                                     ),
+
                                   ],
                                 ),
                                 SizedBox(
