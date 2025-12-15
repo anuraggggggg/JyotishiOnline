@@ -12,7 +12,10 @@ import '../../model/fastApiModel/currentUserWalletModel.dart';
 import '../../utils/services/location_service.dart';
 
 class PlanetInputScreen extends StatefulWidget {
-  const PlanetInputScreen({Key? key}) : super(key: key);
+  final serviceName ;
+  final servicePrice;
+
+  const PlanetInputScreen({super.key ,  required this.servicePrice ,  required this.serviceName});
 
   @override
   State<PlanetInputScreen> createState() => _PlanetInputScreenState();
@@ -615,7 +618,7 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
                                         fontWeight: FontWeight.bold,
                                         color: cosmicBlue)),
                                 const SizedBox(height: 4),
-                                Text('₹599 + GST',
+                                Text("₹ ${widget.servicePrice}",
                                     style: GoogleFonts.poppins(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,

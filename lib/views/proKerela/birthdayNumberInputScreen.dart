@@ -11,7 +11,10 @@ import '../../model/fastApiModel/currentUserWalletModel.dart';
 import '../../utils/global.dart' as global;
 
 class BirthdayNumberInputScreen extends StatefulWidget {
-  BirthdayNumberInputScreen({Key? key}) : super(key: key);
+
+  final serviceName;
+  final servicePrice;
+  BirthdayNumberInputScreen({super.key ,  required this.servicePrice ,  required this.serviceName});
 
   static const Color cosmicBlue = Color(0xFF1A2B42);
   static const Color celestialGold = Color(0xFFD4AF37);
@@ -308,7 +311,7 @@ class _BirthdayNumberInputScreenState extends State<BirthdayNumberInputScreen> {
                                               color: BirthdayNumberInputScreen.cosmicBlue),
                                         ),
                                       Text(
-                                        "₹100 + GST",
+                                        widget.servicePrice.toString(),
                                         style: GoogleFonts.poppins(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,

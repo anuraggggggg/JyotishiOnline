@@ -7,7 +7,10 @@ import '../../theme/appTheme.dart'; // Assuming appTheme.dart provides appYellow
 import 'inauspiciousInputPeriod.dart';
 
 class DailyPanchangScreen extends StatelessWidget {
-  DailyPanchangScreen({super.key});
+  final serviceName ;
+  final servicePrice;
+
+  DailyPanchangScreen({super.key ,  required this.servicePrice ,  required this.serviceName});
 
   final List<Map<String, dynamic>> panchangServices = [
     {'title': 'Detailed Panchang', 'icon': Icons.event_note},

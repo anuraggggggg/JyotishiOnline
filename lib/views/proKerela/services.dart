@@ -41,6 +41,8 @@ class AstrologyServicesPage extends StatelessWidget {
 
   // ✅ NAVIGATION USING MODEL (CORRECT)
   Widget navigateTo(CosmicService service) {
+
+
     if (service.name == "Daily Horoscope") {
       return DailyPredictionInputScreen(
         serviceName: service.name,
@@ -49,27 +51,40 @@ class AstrologyServicesPage extends StatelessWidget {
       );
     }
 
+
     if (service.name == "Detailed Kundli") {
       return KundliInputScreen(
-        // serviceName : service.name,
-        // servicePrice : service.finalPrice.toDouble(),
+        serviceName : service.name,
+        servicePrice : service.finalPrice.toDouble(),
       );
     }
 
     if (service.name == "Daily Prediction") {
-      return DailyPanchangScreen();
+      return DailyPanchangScreen(
+        serviceName : service.name,
+        servicePrice : service.finalPrice.toDouble(),
+      );
     }
 
     if (service.name == "Planet Position") {
-      return PlanetInputScreen();
+      return PlanetInputScreen(
+        serviceName : service.name,
+        servicePrice : service.finalPrice.toDouble(),
+      );
     }
 
     if (service.name == "Love Compatibility") {
-      return LoveCompatibilityInputScreen();
+      return LoveCompatibilityInputScreen(
+        serviceName : service.name,
+        servicePrice : service.finalPrice.toDouble(),
+      );
     }
 
     if (service.name == "Birthday Number") {
-      return BirthdayNumberInputScreen();
+      return BirthdayNumberInputScreen(
+        serviceName : service.name,
+        servicePrice : service.finalPrice.toDouble(),
+      );
     }
 
     // fallback (safe)

@@ -17,9 +17,13 @@ import 'package:AstrowayCustomer/utils/global.dart' as global;
 
 class KundliInputScreen extends StatefulWidget {
 
+  final serviceName;
+  final servicePrice;
 
 
-  const KundliInputScreen({super.key, });
+
+
+  const KundliInputScreen({super.key, required this.servicePrice , required this.serviceName });
 
   @override
   State<KundliInputScreen> createState() => _KundliInputScreenState();
@@ -717,7 +721,7 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
                                 ],
                               )
                                   : Text(
-                                "Get Kundli –  }",
+                                "Get Kundli –  ₹${widget.servicePrice}",
                                 style: GoogleFonts.poppins(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

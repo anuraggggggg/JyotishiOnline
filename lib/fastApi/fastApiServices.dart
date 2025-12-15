@@ -61,6 +61,52 @@ class FastAPIServices {
   }
 
 
+
+  /// 🎟️ Apply Coupon (FREE SERVICE)
+  Future<bool> applyCoupon({
+    required String couponCode,
+  }) async {
+    await _loadCredentials();
+
+    if (_userId == null || _accessToken == null) {
+      return false;
+    }
+
+    final url = Uri.parse("${FastApiEndpoints.fastApiBaseUrl}/api/v1/apply");
+
+    final body = {
+      "user_id": _userId,
+      "coupon_code": couponCode,
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_accessToken",
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // ✅ THIS IS THE ONLY CHECK WE NEED
+        return data["status"] == "success";
+      }
+
+      return false;
+    } catch (e) {
+      print("❌ applyCoupon error: $e");
+      return false;
+    }
+  }
+
+
+
+
   /// 🗂️ Get Chat History (Refactored to use internal credentials)
   Future<List<ChatMessage>> getChatHistory(String otherUserId) async {
     await _loadCredentials();

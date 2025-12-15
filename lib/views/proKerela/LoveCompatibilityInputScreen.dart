@@ -10,6 +10,10 @@ import '../../model/fastApiModel/currentUserWalletModel.dart';
 import '../../utils/global.dart' as global;
 
 class LoveCompatibilityInputScreen extends StatefulWidget {
+  final serviceName;
+  final servicePrice;
+
+
   static const Color cosmicBlue = Color(0xFF1A2B42);
   static const Color celestialGold = Color(0xFFD4AF37);
   static const Color stardustWhite = Color(0xFFF0F0F0);
@@ -18,7 +22,7 @@ class LoveCompatibilityInputScreen extends StatefulWidget {
   static const Color mediumAccent = Color(0xFF34495E);
   static const Color warningRed = Color(0xFFE57373);
 
-  LoveCompatibilityInputScreen({Key? key}) : super(key: key);
+  LoveCompatibilityInputScreen({super.key ,  required this.servicePrice ,  required this.serviceName});
 
   @override
   State<LoveCompatibilityInputScreen> createState() => _LoveCompatibilityInputScreenState();
@@ -377,7 +381,7 @@ class _LoveCompatibilityInputScreenState extends State<LoveCompatibilityInputScr
                                   ],
                                 )
                                     : Text(
-                                  "Check Compatibility ₹599 + GST",
+                                  "Check Compatibility ₹${widget.servicePrice}",
                                   textAlign: TextAlign.center,
                                   style: GoogleFonts.poppins(
                                     fontSize: 18,

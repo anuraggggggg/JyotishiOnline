@@ -1284,232 +1284,112 @@ class _HomeScreenState extends State<HomeScreen> {
                                 SizedBox(
                                   width: 5,
                                 ),
-                                Column(
-                                  children: [
-                                    GetBuilder<KundliController>(
-                                        builder: (kundliController) {
-                                      return GestureDetector(
-                                          onTap: () async {
-                                            Get.to(KundliInputScreen());
-                                          },
-                                          child: Column(
-                                            children: [
-                                              Container(
-                                                height: 8.h,
-                                                width: 8.h,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: appYellow,
-                                                ),
-                                                child: Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    Image.asset(
-                                                      "assets/images/kundali.png",
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                height: 5,
-                                              ),
-                                              Text(
-                                                'Detailed\nKundli', // <--- Changed to match the new key without \n
-                                                textAlign: TextAlign.center,
-                                                style: Get
-                                                    .theme.textTheme.titleSmall!
-                                                    .copyWith(
-                                                  height: 1,
-                                                  fontSize: 15.sp,
-                                                  fontWeight: FontWeight.w400,
-                                                  letterSpacing: 0,
-                                                ),
-                                              ).tr(),
-                                            ],
-                                          ));
-                                    }),
-                                  ],
-                                ),
-                                SizedBox(
-                                  width: 5,
-                                ),
-                                Column(
-                                  children: [
-                                    GetBuilder<KundliController>(
-                                        builder: (kundliController) {
-                                      return GestureDetector(
-                                          onTap: () async {
-                                            global.showOnlyLoaderDialog(
-                                                Get.context);
-                                            await kundliController
-                                                .getKundliList();
-                                            global.hideLoader();
-                                            Get.to(() =>
-                                                LoveCompatibilityInputScreen());
-                                          },
-                                          child: Column(
-                                            children: [
-                                              Container(
-                                                height: 8.h,
-                                                width: 8.h,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: appYellow,
-                                                ),
-                                                child: Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    Image.asset(
-                                                        "assets/images/matching.png"),
-                                                  ],
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                height: 5,
-                                              ),
-                                              Text(
-                                                'Love\nCompatibility',
-                                                textAlign: TextAlign.center,
-                                                style: Get
-                                                    .theme.textTheme.titleSmall!
-                                                    .copyWith(
-                                                  height: 1,
-                                                  fontSize: 15.sp,
-                                                  fontWeight: FontWeight.w400,
-                                                  letterSpacing: 0,
-                                                ),
-                                              ).tr(),
-                                            ],
-                                          ));
-                                    }),
-                                  ],
-                                ),
-                                SizedBox(
-                                  width: 5,
-                                ),
-                                Column(
-                                  children: [
-                                    GestureDetector(
+
+                                Consumer<CosmicServicesProvider>(
+                                  builder: (context, provider, _) {
+                                    if (provider.isLoading) return const SizedBox();
+
+                                    final planetService = provider.services.firstWhere(
+                                          (e) => e.name == 'Planet Position',
+                                      orElse: () => throw Exception('Planet Position service not found'),
+                                    );
+
+                                    return _ServiceCircle(
+                                      iconWidget: const Icon(Icons.star),
+                                      title: 'Planet\nPosition',
                                       onTap: () {
-                                        Get.to(PlanetInputScreen());
+                                        Get.to(() => PlanetInputScreen(
+                                          serviceName: planetService.name,
+                                          servicePrice: planetService.finalPrice,
+
+                                        ));
                                       },
-                                      child: Column(
-                                        children: [
-                                          Container(
-                                              height: 8.h,
-                                              width: 8.h,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: appYellow,
-                                              ),
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Center(
-                                                    child: SizedBox(
-                                                      height: 5.h,
-                                                      width: 5.h,
-                                                      child: ClipRRect(
-                                                        clipBehavior: Clip.none,
-                                                        child: Icon(Icons.star),
-                                                        // child: CachedNetworkImage(
-                                                        //   imageUrl:
-                                                        //       '${global.imgBaseurl}${global.getSystemFlagValueForLogin(global.systemFlagNameList.dailyHoroscope)}',
-                                                        //   placeholder: (context,
-                                                        //           url) =>
-                                                        //       const Center(
-                                                        //           child:
-                                                        //               CircularProgressIndicator()),
-                                                        //   errorWidget: (context,
-                                                        //           url, error) =>
-                                                        //       Icon(
-                                                        //           Icons.no_accounts,
-                                                        //           size: 20),
-                                                        // ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  // SizedBox(height: 2.w),
-                                                ],
-                                              )),
-                                          SizedBox(
-                                            height: 5,
-                                          ),
-                                          Text(
-                                            'Planet\nPosition',
-                                            textAlign: TextAlign.center,
-                                            style: Get
-                                                .theme.textTheme.titleSmall!
-                                                .copyWith(
-                                              height: 1,
-                                              fontSize: 15.sp,
-                                              fontWeight: FontWeight.w400,
-                                              letterSpacing: 0,
-                                            ),
-                                          ).tr()
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                                    );
+                                  },
                                 ),
+
+                                SizedBox(
+                                  width: 5,
+                                ),
+
+                                Consumer<CosmicServicesProvider>(
+                                  builder: (context, provider, _) {
+                                    if (provider.isLoading) return const SizedBox();
+
+                                    final loveService = provider.services.firstWhere(
+                                          (e) => e.name == 'Love Compatibility',
+                                      orElse: () => throw Exception('Love Compatibility service not found'),
+                                    );
+
+                                    return _ServiceCircle(
+                                      icon: "assets/images/matching.png",
+                                      title: 'Love\nCompatibility',
+                                      onTap: () {
+                                        Get.to(() => LoveCompatibilityInputScreen(
+                                          serviceName: loveService.name,
+                                          servicePrice: loveService.finalPrice,
+                                        ));
+                                        // price available: loveService.finalPrice
+                                      },
+                                    );
+                                  },
+                                ),
+
                                 SizedBox(
                                   width: 5,
                                 ),
                                 Column(
                                   children: [
-                                    GestureDetector(
-                                      onTap: () {
-                                        Get.to(BirthdayNumberInputScreen());
+
+                                    Consumer<CosmicServicesProvider>(
+                                      builder: (context, provider, _) {
+                                        if (provider.isLoading) return const SizedBox();
+
+                                        final dailyService = provider.services.firstWhere(
+                                              (e) => e.name == 'Daily Horoscope',
+                                          orElse: () => throw Exception('Daily Horoscope service not found'),
+                                        );
+
+                                        return _ServiceCircle(
+                                          icon: "assets/images/star.png",
+                                          title: 'Daily\nHoroscope',
+                                          onTap: () {
+                                            Get.to(() => DailyPredictionInputScreen(
+                                              serviceName: dailyService.name,
+                                              servicePrice: dailyService.finalPrice.toDouble(),
+                                            ));
+                                          },
+                                        );
                                       },
-                                      child: Column(
-                                        children: [
-                                          Container(
-                                              height: 8.h,
-                                              width: 8.h,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: appYellow,
-                                              ),
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Center(
-                                                    child: SizedBox(
-                                                      height: 5.h,
-                                                      width: 5.h,
-                                                      child: ClipRRect(
-                                                        clipBehavior: Clip.none,
-                                                        child: Icon(Icons
-                                                            .calendar_month),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              )),
-                                          SizedBox(
-                                            height: 5,
-                                          ),
-                                          Text(
-                                            'Birthday\nNumber',
-                                            textAlign: TextAlign.center,
-                                            style: Get
-                                                .theme.textTheme.titleSmall!
-                                                .copyWith(
-                                              height: 1,
-                                              fontSize: 15.sp,
-                                              fontWeight: FontWeight.w400,
-                                              letterSpacing: 0,
-                                            ),
-                                          ).tr(),
-                                        ],
-                                      ),
                                     ),
+
                                   ],
                                 ),
+                                SizedBox(
+                                  width: 5,
+                                ),
+
+
+                                Consumer<CosmicServicesProvider>(
+                                  builder: (context, provider, _) {
+                                    if (provider.isLoading) return const SizedBox();
+
+                                    final kundliService = provider.services.firstWhere(
+                                          (e) => e.name == 'Detailed Kundli',
+                                      orElse: () => throw Exception('Detailed Kundli service not found'),
+                                    );
+
+                                    return _ServiceCircle(
+                                      icon: "assets/images/kundali.png",
+                                      title: 'Detailed\nKundli',
+                                      onTap: () {
+                                        Get.to(() => KundliInputScreen(servicePrice: kundliService.finalPrice, serviceName: kundliService.name,));
+                                        // price available: kundliService.finalPrice
+                                      },
+                                    );
+                                  },
+                                ),
+
                               ],
                             ),
                           ),
@@ -3015,6 +2895,59 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 }
+
+class _ServiceCircle extends StatelessWidget {
+  final String title;
+  final VoidCallback onTap;
+  final String? icon;
+  final Widget? iconWidget;
+
+  const _ServiceCircle({
+    required this.title,
+    required this.onTap,
+    this.icon,
+    this.iconWidget,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            height: 8.h,
+            width: 8.h,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: appYellow,
+            ),
+            child: Center(
+              child: SizedBox(
+                height: 5.h,
+                width: 5.h,
+                child: icon != null
+                    ? Image.asset(icon!)
+                    : iconWidget,
+              ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: Get.theme.textTheme.titleSmall!.copyWith(
+              height: 1,
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w400,
+            ),
+          ).tr(),
+        ],
+      ),
+    );
+  }
+}
+
 
 Widget _buildOnlineAstroTile(OnlineAstrologerModel astro) {
   // ---- SAFE IMAGE URL HANDLING ----
