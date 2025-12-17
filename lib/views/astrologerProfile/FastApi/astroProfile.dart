@@ -40,6 +40,127 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     fetchTokenId();
   }
 
+  void _showReviewBottomSheet(Astrologer astrologer) {
+    int rating = 5;
+    final TextEditingController reviewController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSB) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Rate & Review",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  /// ⭐ STAR RATING
+                  Row(
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        icon: Icon(
+                          index < rating
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: Colors.amber,
+                        ),
+                        onPressed: () {
+                          setSB(() => rating = index + 1);
+                        },
+                      );
+                    }),
+                  ),
+
+                  /// 📝 REVIEW TEXT
+                  TextField(
+                    controller: reviewController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      hintText: "Write your experience...",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  /// 🚀 SUBMIT
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: appColor,
+                      ),
+                      onPressed: () async {
+                        if (reviewController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content:
+                              Text("Please write a review"),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          return;
+                        }
+
+                        Navigator.pop(ctx);
+
+                        final success =
+                        await FastAPIServices()
+                            .submitUserReview(
+                          astrologerId: astrologer.astroId,
+                          rating: rating,
+                          review:
+                          reviewController.text.trim(),
+                        );
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              success
+                                  ? "Thank you for your review ⭐"
+                                  : "Failed to submit review",
+                            ),
+                            backgroundColor: success
+                                ? Colors.green
+                                : Colors.red,
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        "Submit Review",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+
   Future<void> fetchTokenId() async {
     _d("🟡 fetchTokenId() → loadFromStorage()");
     final fastApi = FastAPIServices();
@@ -66,6 +187,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             ).tr(),
           ),
           actions: [
+
+
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text("Cancel").tr(),
@@ -152,18 +275,32 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
+          /// ⭐ RATE & REVIEW
+          IconButton(
+            icon: const Icon(Icons.rate_review_outlined),
+            tooltip: 'Rate & Review',
+            onPressed: () async {
+              final astrologer = await astrologerFuture;
+              _showReviewBottomSheet(astrologer);
+            },
+          ),
+
+          /// 🚨 REPORT
           IconButton(
             icon: Icon(Icons.report_problem_outlined,
                 color: Colors.grey.shade600),
             onPressed: _showReportDialog,
             tooltip: 'Report Astrologer',
           ),
+
+          /// ⛔ BLOCK
           IconButton(
             icon: Icon(Icons.block, color: Colors.red.shade400),
             onPressed: _showBlockDialog,
             tooltip: 'Block Astrologer',
           ),
         ],
+
       ),
       body: FutureBuilder<Astrologer>(
         future: astrologerFuture,
@@ -208,7 +345,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
           _buildHeaderSection(astrologer),
           _buildProfileDetails(astrologer),
           _buildConsultationOptions(astrologer),
-          const SizedBox(height: 100),
+
+
+
         ],
       ),
     );
@@ -258,15 +397,15 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                       : null,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2)),
-                child: const Icon(Icons.circle,
-                    color: Colors.white, size: 14),
-              ),
+              // Container(
+              //   padding: const EdgeInsets.all(8),
+              //   decoration: BoxDecoration(
+              //       color: Colors.green,
+              //       shape: BoxShape.circle,
+              //       border: Border.all(color: Colors.white, width: 2)),
+              //   child: const Icon(Icons.circle,
+              //       color: Colors.white, size: 14),
+              // ),
             ],
           ),
           const SizedBox(height: 20),

@@ -20,6 +20,9 @@ class _LoginWithEmailScreenState extends State<LoginWithEmailScreen> {
   final _passwordController = TextEditingController();
   final FastAPIServices _apiServices = FastAPIServices();
 
+  /// 👁️ Password visibility toggle
+  bool _obscurePassword = true;
+
   void _login() async {
     if (_formKey.currentState!.validate()) {
       await _apiServices.loginWithEmail(
@@ -40,10 +43,10 @@ class _LoginWithEmailScreenState extends State<LoginWithEmailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: true, // ✅ Important
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(), // ✅ Tap outside to close keyboard
+          onTap: () => FocusScope.of(context).unfocus(),
           child: SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.all(20),
@@ -80,7 +83,8 @@ class _LoginWithEmailScreenState extends State<LoginWithEmailScreen> {
                         controller: _usernameController,
                         decoration: InputDecoration(
                           labelText: 'Email',
-                          prefixIcon: Icon(Icons.email, color: buttonColor1),
+                          prefixIcon:
+                          Icon(Icons.email, color: buttonColor1),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -98,17 +102,31 @@ class _LoginWithEmailScreenState extends State<LoginWithEmailScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Password Field
+                      // 🔐 Password Field (with visibility toggle)
                       TextFormField(
                         controller: _passwordController,
+                        obscureText: _obscurePassword,
                         decoration: InputDecoration(
                           labelText: 'Password',
-                          prefixIcon: Icon(Icons.lock, color: buttonColor1),
+                          prefixIcon:
+                          Icon(Icons.lock, color: buttonColor1),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: buttonColor1,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        obscureText: true,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your password';
@@ -121,7 +139,8 @@ class _LoginWithEmailScreenState extends State<LoginWithEmailScreen> {
                       // Login Button
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 45),
+                          minimumSize:
+                          const Size(double.infinity, 45),
                           backgroundColor: appYellow,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -130,14 +149,16 @@ class _LoginWithEmailScreenState extends State<LoginWithEmailScreen> {
                         onPressed: _login,
                         child: const Text(
                           "Log In",
-                          style: TextStyle(color: Colors.black, fontSize: 16),
+                          style: TextStyle(
+                              color: Colors.black, fontSize: 16),
                         ),
                       ),
 
                       const SizedBox(height: 16),
 
                       TextButton(
-                        onPressed: () => Get.to(() => SignupWithEmailScreen()),
+                        onPressed: () =>
+                            Get.to(() => SignupWithEmailScreen()),
                         child: const Text(
                           "Don't have an account? Sign Up",
                           style: TextStyle(color: Colors.blue),

@@ -1,3 +1,4 @@
+import 'package:AstrowayCustomer/views/proKerela/panchang_input_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -60,7 +61,7 @@ class AstrologyServicesPage extends StatelessWidget {
     }
 
     if (service.name == "Daily Prediction") {
-      return DailyPanchangScreen(
+      return PanchangInputScreen(
         serviceName : service.name,
         servicePrice : service.finalPrice.toDouble(),
       );

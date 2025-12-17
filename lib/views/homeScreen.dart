@@ -1338,36 +1338,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 SizedBox(
                                   width: 5,
                                 ),
-                                Column(
-                                  children: [
 
-                                    Consumer<CosmicServicesProvider>(
-                                      builder: (context, provider, _) {
-                                        if (provider.isLoading) return const SizedBox();
-
-                                        final dailyService = provider.services.firstWhere(
-                                              (e) => e.name == 'Daily Horoscope',
-                                          orElse: () => throw Exception('Daily Horoscope service not found'),
-                                        );
-
-                                        return _ServiceCircle(
-                                          icon: "assets/images/star.png",
-                                          title: 'Daily\nHoroscope',
-                                          onTap: () {
-                                            Get.to(() => DailyPredictionInputScreen(
-                                              serviceName: dailyService.name,
-                                              servicePrice: dailyService.finalPrice.toDouble(),
-                                            ));
-                                          },
-                                        );
-                                      },
-                                    ),
-
-                                  ],
-                                ),
-                                SizedBox(
-                                  width: 5,
-                                ),
 
 
                                 Consumer<CosmicServicesProvider>(

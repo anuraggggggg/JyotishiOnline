@@ -44,7 +44,7 @@ class _AudioCallPageState extends State<AudioCallPage> {
   bool _muted = false;
   bool _speakerOn = true;
 
-  Duration _remaining = const Duration(minutes: 15);
+  Duration _remaining = const Duration(minutes: 10);
   Timer? _timer;
 
   void logm(String m) => debugPrint("🎧 [AudioCall] $m");

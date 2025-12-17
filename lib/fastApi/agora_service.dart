@@ -33,10 +33,10 @@ class AgoraAuth {
     return AgoraAuth(
       appId: (j['appID'] ?? j['appId'] ?? "").toString(),
       channelName: (j['channelName'] ?? "").toString(),
-      astroId: (j['astro_id'] ?? "").toString(),
-      astroToken: (j['astro_token'] ?? "").toString(),
-      currentUserId: (j['current_user_id'] ?? "").toString(),
-      currentUserToken: (j['current_user_token'] ?? "").toString(),
+      astroId: (j['astrologer_id'] ?? "").toString(),
+      astroToken: (j['aastrologer_token'] ?? "").toString(),
+      currentUserId: (j['user_id'] ?? "").toString(),
+      currentUserToken: (j['user_token'] ?? "").toString(),
       expireIn: j['expireIn'] ?? 900,
     );
   }
@@ -65,23 +65,23 @@ class AgoraService {
     );
 
     if (res.statusCode != 200) {
-      throw Exception(
-          "Failed to fetch universal Agora token: ${res.statusCode} ${res.body}");
-    }
+throw Exception(
+"Failed to fetch universal Agora token: ${res.statusCode} ${res.body}");
+}
 
-    return AgoraAuth.fromJson(jsonDecode(res.body));
-  }
+return AgoraAuth.fromJson(jsonDecode(res.body));
+}
 
-  /// Convert model to actual Agora join params
-  static Map<String, String> buildJoinParams({
-    required AgoraAuth auth,
-    required bool isAstrologer,
-  }) {
-    return {
-      "appId": auth.appId,
-      "channel": auth.channelName,
-      "token": isAstrologer ? auth.astroToken : auth.currentUserToken,
-      "account": isAstrologer ? auth.astroId : auth.currentUserId,
-    };
-  }
+/// Convert model to actual Agora join params
+static Map<String, String> buildJoinParams({
+required AgoraAuth auth,
+required bool isAstrologer,
+}) {
+return {
+"appId": auth.appId,
+"channel": auth.channelName,
+"token": isAstrologer ? auth.astroToken : auth.currentUserToken,
+"account": isAstrologer ? auth.astroId : auth.currentUserId,
+};
+}
 }

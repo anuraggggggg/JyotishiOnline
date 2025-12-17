@@ -72,7 +72,7 @@ class FastAPIServices {
       return false;
     }
 
-    final url = Uri.parse("${FastApiEndpoints.fastApiBaseUrl}/api/v1/apply");
+    final url = Uri.parse("${FastApiEndpoints.userReviews}");
 
     final body = {
       "user_id": _userId,
@@ -103,6 +103,56 @@ class FastAPIServices {
       return false;
     }
   }
+
+  /// ⭐ Submit User Review
+  Future<bool> submitUserReview({
+    required String astrologerId,
+    required int rating,
+    required String review,
+    bool isPublic = true,
+  }) async {
+    await _loadCredentials();
+
+    if (_userId == null || _accessToken == null) {
+      return false;
+    }
+
+    final url =
+    Uri.parse("${FastApiEndpoints.fastApiBaseUrl}/api/v1/userreviews");
+
+    final body = {
+      "userId": _userId,
+      "astrologerId": astrologerId,
+      "rating": rating,
+      "review": review,
+      "isActive": true,
+      "isPublic": isPublic,
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_accessToken",
+        },
+        body: jsonEncode(body),
+      );
+
+      print("⭐ Review Status: ${response.statusCode}");
+      print("⭐ Review Body: ${response.body}");
+
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print("❌ submitUserReview error: $e");
+      return false;
+    }
+  }
+
+
+
+
 
 
 

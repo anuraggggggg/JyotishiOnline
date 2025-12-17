@@ -83,7 +83,7 @@ class DailyPanchangScreen extends StatelessWidget {
                     icon: service['icon'],
                     onTap: () {
                       if (service['title'] == 'Detailed Panchang') {
-                        Get.to(() => PanchangInputScreen());
+                        Get.to(() => PanchangInputScreen(servicePrice: null, serviceName: null,));
                       } else if (service['title'] == 'Inauspicious Period') {
                         Get.to(() => InauspiciousInputScreen());
                       } else if (service["title"] == "Auspicious Period") {

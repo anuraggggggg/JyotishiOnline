@@ -16,6 +16,10 @@ import '../../controllers/proKerela/panchang_controller.dart';
 import '../../fastApi/fastApiServices.dart'; // Assuming PanchangFormController is here
 
 class PanchangInputScreen extends StatefulWidget {
+  final serviceName;
+  final servicePrice;
+
+  const PanchangInputScreen({super.key, required this.servicePrice , required this.serviceName });
   @override
   State<PanchangInputScreen> createState() => _PanchangInputScreenState();
 }
@@ -120,8 +124,6 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
     // Hide keyboard if open
     FocusScope.of(context).unfocus();
 
-    // Panchang service price
-    const int panchangServicePrice = 100;
 
     if (_formKey.currentState!.validate()) {
       controller.isLoading(true);
@@ -141,9 +143,9 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
         return;
       }
 
-      if (wallet.amount < panchangServicePrice) {
+      if (wallet.amount < widget.servicePrice) {
         // 2️⃣ Insufficient balance → Show error
-        final int missingAmount = panchangServicePrice - wallet.amount;
+        final int missingAmount = widget.servicePrice - wallet.amount;
         controller.isLoading(false);
         Get.snackbar(
           'Insufficient Balance',
@@ -157,7 +159,7 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
       }
 
       // 3️⃣ Deduct money using debit API
-      final updatedWallet = await FastAPIServices().debitWallet(panchangServicePrice);
+      final updatedWallet = await FastAPIServices().debitWallet(widget.servicePrice);
       if (updatedWallet == null) {
         controller.isLoading(false);
         Get.snackbar(
@@ -174,7 +176,7 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
       // 4️⃣ Success → show snackbar
       Get.snackbar(
         'Payment Successful',
-        '₹$panchangServicePrice deducted from your wallet for Daily Panchang.',
+        '₹${widget.servicePrice} deducted from your wallet for Daily Panchang.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: celestialGold.withOpacity(0.9),
         colorText: Colors.white,
@@ -504,13 +506,14 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      '₹100 +GST',
-                                      style: TextStyle(
-                                        fontSize: 12, // Smaller font for price
+                                      '₹${widget.servicePrice.toStringAsFixed(0)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                         color: cosmicBlue,
                                       ),
                                     ),
+
                                   ),
                                 ],
                               ),

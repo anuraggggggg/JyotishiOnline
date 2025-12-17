@@ -21,6 +21,10 @@ class FastApiEndpoints {
   static const String verifyMobileOtp =
       "$fastApiBaseUrl/api/v1/auth/verify-otp";
 
+  /// POST → Create user review
+  static const String userReviews =
+      "$fastApiBaseUrl/api/v1/userreviews";
+
   /// Block or Report Astrologer
   static const String blockAstrologer = "$fastApiBaseUrl/api/v1/block";
   static const String reportAstrologer = "$fastApiBaseUrl/api/v1/block/report";
