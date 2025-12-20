@@ -40,8 +40,6 @@ class FastAPIServices {
   String? get accessToken => _accessToken;
 
 
-
-
   Future<List<dynamic>> getCosmicServices() async {
     try {
       final response = await http.get(
@@ -353,78 +351,85 @@ class FastAPIServices {
     String? profile,
     String? fcmToken,
     String? token,
-    String? expirationDate,
-    String? profilePicPath,
+    String? profilePicPath, // optional local file path for image
   }) async {
-    final url = Uri.parse(
-        "https://fastapi.jyotishionline.com/api/v1/customerdetails");
+    final url = Uri.parse(FastApiEndpoints.signupWithDetails);
 
     try {
       final request = http.MultipartRequest('POST', url)
         ..headers['accept'] = 'application/json';
 
-      // ✅ REQUIRED (MATCH BACKEND)
+      // ✅ Required fields
       request.fields['name'] = name;
+      request.fields['contactNo'] = contactNo;
+      request.fields['countryCode'] = countryCode;
       request.fields['email'] = email;
       request.fields['password'] = password;
-      request.fields['contact_no'] = contactNo;
-      request.fields['country_code'] = countryCode;
       request.fields['pincode'] = pincode.toString();
 
-      // ✅ OPTIONAL (ONLY IF NOT NULL)
-      if (birthDate != null) request.fields['birth_date'] = birthDate;
-      if (birthTime != null) request.fields['birth_time'] = birthTime;
-      if (birthPlace != null) request.fields['birth_place'] = birthPlace;
-      if (addressLine1 != null) request.fields['address_line1'] = addressLine1;
-      if (addressLine2 != null) request.fields['address_line2'] = addressLine2;
+      // ✅ Optional fields
+      if (birthDate != null) request.fields['birthDate'] = birthDate;
+      if (birthTime != null) request.fields['birthTime'] = birthTime;
+      if (birthPlace != null) request.fields['birthPlace'] = birthPlace;
+      if (addressLine1 != null) request.fields['addressLine1'] = addressLine1;
+      if (addressLine2 != null) request.fields['addressLine2'] = addressLine2;
       if (location != null) request.fields['location'] = location;
       if (gender != null) request.fields['gender'] = gender;
       if (profile != null) request.fields['profile'] = profile;
       if (fcmToken != null) request.fields['fcm_token'] = fcmToken;
       if (token != null) request.fields['token'] = token;
-      if (expirationDate != null) {
-        request.fields['expiration_date'] = expirationDate;
-      }
 
-      // ✅ IMAGE
+      // ✅ Optional image upload
       if (profilePicPath != null && profilePicPath.isNotEmpty) {
         final file = File(profilePicPath);
         if (await file.exists()) {
-          request.files.add(
-            await http.MultipartFile.fromPath(
-              'profile_pic',
-              profilePicPath,
-            ),
-          );
+          request.files.add(await http.MultipartFile.fromPath('profile_pic', profilePicPath));
           debugPrint("🖼️ Profile picture attached: $profilePicPath");
+        } else {
+          debugPrint("⚠️ Profile picture not found at path: $profilePicPath");
         }
       }
 
-      debugPrint("🚀 Sending customer signup → $url");
+      debugPrint("🚀 Sending signup request → $url");
       debugPrint("🧾 Fields: ${request.fields}");
 
+      // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      debugPrint("📡 Status: ${response.statusCode}");
-      debugPrint("📦 Body: ${response.body}");
+      debugPrint("📡 Response Status: ${response.statusCode}");
+      debugPrint("📦 Response Body: ${response.body}");
 
+      // ✅ Handle success
       if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint("✅ Customer created successfully");
-        return jsonDecode(response.body);
+        final data = jsonDecode(response.body);
+
+        // Automatically save credentials if token is returned
+        if (data is Map && data.containsKey("access_token")) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString("access_token", data["access_token"]);
+          if (data["user"]?["id"] != null) {
+            await prefs.setString("user_id", data["user"]["id"].toString());
+          }
+          debugPrint("🔐 Credentials saved locally after signup!");
+        }
+
+        debugPrint("✅ Signup Successful!");
+        return data;
       } else {
-        final error = jsonDecode(response.body);
-        return {
-          "error": true,
-          "message": error["detail"] ?? "Signup failed"
-        };
+        debugPrint("❌ Signup Failed (${response.statusCode}) → ${response.body}");
+        try {
+          final error = jsonDecode(response.body);
+          return {"error": true, "message": error["detail"] ?? "Signup failed"};
+        } catch (_) {
+          return {"error": true, "message": "Unexpected error occurred"};
+        }
       }
     } catch (e) {
       debugPrint("💥 Signup Exception: $e");
       return {"error": true, "message": e.toString()};
     }
   }
-
 
 
 

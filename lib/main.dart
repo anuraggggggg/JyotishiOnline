@@ -623,7 +623,6 @@ Future<void> _handleChatAccept(Map<String, dynamic> data) async {
     astrologerProfileId: astrologerProfileId,
 
     astrologerName: astrologerName,
-    chatRate: chatRate,
     token: token,
   ));
 }
@@ -979,7 +978,7 @@ void _showChatAcceptPopup(Map data) {
                 myUserId: data["myUserId"],
                 astrologerName: data["astrologerName"],
                 token: data["token"],
-                chatRate: double.tryParse(data["chatRate"].toString()) ?? 0,
+
                 astrologerProfileId: data["astrologerUid"],
               ));
             },

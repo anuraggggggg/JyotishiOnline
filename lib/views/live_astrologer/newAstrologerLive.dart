@@ -421,66 +421,6 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
     }
   }
 
-  // ==========================================================
-  // PAYMENT: WALLET CHECK + SEND MONEY
-  // ==========================================================
-  Future<bool> _payIfEnoughBalance({
-    required String astrologerId,
-    required int amountInRupees,
-    required BuildContext notifyContext,
-  }) async {
-    _d("payIfEnoughBalance() astroId=$astrologerId amount=₹$amountInRupees");
-    try {
-      final api = FastAPIServices();
-
-      final wallet = await api.fetchCurrentWallet();
-      if (wallet == null) {
-        _d("wallet == null");
-        ScaffoldMessenger.of(notifyContext).showSnackBar(
-          const SnackBar(
-            content: Text("Unable to fetch wallet. Please try again."),
-          ),
-        );
-        return false;
-      }
-
-      final current = (wallet.amount ?? 0);
-      _d("wallet.amount=$current");
-
-      if (current < amountInRupees) {
-        final short = amountInRupees - current;
-        _d("insufficient balance. need +₹$short");
-        ScaffoldMessenger.of(notifyContext).showSnackBar(
-          SnackBar(
-            content: Text("Insufficient balance. You need ₹$short more."),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return false;
-      }
-
-      _d("sendMoney() → astrologerId=$astrologerId amount=₹$amountInRupees");
-      await api.sendMoney(
-        astrologerId: astrologerId,
-        amount: amountInRupees,
-      );
-      _d("sendMoney success");
-
-      ScaffoldMessenger.of(notifyContext).showSnackBar(
-        SnackBar(
-          content: Text("₹$amountInRupees paid successfully."),
-          backgroundColor: Colors.green,
-        ),
-      );
-      return true;
-    } catch (e, st) {
-      _d("sendMoney failed: $e\n$st");
-      ScaffoldMessenger.of(notifyContext).showSnackBar(
-        SnackBar(content: Text("Payment failed: $e")),
-      );
-      return false;
-    }
-  }
 
   // ==========================================================
   // MAIN FLOW: PAY + CREATE SESSION + NOTIFY + NAVIGATE
@@ -515,7 +455,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
 
     final isAudio = callType.toLowerCase().startsWith('audio');
     final isVideo = callType.toLowerCase().startsWith('video');
-    final isChat = callType.toLowerCase().startsWith('chat');
+    final isChat  = callType.toLowerCase().startsWith('chat');
 
     final double rate = isAudio
         ? astrologer.audioCallCharge
@@ -523,10 +463,9 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
         ? astrologer.videoCallCharge
         : astrologer.chatCharge;
 
-    // For audio/video we bill per 10-minute block at `rate`. Chat is per message.
     final bool pricedPerTenMinBlock = isAudio || isVideo;
 
-    _d("open bottom sheet type=$callType rate=$rate per ${pricedPerTenMinBlock ? '10min' : 'message'}");
+    _d("open bottom sheet type=$callType rate=$rate");
 
     showModalBottomSheet(
       context: pageContext,
@@ -576,7 +515,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Amount card — debit ONE 10-min block for audio/video (no multiplication)
+                  // 🔹 Estimated amount (NO DEDUCTION)
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -591,8 +530,8 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
                       children: [
                         Text(
                           pricedPerTenMinBlock
-                              ? 'Amount to Debit (10 min)'
-                              : 'Amount',
+                              ? 'Estimated Charge (10 min)'
+                              : 'Estimated Charge',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -624,22 +563,17 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       child: _isProcessing
-                          ? const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 2),
-                        child: SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
+                          ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
                         ),
                       )
-                          : Text(
-                        pricedPerTenMinBlock
-                            ? "Pay & Start (10 min)"
-                            : "Pay & Start",
-                        style: const TextStyle(
+                          : const Text(
+                        "Send Request",
+                        style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -663,66 +597,19 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
                             case "video call":
                               mappedSessionType = "video_call";
                               break;
-                            case "chat":
                             default:
                               mappedSessionType = "chat";
                           }
-                          _d("mappedSessionType=$mappedSessionType");
 
-                          final double rawAmount = rate;
-                          final int amountToCharge = rawAmount.round();
-
-                          if (amountToCharge <= 0) {
-                            _d("amountToCharge<=0, abort");
-                            ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                              const SnackBar(
-                                content:
-                                Text("Invalid amount to charge."),
-                              ),
-                            );
-                            return;
-                          }
-
-                          // Step 1: Wallet debit
-                          final paid = await _payIfEnoughBalance(
-                            astrologerId: astrologer.astroId,
-                            amountInRupees: amountToCharge,
-                            notifyContext: sheetCtx,
-                          );
-                          if (!paid) {
-                            _d("payment failed / insufficient, abort");
-                            return;
-                          }
-
-                          // Step 2: Create session
+                          // 1️⃣ Create session ONLY
                           await FastAPIServices().loadFromStorage();
-                          final myUserIdFromStorage =
-                              FastAPIServices().userId;
-                          _d("storage userId=$myUserIdFromStorage");
 
-                          final dynamic raw =
-                          await FastAPIServices().createSession(
+                          final raw = await FastAPIServices().createSession(
                             astrologerId: astrologer.astroId,
                             sessionType: mappedSessionType,
                           );
-                          _d("createSession raw=$raw");
 
-                          Map<String, dynamic>? session;
-                          if (raw is Map<String, dynamic>) {
-                            session = raw;
-                          } else if (raw is String) {
-                            try {
-                              final decoded = jsonDecode(raw);
-                              if (decoded is Map<String, dynamic>) {
-                                session = decoded;
-                              }
-                            } catch (e) {
-                              _d("decode string->map failed: $e");
-                            }
-                          }
-
-                          if (session == null) {
-                            _d("session==null");
+                          if (raw == null) {
                             ScaffoldMessenger.of(sheetCtx).showSnackBar(
                               const SnackBar(
                                 content: Text(
@@ -733,164 +620,28 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
                             return;
                           }
 
-                          final Map<String, dynamic> s =
-                          Map<String, dynamic>.from(session);
-                          final String roomId =
-                          (s["room_id"] ?? "").toString();
-                          _d("session.room_id=$roomId");
+                          _d("✅ session created");
 
-                          // user field
-                          final dynamic userField = s["user"];
-                          String userUid = '';
-                          if (userField is Map) {
-                            final m =
-                            Map<String, dynamic>.from(userField);
-                            userUid = (m['id'] ??
-                                m['user_id'] ??
-                                m['uid'] ??
-                                m['uuid'] ??
-                                '')
-                                .toString();
-                          } else if (userField is String) {
-                            userUid = userField;
-                          }
-                          if (userUid.isEmpty) {
-                            userUid = (s["user_id"] ??
-                                myUserIdFromStorage ??
-                                '')
-                                .toString();
-                          }
-                          _d("session.userUid=$userUid");
-
-                          // astrologer field
-                          String astrologerUid = '';
-                          final dynamic astroField = s["astrologer"];
-                          if (astroField is Map) {
-                            final m =
-                            Map<String, dynamic>.from(astroField);
-                            astrologerUid = (m['id'] ??
-                                m['astro_id'] ??
-                                m['uid'] ??
-                                m['uuid'] ??
-                                '')
-                                .toString();
-                          }
-                          if (astrologerUid.isEmpty) {
-                            astrologerUid =
-                                (s["astrologer_id"] ?? astrologer.astroId)
-                                    .toString();
-                          }
-                          _d("session.astrologerUid=$astrologerUid");
-
-                          final String apiType =
-                          (s["session_type"] ?? "").toString();
-                          _d("session.session_type=$apiType");
-
-                          final missing = <String>[];
-                          if (roomId.isEmpty) missing.add('roomId');
-                          if (userUid.isEmpty) missing.add('userUid');
-                          if (astrologerUid.isEmpty) {
-                            missing.add('astrologerUid');
-                          }
-                          if (missing.isNotEmpty) {
-                            _d("missing: ${missing.join(', ')}");
-                            ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  "Couldn't get session details (${missing.join(', ')}). Please try again.",
-                                ),
-                              ),
-                            );
-                            return;
-                          }
-
-                          // Step 3: send notification AFTER payment + session
-                          _d("send notification now...");
+                          // 2️⃣ Send request notification
                           await _sendAstrologerNotification(
                             astrologer,
                             callType,
                           );
 
-                          // Close sheet
+                          // 3️⃣ Close sheet — stay on same page
                           if (Navigator.of(sheetCtx).canPop()) {
                             Navigator.of(sheetCtx).pop();
                           }
                           if (!mounted) return;
 
-                          // Step 4: navigate to chat / audio / video screen
-                          // _showRequestSentDialog(
-                          //   callType,
-                          //   onOk: () {
-                          //     final type = apiType.toLowerCase();
-                          //     _d("navigate type=$type");
-                          //     if (type == 'chat') {
-                          //       Navigator.of(
-                          //         pageContext,
-                          //         rootNavigator: true,
-                          //       ).push(
-                          //         MaterialPageRoute(
-                          //           builder: (_) => CustomerChatPage(
-                          //             token: "",
-                          //             chatRate: astrologer.chatCharge,
-                          //             // astrologerUid: astrologerUid,
-                          //             myUserId: userUid,
-                          //             roomId: roomId,
-                          //             astrologerName: astrologer.name,
-                          //           ),
-                          //         ),
-                          //       );
-                          //     } else if (type == 'video_call') {
-                          //       Navigator.of(
-                          //         pageContext,
-                          //         rootNavigator: true,
-                          //       ).push(
-                          //         MaterialPageRoute(
-                          //           builder: (_) => CustomerVideoCallPage(
-                          //             astroId: astrologerUid,
-                          //           ),
-                          //         ),
-                          //       );
-                          //     } else if (type == 'audio_call') {
-                          //       Navigator.of(
-                          //         pageContext,
-                          //         rootNavigator: true,
-                          //       ).push(
-                          //         MaterialPageRoute(
-                          //           builder: (_) => AudioCallPage(
-                          //             astroId: astrologerUid,
-                          //           ),
-                          //         ),
-                          //       );
-                          //     } else {
-                          //       // fallback to chat
-                          //       Navigator.of(
-                          //         pageContext,
-                          //         rootNavigator: true,
-                          //       ).push(
-                          //         MaterialPageRoute(
-                          //           builder: (_) => CustomerChatPage(
-                          //             token:"",
-                          //             chatRate: astrologer.chatCharge,
-                          //             // astrologerUid: astrologerUid,
-                          //             myUserId: userUid,
-                          //             roomId: roomId,
-                          //             astrologerName: astrologer.name, astrologerUserId: '', astrologerProfileId: '',
-                          //           ),
-                          //         ),
-                          //       );
-                          //     }
-                          //   },
-                          // );
+                          _showRequestSentDialog(callType);
                         } catch (e, st) {
                           _d("Exception in SEND_REQUEST: $e\n$st");
-                          if (mounted) {
-                            ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                              SnackBar(
-                                content:
-                                Text("Something went wrong: $e"),
-                              ),
-                            );
-                          }
+                          ScaffoldMessenger.of(sheetCtx).showSnackBar(
+                            SnackBar(
+                              content: Text("Something went wrong: $e"),
+                            ),
+                          );
                         } finally {
                           if (mounted) {
                             setSB(() => _isProcessing = false);
@@ -907,6 +658,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
       },
     );
   }
+
 
   void _showRequestSentDialog(
       String requestType, {

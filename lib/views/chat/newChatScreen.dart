@@ -15,7 +15,6 @@ class CustomerChatPage extends StatefulWidget {
   final String myUserId;
   final String astrologerName;
   final String? token;
-  final double chatRate;
 
   const CustomerChatPage({
     super.key,
@@ -25,7 +24,6 @@ class CustomerChatPage extends StatefulWidget {
     required this.myUserId,
     required this.astrologerName,
     this.token,
-    required this.chatRate,
   });
 
   @override
@@ -41,7 +39,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   bool _isConnected = false;
   bool _isLoading = true;
   bool _manuallyClosed = false;
-  bool _isCharged = false;
+  bool _isCharged = false; // Flag to prevent double charging
 
   final List<Map<String, dynamic>> _messages = [];
 
@@ -56,9 +54,10 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   late String _roomId;
   String? _token;
 
-  // Added variables for dynamic profile data
+  // Dynamic Astrologer Data
   String? _displayName;
   String? _profileImageUrl;
+  double _chatRate = 0; // Stores the rate from API
 
   int _retries = 0;
 
@@ -69,12 +68,12 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   @override
   void initState() {
     super.initState();
-    _displayName = widget.astrologerName; // Initial fallback
+    _displayName = widget.astrologerName;
     _initialize();
   }
 
   // ---------------------------------------------------------------------------
-  // INIT
+  // INIT LOGIC (Now matching AudioCallPage bootstrap style)
   // ---------------------------------------------------------------------------
 
   Future<void> _initialize() async {
@@ -88,85 +87,108 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     if (_myUserId.isEmpty || _roomId.isEmpty || _token == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid chat session')),
+          const SnackBar(content: Text('Invalid chat session. Please login again.')),
         );
         Navigator.pop(context);
       }
       return;
     }
 
-    // 1. DEDUCT MONEY IMMEDIATELY
-    await _deductBalance();
-
-    // 2. FETCH ACTUAL ASTROLOGER DETAILS (Name & Image)
     try {
+      // 1. Fetch Astrologer Details FIRST to get the Charge
       final astro = await _api.fetchAstrologerDetail(widget.astrologerProfileId);
+
       if (mounted) {
         setState(() {
           _displayName = astro.name;
           _profileImageUrl = astro.profileImage;
+          // Extract chatCharge from the same response
+          _chatRate = (astro.chatCharge ?? 0).toDouble();
         });
       }
+
+      // 🔥 2. CHARGE USER IMMEDIATELY (Exactly like AudioCallPage)
+      await _deductBalance();
+
+      // 3. Fetch History and connect Socket
+      final history = await _api.getChatHistory(widget.astrologerUserId);
+
+      if (mounted) {
+        setState(() {
+          _messages.clear();
+          for (final msg in history) {
+            _messages.add({
+              'sender_id': msg.senderId,
+              'message': msg.content.toString(),
+              'created_at': msg.createdAt.toIso8601String(),
+            });
+          }
+          _isLoading = false;
+        });
+        _scrollToBottom(force: true);
+      }
     } catch (e) {
-      debugPrint("⚠️ Could not fetch astrologer details: $e");
+      debugPrint("⚠️ Initialization error: $e");
+      if (mounted) setState(() => _isLoading = false);
     }
 
-    // 3. LOAD HISTORY
-    await _loadChatHistory();
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    // 4. CONNECT WEBSOCKET
+    // 4. Connect WebSocket
     _connectWebSocket();
   }
 
+  // -------------------------------------------------------------------
+  // DEDUCTION LOGIC (Money deducts as user enters)
+  // -------------------------------------------------------------------
   Future<void> _deductBalance() async {
-    if (_isCharged) return;
+    if (_isCharged || _chatRate <= 0) return;
+    _isCharged = true;
+
     try {
-      debugPrint("💰 [Payment] Deducting ₹${widget.chatRate}");
+      debugPrint("💰 Upfront Chat Deduction: ₹$_chatRate for Astro: ${widget.astrologerProfileId}");
       await _api.sendMoney(
-        astrologerId: widget.astrologerUserId,
-        amount: widget.chatRate,
+        astrologerId: widget.astrologerProfileId,
+        amount: _chatRate,
         type: "chat",
-      );
-      _isCharged = true;
+      ).timeout(const Duration(seconds: 12));
+
+      debugPrint("✅ Chat deduction successful");
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("₹$_chatRate deducted for the session start"),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
-      debugPrint("⚠️ [Payment] Deduction skipped/failed: $e");
+      debugPrint("❌ Chat deduction failed: $e");
+      _isCharged = false; // Allow retry if necessary
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Payment failed: ${e.toString()}"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        // Optional: Close screen if payment is mandatory
+        // Navigator.pop(context);
+      }
     }
   }
 
   // ---------------------------------------------------------------------------
-  // CHAT HISTORY
-  // ---------------------------------------------------------------------------
-
-  Future<void> _loadChatHistory() async {
-    try {
-      final history = await _api.getChatHistory(widget.astrologerProfileId);
-      setState(() {
-        _messages.clear();
-        for (final msg in history) {
-          _messages.add({
-            'sender_id': msg.senderId,
-            'message': msg.content.toString(),
-            'created_at': msg.createdAt.toIso8601String(),
-          });
-        }
-      });
-      _scrollToBottom(force: true);
-    } catch (e) {
-      debugPrint("❌ History load failed: $e");
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // WEBSOCKET
+  // WEBSOCKET & MESSAGING
   // ---------------------------------------------------------------------------
 
   Future<void> _connectWebSocket() async {
     if (_socket != null || _manuallyClosed) return;
 
-    final wsUrl = "wss://fastapi.jyotishionline.com/chat/ws/$_roomId?token=$_token&user_id=$_myUserId&role=customer";
+    final wsUrl = "wss://fastapi.jyotishionline.com/chat/ws/$_roomId"
+        "?token=$_token&user_id=$_myUserId&role=customer"
+        "&v=${DateTime.now().millisecondsSinceEpoch}";
+
     debugPrint("🔗 [WS] Connecting: $wsUrl");
 
     try {
@@ -186,7 +208,10 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       _socket!.listen(
         _handleIncomingMessage,
         onDone: _handleDisconnect,
-        onError: (_) => _handleDisconnect(),
+        onError: (err) {
+          debugPrint("WS Error: $err");
+          _handleDisconnect();
+        },
       );
     } catch (e) {
       debugPrint("💥 [WS] Connection Error: $e");
@@ -199,8 +224,13 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     _socket = null;
     if (mounted) setState(() => _isConnected = false);
 
-    if (_retries >= 5) return;
+    if (_retries >= 5) {
+      debugPrint("🚫 [WS] Max retries reached.");
+      return;
+    }
+
     final delay = [2, 4, 8, 16, 30][_retries++];
+    debugPrint("🔄 [WS] Retrying in $delay seconds...");
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(Duration(seconds: delay), _connectWebSocket);
   }
@@ -260,6 +290,10 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     _scrollToBottom(force: true);
   }
 
+  // ---------------------------------------------------------------------------
+  // TIMER & SCROLLING
+  // ---------------------------------------------------------------------------
+
   void _startTimer() {
     if (_timerStarted) return;
     _timerStarted = true;
@@ -277,7 +311,10 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   void _endSession() {
     _manuallyClosed = true;
     _socket?.close();
-    if (mounted) Navigator.pop(context);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Session Ended")));
+      Navigator.pop(context);
+    }
   }
 
   void _scrollToBottom({bool force = false}) {
@@ -307,7 +344,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   }
 
   // ---------------------------------------------------------------------------
-  // HELPERS
+  // HELPERS & UI
   // ---------------------------------------------------------------------------
 
   String buildImageUrl(String? rawPath) {
@@ -325,10 +362,6 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       return '';
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // UI
-  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -441,7 +474,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
               ),
               child: Text(
                 m['message'],
-                style: TextStyle(color: isMine ? appDark : Colors.black87),
+                style: TextStyle(color: isMine ? appDark : Colors.black87, fontSize: 15),
               ),
             ),
             const SizedBox(height: 2),
@@ -454,7 +487,12 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
 
   Widget _buildInputArea() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.only(
+          left: 12,
+          right: 12,
+          top: 10,
+          bottom: MediaQuery.of(context).padding.bottom + 10
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
@@ -464,20 +502,23 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           Expanded(
             child: TextField(
               controller: _controller,
+              textCapitalization: TextCapitalization.sentences,
               decoration: InputDecoration(
-                hintText: 'Type here...',
+                hintText: 'Type your message...',
                 filled: true,
                 fillColor: appLight,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          CircleAvatar(
-            backgroundColor: appYellow,
-            child: IconButton(
-              icon: const Icon(Icons.send, color: appDark),
-              onPressed: _sendMessage,
+          GestureDetector(
+            onTap: _sendMessage,
+            child: const CircleAvatar(
+              backgroundColor: appYellow,
+              radius: 22,
+              child: Icon(Icons.send, color: appDark, size: 20),
             ),
           ),
         ],
