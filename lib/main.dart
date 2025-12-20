@@ -515,35 +515,118 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     });
   }
 }
-void _handleChatAccept(Map<String, dynamic> data) {
-  print("🔥 CHAT_ACCEPT handler triggered");
-  print("📦 DATA: $data");
 
-  final roomId = data["roomId"]?.toString() ?? "";
-  final astrologerUid = data["astrologerUid"]?.toString() ?? "";
-  final astrologerName = data["astrologerName"]?.toString() ?? "Astrologer";
-  final myUserId = data["myUserId"]?.toString() ?? "";
-  final chatRate =
+
+// ✅ USER SIDE : CHAT ACCEPT HANDLER (FINAL & CORRECT)
+
+Future<void> _handleChatAccept(Map<String, dynamic> data) async {
+  debugPrint("🔥 CHAT_ACCEPT handler triggered");
+  debugPrint("📦 RAW notification data ↓↓↓");
+  debugPrint(const JsonEncoder.withIndent('  ').convert(data));
+
+  final prefs = await SharedPreferences.getInstance();
+
+  // ---------------------------------------------------------------------------
+  // SOURCE OF TRUTH (FROM PAYLOAD)
+  // ---------------------------------------------------------------------------
+
+  final String roomId =
+      data["roomId"]?.toString().trim() ?? "";
+
+  /// CUSTOMER USER ID
+  final String myUserId =
+      data["myUserId"]?.toString().trim() ?? "";
+
+  /// ASTROLOGER USER ID (CHAT / WS)
+  final String astrologerUserId =
+      data["astrologerUid"]?.toString().trim() ?? "";
+
+  /// ASTROLOGER PROFILE ID (HISTORY API)
+  final String astrologerProfileId =
+      data["astro_id"]?.toString().trim() ?? "";
+
+  final String astrologerName =
+      data["astrologerName"]?.toString() ?? "Astrologer";
+
+  final double chatRate =
       double.tryParse(data["chatRate"]?.toString() ?? "0") ?? 0;
-  final token = data["token"]?.toString();
 
-  if (roomId.isEmpty || astrologerUid.isEmpty || myUserId.isEmpty) {
-    print("❌ Missing navigation fields → Cannot open chat");
+  // ---------------------------------------------------------------------------
+  // TOKEN (NOTIFICATION → FALLBACK STORAGE)
+  // ---------------------------------------------------------------------------
+
+  final String? notificationToken = data["token"]?.toString();
+  final String? storedToken = prefs.getString("access_token");
+  final String? token = notificationToken ?? storedToken;
+
+  // ---------------------------------------------------------------------------
+  // DEBUG LOGS
+  // ---------------------------------------------------------------------------
+
+  debugPrint("━━━━━━━━ CHAT NAVIGATION DATA ━━━━━━━━");
+  debugPrint("🆔 roomId                : $roomId");
+  debugPrint("🙋 customerUserId        : $myUserId");
+  debugPrint("🧙 astrologerUserId      : $astrologerUserId");
+  debugPrint("🧾 astrologerProfileId  : $astrologerProfileId");
+  debugPrint("👤 astrologerName        : $astrologerName");
+  debugPrint("💰 chatRate              : $chatRate");
+  debugPrint("🔐 notificationToken     : ${notificationToken ?? 'NULL'}");
+  debugPrint("💾 stored accessToken    : ${storedToken ?? 'NULL'}");
+  debugPrint("✅ FINAL token used      : ${token ?? 'NULL'}");
+  debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+  // ---------------------------------------------------------------------------
+  // HARD VALIDATION
+  // ---------------------------------------------------------------------------
+
+  if (roomId.isEmpty ||
+      myUserId.isEmpty ||
+      astrologerUserId.isEmpty ||
+      astrologerProfileId.isEmpty ||
+      token == null ||
+      token.isEmpty) {
+    debugPrint("❌ Missing required data, chat navigation aborted");
     return;
   }
 
-  Future.delayed(const Duration(milliseconds: 300), () {
-    Get.to(() => CustomerChatPage(
-      roomId: roomId,
-      astrologerUid: astrologerUid,
-      myUserId: myUserId,
-      astrologerName: astrologerName,
-      chatRate: chatRate,
-      token: token,
-    ));
-  });
-}
+  // ---------------------------------------------------------------------------
+  // SAFETY GUARDS (NEVER ALLOW ROLE MIX-UP)
+  // ---------------------------------------------------------------------------
 
+  assert(
+  myUserId != astrologerUserId,
+  "❌ FATAL: CUSTOMER USER ID AND ASTROLOGER USER ID ARE SAME!",
+  );
+
+  assert(
+  astrologerUserId != astrologerProfileId,
+  "❌ FATAL: ASTROLOGER USER ID AND PROFILE ID ARE SAME!",
+  );
+
+  // Store role explicitly
+  await prefs.setString("user_role", "customer");
+
+  debugPrint("🚀 Navigating to CustomerChatPage...");
+
+  // ---------------------------------------------------------------------------
+  // NAVIGATION (MATCHES UPDATED CustomerChatPage)
+  // ---------------------------------------------------------------------------
+
+  Get.to(() => CustomerChatPage(
+    roomId: roomId,
+
+    /// USER IDs
+    myUserId: myUserId,
+    astrologerUserId: astrologerUserId,
+
+    /// PROFILE ID (HISTORY)
+    astrologerProfileId: astrologerProfileId,
+
+    astrologerName: astrologerName,
+    chatRate: chatRate,
+    token: token,
+  ));
+}
 
 
 
@@ -743,7 +826,8 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
       overrideToken: tokenFromPush.isNotEmpty ? tokenFromPush : null,
       overrideAccount: accountFromPush.isNotEmpty ? accountFromPush : null,
       overrideAppId: appIdFromPush.isNotEmpty ? appIdFromPush : null,
-      overrideTimerSeconds: timerSeconds,
+      // overrideTimerSeconds: timerSeconds,
+      overrideTimerSeconds: 60,
     ));
     return;
   }
@@ -783,7 +867,7 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
             overrideToken: token.isNotEmpty ? token : null,
             overrideAccount: acc.isNotEmpty ? acc : null,
             overrideAppId: app.isNotEmpty ? app : null,
-            overrideTimerSeconds: timerSeconds,
+            overrideTimerSeconds: 600,
           ));
           return;
         }
@@ -863,7 +947,7 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
     overrideToken: token.isNotEmpty ? token : null,
     overrideAccount: acc.isNotEmpty ? acc : null,
     overrideAppId: app.isNotEmpty ? app : null,
-    overrideTimerSeconds: timerSeconds,
+    overrideTimerSeconds: 60,
   ));
 }
 
@@ -891,11 +975,12 @@ void _showChatAcceptPopup(Map data) {
 
               Get.to(() => CustomerChatPage(
                 roomId: data["roomId"],
-                astrologerUid: data["astrologerUid"],
+                astrologerUserId: data["astrologerUid"],
                 myUserId: data["myUserId"],
                 astrologerName: data["astrologerName"],
                 token: data["token"],
                 chatRate: double.tryParse(data["chatRate"].toString()) ?? 0,
+                astrologerProfileId: data["astrologerUid"],
               ));
             },
           ),

@@ -818,67 +818,69 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
                           if (!mounted) return;
 
                           // Step 4: navigate to chat / audio / video screen
-                          _showRequestSentDialog(
-                            callType,
-                            onOk: () {
-                              final type = apiType.toLowerCase();
-                              _d("navigate type=$type");
-                              if (type == 'chat') {
-                                Navigator.of(
-                                  pageContext,
-                                  rootNavigator: true,
-                                ).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => CustomerChatPage(
-                                      chatRate: astrologer.chatCharge,
-                                      astrologerUid: astrologerUid,
-                                      myUserId: userUid,
-                                      roomId: roomId,
-                                      astrologerName: astrologer.name,
-                                    ),
-                                  ),
-                                );
-                              } else if (type == 'video_call') {
-                                Navigator.of(
-                                  pageContext,
-                                  rootNavigator: true,
-                                ).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => CustomerVideoCallPage(
-                                      astroId: astrologerUid,
-                                    ),
-                                  ),
-                                );
-                              } else if (type == 'audio_call') {
-                                Navigator.of(
-                                  pageContext,
-                                  rootNavigator: true,
-                                ).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => AudioCallPage(
-                                      astroId: astrologerUid,
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                // fallback to chat
-                                Navigator.of(
-                                  pageContext,
-                                  rootNavigator: true,
-                                ).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => CustomerChatPage(
-                                      chatRate: astrologer.chatCharge,
-                                      astrologerUid: astrologerUid,
-                                      myUserId: userUid,
-                                      roomId: roomId,
-                                      astrologerName: astrologer.name,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                          );
+                          // _showRequestSentDialog(
+                          //   callType,
+                          //   onOk: () {
+                          //     final type = apiType.toLowerCase();
+                          //     _d("navigate type=$type");
+                          //     if (type == 'chat') {
+                          //       Navigator.of(
+                          //         pageContext,
+                          //         rootNavigator: true,
+                          //       ).push(
+                          //         MaterialPageRoute(
+                          //           builder: (_) => CustomerChatPage(
+                          //             token: "",
+                          //             chatRate: astrologer.chatCharge,
+                          //             // astrologerUid: astrologerUid,
+                          //             myUserId: userUid,
+                          //             roomId: roomId,
+                          //             astrologerName: astrologer.name,
+                          //           ),
+                          //         ),
+                          //       );
+                          //     } else if (type == 'video_call') {
+                          //       Navigator.of(
+                          //         pageContext,
+                          //         rootNavigator: true,
+                          //       ).push(
+                          //         MaterialPageRoute(
+                          //           builder: (_) => CustomerVideoCallPage(
+                          //             astroId: astrologerUid,
+                          //           ),
+                          //         ),
+                          //       );
+                          //     } else if (type == 'audio_call') {
+                          //       Navigator.of(
+                          //         pageContext,
+                          //         rootNavigator: true,
+                          //       ).push(
+                          //         MaterialPageRoute(
+                          //           builder: (_) => AudioCallPage(
+                          //             astroId: astrologerUid,
+                          //           ),
+                          //         ),
+                          //       );
+                          //     } else {
+                          //       // fallback to chat
+                          //       Navigator.of(
+                          //         pageContext,
+                          //         rootNavigator: true,
+                          //       ).push(
+                          //         MaterialPageRoute(
+                          //           builder: (_) => CustomerChatPage(
+                          //             token:"",
+                          //             chatRate: astrologer.chatCharge,
+                          //             // astrologerUid: astrologerUid,
+                          //             myUserId: userUid,
+                          //             roomId: roomId,
+                          //             astrologerName: astrologer.name, astrologerUserId: '', astrologerProfileId: '',
+                          //           ),
+                          //         ),
+                          //       );
+                          //     }
+                          //   },
+                          // );
                         } catch (e, st) {
                           _d("Exception in SEND_REQUEST: $e\n$st");
                           if (mounted) {

@@ -42,6 +42,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
 
   void _showReviewBottomSheet(Astrologer astrologer) {
     int rating = 5;
+    bool isSubmitting = false;
+
     final TextEditingController reviewController = TextEditingController();
 
     showModalBottomSheet(
@@ -71,6 +73,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+
                   const SizedBox(height: 12),
 
                   /// ⭐ STAR RATING
@@ -78,14 +81,12 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                     children: List.generate(5, (index) {
                       return IconButton(
                         icon: Icon(
-                          index < rating
-                              ? Icons.star
-                              : Icons.star_border,
+                          index < rating ? Icons.star : Icons.star_border,
                           color: Colors.amber,
                         ),
-                        onPressed: () {
-                          setSB(() => rating = index + 1);
-                        },
+                        onPressed: isSubmitting
+                            ? null
+                            : () => setSB(() => rating = index + 1),
                       );
                     }),
                   ),
@@ -94,6 +95,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                   TextField(
                     controller: reviewController,
                     maxLines: 3,
+                    enabled: !isSubmitting,
                     decoration: const InputDecoration(
                       hintText: "Write your experience...",
                       border: OutlineInputBorder(),
@@ -109,7 +111,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: appColor,
                       ),
-                      onPressed: () async {
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
                         if (reviewController.text.trim().isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -121,16 +125,20 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                           return;
                         }
 
-                        Navigator.pop(ctx);
+                        setSB(() => isSubmitting = true);
 
                         final success =
-                        await FastAPIServices()
-                            .submitUserReview(
+                        await FastAPIServices().submitUserReview(
                           astrologerId: astrologer.astroId,
                           rating: rating,
-                          review:
-                          reviewController.text.trim(),
+                          review: reviewController.text.trim(),
                         );
+
+                        setSB(() => isSubmitting = false);
+
+                        if (success) {
+                          Navigator.pop(ctx);
+                        }
 
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -139,13 +147,21 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                                   ? "Thank you for your review ⭐"
                                   : "Failed to submit review",
                             ),
-                            backgroundColor: success
-                                ? Colors.green
-                                : Colors.red,
+                            backgroundColor:
+                            success ? Colors.green : Colors.red,
                           ),
                         );
                       },
-                      child: const Text(
+                      child: isSubmitting
+                          ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                          : const Text(
                         "Submit Review",
                         style: TextStyle(color: Colors.white),
                       ),
@@ -159,6 +175,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       },
     );
   }
+
 
 
   Future<void> fetchTokenId() async {

@@ -1,5 +1,3 @@
-
-
 import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -9,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../fastApi/fastApiServices.dart';
 import '../../model/fastApiModel/CustomerDetailModel.dart';
+import '../../theme/appTheme.dart';
 
 class EditCustomerDetailsPage extends StatefulWidget {
   const EditCustomerDetailsPage({super.key});
@@ -74,7 +73,10 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load your profile: $e')),
+        SnackBar(
+          content: Text('Failed to load your profile: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -145,6 +147,16 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
       initialDate: DateTime(now.year - 25),
       firstDate: DateTime(1960),
       lastDate: now,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       _birthDateCtrl.text = DateFormat('dd-MM-yyyy').format(picked);
@@ -156,6 +168,16 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
     final picked = await showTimePicker(
       context: context,
       initialTime: const TimeOfDay(hour: 12, minute: 0),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       final now = DateTime.now();
@@ -174,7 +196,12 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
 
   void _showSnack(String msg, {Color? bg}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: bg),
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: bg,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
     );
   }
 
@@ -207,7 +234,7 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
         userId: uid,
         name: name.isEmpty ? null : name,
         contactNo: contact.isEmpty ? null : contact,
-        birthDate: birthDate, // service will normalize slashes if any
+        birthDate: birthDate,
         birthTime: birthTime,
         birthPlace: birthPlace.isEmpty ? null : birthPlace,
         addressLine1: address1.isEmpty ? null : address1,
@@ -216,225 +243,483 @@ class _EditCustomerDetailsPageState extends State<EditCustomerDetailsPage> {
         pincode: pincodeInt,
         gender: _gender.isEmpty ? null : _gender,
         countryCode: countryCode.isEmpty ? null : countryCode,
-        // fcmToken: await FirebaseMessaging.instance.getToken(), // <- optional
         profilePicPath: _pickedImage?.path,
       );
 
       if (!mounted) return;
-      _showSnack("Profile updated successfully", bg: Colors.green);
+      _showSnack("Profile updated successfully", bg: Theme.of(context).colorScheme.primary);
       Navigator.of(context).pop(updated);
     } catch (e) {
       if (!mounted) return;
-      _showSnack("Update failed: $e", bg: Colors.red);
+      _showSnack("Update failed: $e", bg:  appYellow);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
 
+  Widget _buildSectionTitle(String title) {
+    return Container(
+      margin: const EdgeInsets.only(top: 24, bottom: 16),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.primary,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    TextInputType? keyboardType,
+    TextInputAction? textInputAction,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+    String? hintText,
+    int? maxLines = 1,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: controller,
+        readOnly: readOnly,
+        onTap: onTap,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        maxLines: maxLines,
+        validator: validator,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hintText,
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+          ),
+          filled: true,
+          fillColor: readOnly ? Colors.grey.shade50 : Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          suffixIcon: suffixIcon,
+          labelStyle: TextStyle(
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Edit Profile"), centerTitle: true),
+      appBar: AppBar(
+        title: const Text(
+          "Edit Profile",
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+      ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading your profile...',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      )
           : AbsorbPointer(
         absorbing: _submitting,
         child: Stack(
           children: [
             SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Form(
                 key: _formKey,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Profile Picture Section
                     Center(
-                      child: Stack(
+                      child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 54,
-                            backgroundColor: Colors.grey.shade200,
-                            backgroundImage: _pickedImage != null
-                                ? FileImage(_pickedImage!)
-                                : (_existingProfileImageUrl != null && _existingProfileImageUrl!.isNotEmpty)
-                                ? NetworkImage(_existingProfileImageUrl!) as ImageProvider
-                                : null,
-                            child: (_pickedImage == null && (_existingProfileImageUrl == null || _existingProfileImageUrl!.isEmpty))
-                                ? const Icon(Icons.person, size: 54, color: Colors.grey)
-                                : null,
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                                    width: 3,
+                                  ),
+                                ),
+                                child: ClipOval(
+                                  child: _pickedImage != null
+                                      ? Image.file(
+                                    _pickedImage!,
+                                    fit: BoxFit.cover,
+                                  )
+                                      : (_existingProfileImageUrl != null && _existingProfileImageUrl!.isNotEmpty)
+                                      ? Image.network(
+                                    _existingProfileImageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey.shade200,
+                                        child: Icon(
+                                          Icons.person,
+                                          size: 60,
+                                          color: Colors.grey.shade400,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                      : Container(
+                                    color: Colors.grey.shade200,
+                                    child: Icon(
+                                      Icons.person,
+                                      size: 60,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: IconButton(
+                                    onPressed: _pickImage,
+                                    icon: const Icon(Icons.camera_alt, size: 20),
+                                    color: Colors.white,
+                                    tooltip: "Change Photo",
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: IconButton.filledTonal(
-                              onPressed: _pickImage,
-                              icon: const Icon(Icons.camera_alt),
-                              tooltip: "Change Photo",
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tap to change photo',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
 
-                    TextFormField(
+                    const SizedBox(height: 32),
+
+                    // Personal Information Section
+                    _buildSectionTitle('Personal Information'),
+
+                    _buildTextField(
                       controller: _nameCtrl,
-                      decoration: const InputDecoration(labelText: "Name"),
+                      label: "Full Name",
                       textInputAction: TextInputAction.next,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? "Enter your name" : null,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? "Please enter your name" : null,
                     ),
 
-                    const SizedBox(height: 8),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Gender",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                              // margin: 8,
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade300),
+                              color: Colors.white,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: ['Male', 'Female', 'Other'].map((gender) {
+                                return Expanded(
+                                  child: Row(
+                                    children: [
+                                      Radio<String>(
+                                        value: gender,
+                                        groupValue: _gender,
+                                        onChanged: (v) => setState(() => _gender = v ?? 'Male'),
+                                        activeColor: Theme.of(context).colorScheme.primary,
+                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      Text(
+                                        gender,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey.shade800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "Gender:",
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        Expanded(
+                          flex: 2,
+                          child: _buildTextField(
+                            controller: _countryCodeCtrl,
+                            label: "Country Code",
+                            hintText: "+91",
+                            textInputAction: TextInputAction.next,
+                          ),
                         ),
                         const SizedBox(width: 16),
-
                         Expanded(
-                          child: Wrap(
-                            spacing: 50,   // 🔥 horizontal spacing
-                            runSpacing: 10, // vertical spacing if wrapped
+                          flex: 5,
+                          child: _buildTextField(
+                            controller: _contactCtrl,
+                            label: "Contact Number",
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Birth Details Section
+                    _buildSectionTitle('Birth Details'),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildTextField(
+                            controller: _birthDateCtrl,
+                            label: "Birth Date",
+                            readOnly: true,
+                            onTap: _pickDate,
+                            validator: (v) => (v == null || v.trim().isEmpty) ? "Please select birth date" : null,
+                            suffixIcon: IconButton(
+                              onPressed: _pickDate,
+                              icon: Icon(
+                                Icons.calendar_today,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildTextField(
+                            controller: _birthTimeCtrl,
+                            label: "Birth Time",
+                            readOnly: true,
+                            onTap: _pickTime,
+                            validator: (v) => (v == null || v.trim().isEmpty) ? "Please select birth time" : null,
+                            suffixIcon: IconButton(
+                              onPressed: _pickTime,
+                              icon: Icon(
+                                Icons.access_time,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    _buildTextField(
+                      controller: _birthPlaceCtrl,
+                      label: "Place of Birth",
+                      textInputAction: TextInputAction.next,
+                    ),
+
+                    // Address Section
+                    _buildSectionTitle('Address Information'),
+
+                    _buildTextField(
+                      controller: _addressLine1Ctrl,
+                      label: "Address Line 1",
+                      textInputAction: TextInputAction.next,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? "Please enter your address" : null,
+                    ),
+
+                    _buildTextField(
+                      controller: _addressLine2Ctrl,
+                      label: "Address Line 2 (Optional)",
+                      textInputAction: TextInputAction.next,
+                    ),
+
+                    _buildTextField(
+                      controller: _locationCtrl,
+                      label: "City, State, Country",
+                      textInputAction: TextInputAction.next,
+                    ),
+
+                    _buildTextField(
+                      controller: _pincodeCtrl,
+                      label: "Pincode",
+                      keyboardType: TextInputType.number,
+                    ),
+
+                    // Submit Button
+                    Container(
+                      margin: const EdgeInsets.only(top: 32, bottom: 24),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _submitting ? null : _submit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: _submitting
+                              ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Radio<String>(
-                                    value: 'Male',
-                                    groupValue: _gender,
-                                    onChanged: (v) => setState(() => _gender = v ?? 'Male'),
-                                  ),
-                                  const Text('Male'),
-                                ],
+                              SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Radio<String>(
-                                    value: 'Female',
-                                    groupValue: _gender,
-                                    onChanged: (v) => setState(() => _gender = v ?? 'Female'),
-                                  ),
-                                  const Text('Female'),
-                                ],
+                              const SizedBox(width: 12),
+                              Text(
+                                "Saving...",
+                                style: const TextStyle(fontSize: 16),
                               ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Radio<String>(
-                                    value: 'Other',
-                                    groupValue: _gender,
-                                    onChanged: (v) => setState(() => _gender = v ?? 'Other'),
-                                  ),
-                                  const Text('Other'),
-                                ],
+                            ],
+                          )
+                              : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.check_circle_outline,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                "Save Changes",
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      ],
-                    )
-                    ,
-
-
-                    TextFormField(
-                      controller: _contactCtrl,
-                      decoration: const InputDecoration(labelText: "Contact Number"),
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    TextFormField(
-                      controller: _countryCodeCtrl,
-                      decoration: const InputDecoration(labelText: "Country Code (e.g. +91)"),
-                      textInputAction: TextInputAction.next,
-                    ),
-
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _birthDateCtrl,
-                      readOnly: true,
-                      decoration: InputDecoration(
-                        labelText: "Birth Date (dd-MM-yyyy)",
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.date_range),
-                          onPressed: _pickDate,
-                        ),
-                      ),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? "Select birth date" : null,
-                    ),
-
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _birthTimeCtrl,
-                      readOnly: true,
-                      decoration: InputDecoration(
-                        labelText: "Birth Time (e.g. 6:05 PM)",
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.access_time),
-                          onPressed: _pickTime,
-                        ),
-                      ),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? "Select birth time" : null,
-                    ),
-
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _birthPlaceCtrl,
-                      decoration: const InputDecoration(labelText: "Place of Birth"),
-                      textInputAction: TextInputAction.next,
-                    ),
-
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _addressLine1Ctrl,
-                      decoration: const InputDecoration(labelText: "Address Line 1"),
-                      textInputAction: TextInputAction.next,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? "Enter address" : null,
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _addressLine2Ctrl,
-                      decoration: const InputDecoration(labelText: "Address Line 2 (optional)"),
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _locationCtrl,
-                      decoration: const InputDecoration(labelText: "City, State, Country"),
-                      textInputAction: TextInputAction.next,
-                    ),
-
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _pincodeCtrl,
-                      decoration: const InputDecoration(labelText: "Pincode"),
-                      keyboardType: TextInputType.number,
-                    ),
-
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _submitting ? null : _submit,
-                        child: _submitting
-                            ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Text("Save"),
                       ),
                     ),
-                    const SizedBox(height: 16),
+
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
 
             if (_submitting)
-              const Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: LinearProgressIndicator(),
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.1),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                Theme.of(context).colorScheme.primary),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Updating Profile...',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
           ],

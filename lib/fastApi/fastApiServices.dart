@@ -40,6 +40,8 @@ class FastAPIServices {
   String? get accessToken => _accessToken;
 
 
+
+
   Future<List<dynamic>> getCosmicServices() async {
     try {
       final response = await http.get(
@@ -114,19 +116,25 @@ class FastAPIServices {
     await _loadCredentials();
 
     if (_userId == null || _accessToken == null) {
+      debugPrint("❌ UserId or token missing");
       return false;
     }
 
-    final url =
-    Uri.parse("${FastApiEndpoints.fastApiBaseUrl}/api/v1/userreviews");
+    final url = Uri.parse(
+      "${FastApiEndpoints.fastApiBaseUrl}/api/v1/userreviews",
+    );
 
     final body = {
       "userId": _userId,
       "astrologerId": astrologerId,
       "rating": rating,
       "review": review,
+      "reply": "",              // ✅ REQUIRED
       "isActive": true,
+      "isDelete": false,        // ✅ REQUIRED
       "isPublic": isPublic,
+      "createdBy": 0,           // ✅ REQUIRED
+      "modifiedBy": 0,          // ✅ REQUIRED
     };
 
     try {
@@ -140,15 +148,16 @@ class FastAPIServices {
         body: jsonEncode(body),
       );
 
-      print("⭐ Review Status: ${response.statusCode}");
-      print("⭐ Review Body: ${response.body}");
+      debugPrint("⭐ Review Status: ${response.statusCode}");
+      debugPrint("⭐ Review Body: ${response.body}");
 
-      return response.statusCode == 200 || response.statusCode == 201;
+      return response.statusCode == 200;
     } catch (e) {
-      print("❌ submitUserReview error: $e");
+      debugPrint("❌ submitUserReview error: $e");
       return false;
     }
   }
+
 
 
 
@@ -344,85 +353,78 @@ class FastAPIServices {
     String? profile,
     String? fcmToken,
     String? token,
-    String? profilePicPath, // optional local file path for image
+    String? expirationDate,
+    String? profilePicPath,
   }) async {
-    final url = Uri.parse(FastApiEndpoints.signupWithDetails);
+    final url = Uri.parse(
+        "https://fastapi.jyotishionline.com/api/v1/customerdetails");
 
     try {
       final request = http.MultipartRequest('POST', url)
         ..headers['accept'] = 'application/json';
 
-      // ✅ Required fields
+      // ✅ REQUIRED (MATCH BACKEND)
       request.fields['name'] = name;
-      request.fields['contactNo'] = contactNo;
-      request.fields['countryCode'] = countryCode;
       request.fields['email'] = email;
       request.fields['password'] = password;
+      request.fields['contact_no'] = contactNo;
+      request.fields['country_code'] = countryCode;
       request.fields['pincode'] = pincode.toString();
 
-      // ✅ Optional fields
-      if (birthDate != null) request.fields['birthDate'] = birthDate;
-      if (birthTime != null) request.fields['birthTime'] = birthTime;
-      if (birthPlace != null) request.fields['birthPlace'] = birthPlace;
-      if (addressLine1 != null) request.fields['addressLine1'] = addressLine1;
-      if (addressLine2 != null) request.fields['addressLine2'] = addressLine2;
+      // ✅ OPTIONAL (ONLY IF NOT NULL)
+      if (birthDate != null) request.fields['birth_date'] = birthDate;
+      if (birthTime != null) request.fields['birth_time'] = birthTime;
+      if (birthPlace != null) request.fields['birth_place'] = birthPlace;
+      if (addressLine1 != null) request.fields['address_line1'] = addressLine1;
+      if (addressLine2 != null) request.fields['address_line2'] = addressLine2;
       if (location != null) request.fields['location'] = location;
       if (gender != null) request.fields['gender'] = gender;
       if (profile != null) request.fields['profile'] = profile;
       if (fcmToken != null) request.fields['fcm_token'] = fcmToken;
       if (token != null) request.fields['token'] = token;
+      if (expirationDate != null) {
+        request.fields['expiration_date'] = expirationDate;
+      }
 
-      // ✅ Optional image upload
+      // ✅ IMAGE
       if (profilePicPath != null && profilePicPath.isNotEmpty) {
         final file = File(profilePicPath);
         if (await file.exists()) {
-          request.files.add(await http.MultipartFile.fromPath('profile_pic', profilePicPath));
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'profile_pic',
+              profilePicPath,
+            ),
+          );
           debugPrint("🖼️ Profile picture attached: $profilePicPath");
-        } else {
-          debugPrint("⚠️ Profile picture not found at path: $profilePicPath");
         }
       }
 
-      debugPrint("🚀 Sending signup request → $url");
+      debugPrint("🚀 Sending customer signup → $url");
       debugPrint("🧾 Fields: ${request.fields}");
 
-      // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      debugPrint("📡 Response Status: ${response.statusCode}");
-      debugPrint("📦 Response Body: ${response.body}");
+      debugPrint("📡 Status: ${response.statusCode}");
+      debugPrint("📦 Body: ${response.body}");
 
-      // ✅ Handle success
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-
-        // Automatically save credentials if token is returned
-        if (data is Map && data.containsKey("access_token")) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString("access_token", data["access_token"]);
-          if (data["user"]?["id"] != null) {
-            await prefs.setString("user_id", data["user"]["id"].toString());
-          }
-          debugPrint("🔐 Credentials saved locally after signup!");
-        }
-
-        debugPrint("✅ Signup Successful!");
-        return data;
+        debugPrint("✅ Customer created successfully");
+        return jsonDecode(response.body);
       } else {
-        debugPrint("❌ Signup Failed (${response.statusCode}) → ${response.body}");
-        try {
-          final error = jsonDecode(response.body);
-          return {"error": true, "message": error["detail"] ?? "Signup failed"};
-        } catch (_) {
-          return {"error": true, "message": "Unexpected error occurred"};
-        }
+        final error = jsonDecode(response.body);
+        return {
+          "error": true,
+          "message": error["detail"] ?? "Signup failed"
+        };
       }
     } catch (e) {
       debugPrint("💥 Signup Exception: $e");
       return {"error": true, "message": e.toString()};
     }
   }
+
 
 
 
@@ -691,13 +693,15 @@ class FastAPIServices {
 
   /// ✅ PATCH /api/v1/customerdetails/{user_id}
   /// Multipart update for customer detail with optional profile_pic.
+  /// ✅ PATCH /api/v1/customerdetails/{user_id}
   Future<CustomerDetail> patchCustomerDetailByUserId({
     required String userId,
 
     String? name,
     String? contactNo,
-    String? birthDate,     // accepts "yyyy-MM-dd" or "yyyy/MM/dd"
-    String? birthTime,     // "HH:mm"
+    String? email,
+    String? birthDate,        // yyyy-MM-dd
+    String? birthTime,        // HH:mm
     String? profile,
     String? birthPlace,
     String? addressLine1,
@@ -705,83 +709,84 @@ class FastAPIServices {
     String? location,
     int?    pincode,
     String? gender,
-    String? fcmToken,      // API field name: fcm_token
-    String? token,
-    String? expirationDate, // ISO8601 if you send it
+    String? fcmToken,
     String? countryCode,
 
-    /// Local file path to image, e.g. from ImagePicker().path
+    /// local file path
     String? profilePicPath,
   }) async {
     await _loadCredentials();
+
     if (_accessToken == null || _accessToken!.isEmpty) {
-      throw Exception("Not authenticated: missing access token");
+      throw Exception("❌ Missing access token");
     }
 
-    // ── Build .../api/v1/customerdetails/{user_id} robustly
     final base = FastApiEndpoints.customerDetails.replaceAll(RegExp(r'/+$'), '');
-    final id   = userId.startsWith('/') ? userId.substring(1) : userId;
-    final uri  = Uri.parse('$base/$id');
-    debugPrint("🩹 [CUSTOMER DETAIL] → PATCH $uri");
+    final uri  = Uri.parse("$base/$userId");
 
-    // Build multipart request
-    final req = http.MultipartRequest('PATCH', uri)
-      ..headers['Authorization'] = 'Bearer $_accessToken'
-      ..headers['accept'] = 'application/json';
+    debugPrint("────────────────────────────────────────");
+    debugPrint("🩹 PATCH CUSTOMER DETAIL");
+    debugPrint("🆔 User ID : $userId");
+    debugPrint("🌐 URL     : $uri");
+    debugPrint("────────────────────────────────────────");
 
-    // Normalise birthDate if user passed with slashes (1999/11/21 -> 1999-11-21)
-    String? _normaliseDate(String? d) {
-      if (d == null || d.trim().isEmpty) return null;
-      final s = d.trim();
-      return s.contains('/') ? s.replaceAll('/', '-') : s;
+    final req = http.MultipartRequest("PATCH", uri)
+      ..headers.addAll({
+        "accept": "application/json",
+        "Authorization": "Bearer $_accessToken",
+      });
+
+    /// helper → add only valid fields
+    void add(String key, dynamic value) {
+      if (value != null && value.toString().trim().isNotEmpty) {
+        req.fields[key] = value.toString().trim();
+      }
     }
 
-    // Add only provided fields
-    req.addIfPresent('name', name);
-    req.addIfPresent('contactNo', contactNo);
-    req.addIfPresent('birthDate', _normaliseDate(birthDate));
-    req.addIfPresent('birthTime', birthTime);
-    req.addIfPresent('profile', profile);
-    req.addIfPresent('birthPlace', birthPlace);
-    req.addIfPresent('addressLine1', addressLine1);
-    req.addIfPresent('addressLine2', addressLine2);
-    req.addIfPresent('location', location);
-    if (pincode != null) req.fields['pincode'] = pincode.toString();
-    req.addIfPresent('gender', gender);
-    req.addIfPresent('fcm_token', fcmToken); // snake_case per API
-    req.addIfPresent('token', token);
-    req.addIfPresent('expirationDate', expirationDate);
-    req.addIfPresent('countryCode', countryCode);
+    /// ✅ EXACT API FIELD NAMES (snake_case)
+    add("name", name);
+    add("contact_no", contactNo);
+    add("email", email);
+    add("birth_date", birthDate);
+    add("birth_time", birthTime);
+    add("profile", profile);
+    add("birth_place", birthPlace);
+    add("address_line1", addressLine1); // 🔥 FIX
+    add("address_line2", addressLine2); // 🔥 FIX
+    add("location", location);
+    if (pincode != null) add("pincode", pincode);
+    add("gender", gender);
+    add("fcm_token", fcmToken);
+    add("country_code", countryCode);
 
-    // Optional file
+    /// 📸 Profile Image
     if (profilePicPath != null && profilePicPath.isNotEmpty) {
       final file = File(profilePicPath);
       if (await file.exists()) {
-        debugPrint("🖼️ attaching profile_pic: $profilePicPath");
-        req.files.add(await http.MultipartFile.fromPath('profile_pic', profilePicPath));
+        debugPrint("🖼 Attaching profile_pic: $profilePicPath");
+        req.files.add(
+          await http.MultipartFile.fromPath("profile_pic", profilePicPath),
+        );
       } else {
-        throw Exception("profilePicPath not found: $profilePicPath");
+        debugPrint("⚠ profilePicPath does not exist: $profilePicPath");
       }
     } else {
-      debugPrint("🖼️ no profile_pic attached");
+      debugPrint("🖼 No profile_pic provided");
     }
 
-    debugPrint("📝 fields being sent: ${req.fields}");
+    debugPrint("📝 Fields Sent → ${req.fields}");
 
-    // Send
     final streamed = await req.send();
     final res = await http.Response.fromStream(streamed);
 
-    debugPrint("✅ [PATCH customer] status=${res.statusCode}");
-    debugPrint("🧾 [PATCH customer] body=${res.body}");
+    debugPrint("📡 PATCH Status : ${res.statusCode}");
+    debugPrint("📩 PATCH Body   : ${res.body}");
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      final Map<String, dynamic> data = jsonDecode(res.body);
-      return CustomerDetail.fromJson(data);
+      return CustomerDetail.fromJson(jsonDecode(res.body));
     }
 
-    // Bubble up server validation/trace
-    throw Exception("Update failed (${res.statusCode}): ${res.body}");
+    throw Exception("❌ Update failed (${res.statusCode}): ${res.body}");
   }
 
 

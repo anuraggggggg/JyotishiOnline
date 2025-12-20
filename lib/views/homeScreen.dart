@@ -1975,24 +1975,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 letterSpacing: 1.2,
                               ),
                             ),
-                            // GestureDetector(
-                            //   onTap: () {
-                            //     // Navigator.push(
-                            //     //   context,
-                            //     //   MaterialPageRoute(
-                            //     //     builder: (context) => ViewAllOnlineAstrologersPage(),
-                            //     //   ),
-                            //     // );
-                            //   },
-                            //   child: Text(
-                            //     "View all",
-                            //     style: TextStyle(
-                            //       fontSize: 14,
-                            //       fontWeight: FontWeight.w500,
-                            //       color: Colors.blue,
-                            //     ),
-                            //   ),
-                            // ),
+
                           ],
                         ),
                       ),
@@ -2921,12 +2904,34 @@ class _ServiceCircle extends StatelessWidget {
 
 
 Widget _buildOnlineAstroTile(OnlineAstrologerModel astro) {
-  // ---- SAFE IMAGE URL HANDLING ----
-  final String imageUrl = (astro.profileImage.isNotEmpty)
-      ? (astro.profileImage.startsWith("http")
-      ? astro.profileImage
-      : "https://fastapi.jyotishionline.com${astro.profileImage}")
-      : "https://via.placeholder.com/150";
+  // 🔥 SAFE IMAGE URL BUILDER
+  String buildAstroImageUrl(String? rawPath) {
+    if (rawPath == null) return '';
+
+    final cleaned = rawPath
+        .replaceAll('\n', '')
+        .replaceAll('\r', '')
+        .replaceAll(RegExp(r'\s+'), '');
+
+    if (cleaned.isEmpty || cleaned.toLowerCase().contains('null')) {
+      return '';
+    }
+
+    if (cleaned.startsWith('http')) {
+      return cleaned;
+    }
+
+    final normalized =
+    cleaned.startsWith('/') ? cleaned : '/$cleaned';
+
+    return 'https://fastapi.jyotishionline.com$normalized';
+  }
+
+  final imageUrl = buildAstroImageUrl(astro.profileImage);
+  final hasImage = imageUrl.isNotEmpty;
+
+  // Debug (remove later)
+  debugPrint('🖼 ONLINE ASTRO IMAGE URL → $imageUrl');
 
   return Column(
     mainAxisSize: MainAxisSize.min,
@@ -2934,23 +2939,30 @@ Widget _buildOnlineAstroTile(OnlineAstrologerModel astro) {
       // ---- IMAGE ----
       ClipRRect(
         borderRadius: BorderRadius.circular(50),
-        child: Image.network(
+        child: hasImage
+            ? Image.network(
           imageUrl,
           height: 60,
           width: 60,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const SizedBox(
               height: 60,
               width: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.grey.shade300,
+              child: Center(
+                child: SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
-              child: const Icon(Icons.person, size: 30, color: Colors.white),
             );
           },
-        ),
+          errorBuilder: (_, __, ___) =>
+              _buildOnlinePlaceholderAvatar(astro.name),
+        )
+            : _buildOnlinePlaceholderAvatar(astro.name),
       ),
 
       const SizedBox(height: 6),
@@ -2985,6 +2997,25 @@ Widget _buildOnlineAstroTile(OnlineAstrologerModel astro) {
   );
 }
 
+/// 🧠 Initials fallback avatar
+Widget _buildOnlinePlaceholderAvatar(String name) {
+  final initial =
+  name.isNotEmpty ? name.trim()[0].toUpperCase() : 'A';
+
+  return CircleAvatar(
+    radius: 30,
+    backgroundColor: Colors.green.shade100,
+    child: Text(
+      initial,
+      style: const TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: Colors.green,
+      ),
+    ),
+  );
+}
+
 
 
 
@@ -2993,21 +3024,52 @@ class LiveAstroCard extends StatelessWidget {
 
   const LiveAstroCard({super.key, required this.astro});
 
+  /// 🔥 Builds a safe, absolute image URL
+  String _buildAstroImageUrl(String? rawPath) {
+    if (rawPath == null) return '';
+
+    // Remove newlines, spaces, tabs
+    final cleaned = rawPath
+        .replaceAll('\n', '')
+        .replaceAll('\r', '')
+        .replaceAll(RegExp(r'\s+'), '');
+
+    if (cleaned.isEmpty || cleaned.toLowerCase().contains('null')) {
+      return '';
+    }
+
+    // Already absolute
+    if (cleaned.startsWith('http')) {
+      return cleaned;
+    }
+
+    // Ensure leading slash
+    final normalized = cleaned.startsWith('/')
+        ? cleaned
+        : '/$cleaned';
+
+    return 'https://fastapi.jyotishionline.com$normalized';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final imageUrl = _buildAstroImageUrl(astro.profileImage);
+    final hasImage = imageUrl.isNotEmpty;
+
+    // Debug once (remove later)
+    debugPrint('🖼 LIVE ASTRO IMAGE URL → $imageUrl');
+
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () async {
         final api = FastAPIServices();
 
         try {
-          // 🔥 Call join live API
           final res = await api.joinLive(astroId: astro.astroId);
 
           final channelName = res["channelName"];
           final rtcToken = res["rtc_token"];
 
-          // Navigate to live viewer
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -3018,22 +3080,20 @@ class LiveAstroCard extends StatelessWidget {
               ),
             ),
           );
-        } catch (e) {
-          print("❌ Failed to join live: $e");
+        } catch (_) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Cannot join live right now")),
+            const SnackBar(content: Text("Cannot join live right now")),
           );
         }
       },
-
       child: Container(
         width: 130,
-        margin: EdgeInsets.only(right: 15),
-        padding: EdgeInsets.all(10),
+        margin: const EdgeInsets.only(right: 15),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
               color: Colors.black12,
               blurRadius: 6,
@@ -3045,13 +3105,31 @@ class LiveAstroCard extends StatelessWidget {
           children: [
             Stack(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(50),
-                  child: Image.network(
-                    "https://fastapi.jyotishionline.com${astro.profileImage}",
-                    height: 55,
-                    width: 55,
-                    fit: BoxFit.cover,
+                SizedBox(
+                  height: 55,
+                  width: 55,
+                  child: ClipOval(
+                    child: hasImage
+                        ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder:
+                          (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) =>
+                          _buildPlaceholderAvatar(astro.name),
+                    )
+                        : _buildPlaceholderAvatar(astro.name),
                   ),
                 ),
 
@@ -3060,36 +3138,67 @@ class LiveAstroCard extends StatelessWidget {
                   right: 0,
                   bottom: 0,
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(
+                    child: const Text(
                       "LIVE",
-                      style: TextStyle(color: Colors.white, fontSize: 10),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
 
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
 
-            // Astrologer Name
             Text(
               astro.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
 
-            // Skill
+            const SizedBox(height: 2),
+
             Text(
               astro.primarySkill,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // 🧠 Initials avatar (fallback)
+  Widget _buildPlaceholderAvatar(String name) {
+    final initial =
+    name.isNotEmpty ? name.trim()[0].toUpperCase() : 'A';
+
+    return CircleAvatar(
+      radius: 27.5,
+      backgroundColor: Colors.orange.shade100,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: Colors.orange,
         ),
       ),
     );
@@ -3099,16 +3208,30 @@ class LiveAstroCard extends StatelessWidget {
 
 
 
-Widget _buildAstroTile(GetAllAstrologerModel astrologer) {
-  final rawImagePath = (astrologer.profileImage ?? '').trim();
-  final hasImage = rawImagePath.isNotEmpty && !rawImagePath.toLowerCase().contains('null');
 
-  // Fix: prepend base URL
+
+Widget _buildAstroTile(GetAllAstrologerModel astrologer) {
+  final raw = astrologer.profileImage ?? '';
+
+  // 🔥 CLEAN IMAGE PATH (remove newline, spaces)
+  final cleanedPath = raw
+      .replaceAll('\n', '')
+      .replaceAll('\r', '')
+      .replaceAll(RegExp(r'\s+'), '');
+
+  final hasImage =
+      cleanedPath.isNotEmpty && !cleanedPath.toLowerCase().contains('null');
+
+  // 🔥 BUILD SAFE ABSOLUTE URL
   final imageUrl = hasImage
-      ? (rawImagePath.startsWith("http")
-      ? rawImagePath
-      : "https://fastapi.jyotishionline.com$rawImagePath")
-      : "";
+      ? (cleanedPath.startsWith('http')
+      ? cleanedPath
+      : 'https://fastapi.jyotishionline.com'
+      '${cleanedPath.startsWith('/') ? cleanedPath : '/$cleanedPath'}')
+      : '';
+
+  // 🐞 DEBUG (remove later)
+  debugPrint('🖼 FINAL ASTRO IMAGE URL → $imageUrl');
 
   return Column(
     mainAxisSize: MainAxisSize.min,
@@ -3127,12 +3250,13 @@ Widget _buildAstroTile(GetAllAstrologerModel astrologer) {
               if (loadingProgress == null) return child;
               return Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(appColor),
+                  valueColor:
+                  AlwaysStoppedAnimation<Color>(appColor),
                   strokeWidth: 2,
                 ),
               );
             },
-            errorBuilder: (context, error, stackTrace) =>
+            errorBuilder: (_, __, ___) =>
                 _buildPlaceholderAvatar(astrologer.name ?? 'A'),
           )
               : _buildPlaceholderAvatar(astrologer.name ?? 'A'),
@@ -3156,6 +3280,8 @@ Widget _buildAstroTile(GetAllAstrologerModel astrologer) {
     ],
   );
 }
+
+
 
 // Helper method for placeholder avatar with initials
 Widget _buildPlaceholderAvatar(String name) {

@@ -1,34 +1,32 @@
-// lib/views/chat/customer_chat_page.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 import '../../fastApi/fastApiServices.dart';
-import '../../model/fastApiModel/newChatModel.dart';
 
 class CustomerChatPage extends StatefulWidget {
-  final String astrologerUid;
+  final String astrologerUserId;
+  final String astrologerProfileId;
   final String roomId;
   final String myUserId;
   final String astrologerName;
   final String? token;
-
-  /// 🔹 New: chatRate – amount to be deducted ONCE when chat session starts
   final double chatRate;
 
   const CustomerChatPage({
-    Key? key,
-    required this.astrologerUid,
+    super.key,
+    required this.astrologerUserId,
+    required this.astrologerProfileId,
     required this.roomId,
     required this.myUserId,
     required this.astrologerName,
     this.token,
     required this.chatRate,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomerChatPage> createState() => _CustomerChatPageState();
@@ -42,793 +40,290 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   WebSocket? _socket;
   bool _isConnected = false;
   bool _isLoading = true;
+  bool _manuallyClosed = false;
+  bool _isCharged = false;
 
-  final List<Map<String, dynamic>> _messages = <Map<String, dynamic>>[];
-
-  static const int _pageSize = 20;
-  int _currentPage = 1;
-  bool _isFetchingMore = false;
-  bool _hasMore = true;
+  final List<Map<String, dynamic>> _messages = [];
 
   Timer? _reconnectTimer;
-  Timer? _pollTimer;
-  bool _isPolling = false;
-  int _retries = 0;
-  int _seq = 0;
-
-  // ⏱ Session timer (10 minutes, starts only when astrologer connects)
   Timer? _sessionTimer;
-  static const int _totalSessionSeconds = 600; // 🔥 10 minutes
+
+  static const int _totalSessionSeconds = 600;
   int _secondsLeft = _totalSessionSeconds;
   bool _timerStarted = false;
-
-  // 💸 New: payment state (deduct chat amount once at session start)
-  bool _isCharging = false;
-  bool _chatChargeDone = false;
-
-  final Set<String> _clientSeqSeen = <String>{};
-  final Map<String, int> _clientSeqIndex = {};
-  final Set<String> _historyIdsSeen = <String>{};
 
   late String _myUserId;
   late String _roomId;
   String? _token;
-  DateTime? _latestSeenAt;
 
-  int _wsFrameCount = 0;
-  String _lastWsRaw = '';
-  DateTime _lastWsAt = DateTime.fromMillisecondsSinceEpoch(0);
+  // Added variables for dynamic profile data
+  String? _displayName;
+  String? _profileImageUrl;
 
-  // Theme colors
-  final Color _primaryColor = const Color(0xFFFFC31F); // App yellow
-  final Color _backgroundColor = Colors.white;
-  final Color _cardColor = Colors.grey.shade50;
-  final Color _textColor = Colors.black87;
-  final Color _hintColor = Colors.grey.shade600;
-  final Color _onlineColor = Colors.green;
-  final Color _offlineColor = Colors.grey;
+  int _retries = 0;
+
+  static const Color appYellow = Color(0xFFFFC31F);
+  static const Color appDark = Color(0xFF1A1A1A);
+  static const Color appLight = Color(0xFFF8F9FA);
 
   @override
   void initState() {
     super.initState();
-    _initializeUserData();
-
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels <=
-          _scrollController.position.minScrollExtent + 100 &&
-          !_isFetchingMore &&
-          _hasMore) {
-        debugPrint('⬆️ Reached top — loading older messages...');
-        _loadChatHistory(loadMore: true);
-      }
-    });
+    _displayName = widget.astrologerName; // Initial fallback
+    _initialize();
   }
 
-  // ⏱ Session timer that REBUILDS every second – starts only when astrologer connects
-  void _startSessionCountdownIfNeeded() {
-    if (_timerStarted) return;
-    _timerStarted = true;
+  // ---------------------------------------------------------------------------
+  // INIT
+  // ---------------------------------------------------------------------------
 
-    _sessionTimer?.cancel();
-    _secondsLeft = _totalSessionSeconds;
-
-    _sessionTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-
-      _secondsLeft--;
-      setState(() {});
-
-      if (_secondsLeft <= 0) {
-        t.cancel();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _endSession();
-        });
-      }
-    });
-  }
-
-  // 🔚 End session: clean up and navigate back
-  Future<void> _endSession() async {
-    debugPrint('⏹ Session ended — navigating back');
-    try {
-      await _socket?.close();
-    } catch (_) {}
-    _socket = null;
-
-    _pollTimer?.cancel();
-    _reconnectTimer?.cancel();
-    _sessionTimer?.cancel();
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Session ended')),
-    );
-
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
-  }
-
-  // 🔥 NEW: Deduct chat amount ONCE when session starts
-  Future<void> _maybeChargeForChat() async {
-    // If no rate, skip
-    if (widget.chatRate <= 0) {
-      debugPrint('💸 [ChatCharge] chatRate<=0 → skipping deduction');
-      return;
-    }
-
-    if (_chatChargeDone) {
-      debugPrint('💸 [ChatCharge] Already done in this widget instance');
-      return;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    final key = 'chat_charged_${widget.roomId}';
-
-    final alreadyCharged = prefs.getBool(key) ?? false;
-    if (alreadyCharged) {
-      debugPrint('💸 [ChatCharge] Already charged for this room (prefs)');
-      _chatChargeDone = true;
-      return;
-    }
-
-    try {
-      setState(() => _isCharging = true);
-
-      debugPrint(
-          '💸 [ChatCharge] Sending ₹${widget.chatRate.toStringAsFixed(0)} to astrologer=${widget.astrologerUid} for room=${widget.roomId}');
-
-      final api = FastAPIServices();
-      final res = await api.sendMoney(
-        astrologerId: widget.astrologerUid,
-        amount: widget.chatRate,
-        type: 'chat_session',
-      );
-
-      debugPrint(
-          '✅ [ChatCharge] Success → txId=${res.transactionId} userBal=${res.userBalance} astroBal=${res.astroBalance}');
-
-      await prefs.setBool(key, true);
-      _chatChargeDone = true;
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                '₹${widget.chatRate.toStringAsFixed(0)} debited for chat session.'),
-          ),
-        );
-      }
-    } catch (e, st) {
-      debugPrint('💥 [ChatCharge] Failed: $e\n$st');
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Payment failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-
-      // ❗ Business rule: if payment fails, close chat screen
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isCharging = false);
-      }
-    }
-  }
-
-  Future<void> _initializeUserData() async {
-    debugPrint('🧠 Loading stored user data / wiring params...');
+  Future<void> _initialize() async {
+    debugPrint("🚀 [ChatInit] Starting Initialization...");
     final prefs = await SharedPreferences.getInstance();
 
     _myUserId = widget.myUserId.trim();
     _roomId = widget.roomId.trim();
-    _token = widget.token ?? prefs.getString('accessToken');
+    _token = widget.token ?? prefs.getString('access_token');
 
-    if (_myUserId.isEmpty || _roomId.isEmpty) {
+    if (_myUserId.isEmpty || _roomId.isEmpty || _token == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Missing session details. Please try again.')),
+          const SnackBar(content: Text('Invalid chat session')),
         );
+        Navigator.pop(context);
       }
       return;
     }
 
-    // 💸 FIRST: charge for chat session (ONCE per room)
-    await _maybeChargeForChat();
-    if (!mounted) return;
+    // 1. DEDUCT MONEY IMMEDIATELY
+    await _deductBalance();
 
-    // Then load history / connect WS
+    // 2. FETCH ACTUAL ASTROLOGER DETAILS (Name & Image)
+    try {
+      final astro = await _api.fetchAstrologerDetail(widget.astrologerProfileId);
+      if (mounted) {
+        setState(() {
+          _displayName = astro.name;
+          _profileImageUrl = astro.profileImage;
+        });
+      }
+    } catch (e) {
+      debugPrint("⚠️ Could not fetch astrologer details: $e");
+    }
+
+    // 3. LOAD HISTORY
     await _loadChatHistory();
+
     if (!mounted) return;
-
     setState(() => _isLoading = false);
+
+    // 4. CONNECT WEBSOCKET
     _connectWebSocket();
-    _startPolling();
   }
 
-  // ---------------------------------------------------------------------------
-  // History & Polling
-  // ---------------------------------------------------------------------------
-
-  Future<void> _loadChatHistory({bool loadMore = false}) async {
-    if (_isFetchingMore || (!_hasMore && loadMore)) return;
-    _isFetchingMore = true;
-
+  Future<void> _deductBalance() async {
+    if (_isCharged) return;
     try {
-      final List<ChatMessage> allMessages =
-      await _api.getChatHistory(widget.astrologerUid);
-
-      if (allMessages.isEmpty) {
-        setState(() => _hasMore = false);
-        return;
-      }
-
-      final totalMessages = allMessages.length;
-      final totalPages = (totalMessages / _pageSize).ceil();
-
-      if (!loadMore) _currentPage = totalPages;
-
-      final startIndex =
-      (totalMessages - _currentPage * _pageSize).clamp(0, totalMessages);
-      final endIndex = (startIndex + _pageSize).clamp(0, totalMessages);
-      final chunk = allMessages.sublist(startIndex, endIndex);
-
-      if (chunk.isEmpty) {
-        setState(() => _hasMore = false);
-        return;
-      }
-
-      final formatted = chunk
-          .map((msg) {
-        final createdIso = msg.createdAt.toIso8601String();
-        final roomId = (msg.roomId ?? '').toString();
-        return <String, dynamic>{
-          'sender_id': msg.senderId?.toString() ?? '',
-          'message': msg.content?.toString() ?? '',
-          'created_at': createdIso,
-          if (msg.id != null) 'server_id': msg.id.toString(),
-          if (roomId.isNotEmpty) 'room_id': roomId,
-        };
-      })
-          .where((m) =>
-      (m['room_id'] == null) || (m['room_id'] == _roomId))
-          .toList();
-
-      if (loadMore) {
-        final oldOffset = _scrollController.offset;
-        final oldMax = _scrollController.position.maxScrollExtent;
-
-        setState(() {
-          for (final m in formatted) {
-            _addMessageIfNew(m);
-          }
-          _messages.sort((a, b) =>
-              (DateTime.tryParse(a['created_at'] ?? '') ?? DateTime(0))
-                  .compareTo(DateTime.tryParse(b['created_at'] ?? '') ??
-                  DateTime(0)));
-          _currentPage--;
-        });
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          final newMax = _scrollController.position.maxScrollExtent;
-          _scrollController.jumpTo(newMax - oldMax + oldOffset);
-        });
-      } else {
-        final fresh = <Map<String, dynamic>>[];
-        for (final m in formatted) {
-          if (_addMessageIfNew(m)) fresh.add(m);
-        }
-        setState(() {
-          _messages
-            ..clear()
-            ..addAll(fresh);
-        });
-        _maybeScrollToBottom(force: true);
-      }
-
-      if (_currentPage <= 1) {
-        setState(() => _hasMore = false);
-      }
-    } catch (e, st) {
-      debugPrint('❌ Error loading chat history: $e\n$st');
-    } finally {
-      _isFetchingMore = false;
+      debugPrint("💰 [Payment] Deducting ₹${widget.chatRate}");
+      await _api.sendMoney(
+        astrologerId: widget.astrologerUserId,
+        amount: widget.chatRate,
+        type: "chat",
+      );
+      _isCharged = true;
+    } catch (e) {
+      debugPrint("⚠️ [Payment] Deduction skipped/failed: $e");
     }
   }
 
-  void _startPolling() {
-    _pollTimer?.cancel();
-    _pollTimer =
-        Timer.periodic(const Duration(seconds: 1), (_) => _pollForUpdates());
-  }
+  // ---------------------------------------------------------------------------
+  // CHAT HISTORY
+  // ---------------------------------------------------------------------------
 
-  Future<void> _pollForUpdates() async {
-    if (_isPolling) return;
-    _isPolling = true;
-
+  Future<void> _loadChatHistory() async {
     try {
-      final all = await _api.getChatHistory(widget.astrologerUid);
-      if (all.isEmpty) return;
-
-      final candidates = all.map((msg) {
-        final id = msg.id?.toString();
-        final roomId = (msg.roomId ?? '').toString();
-        if (roomId.isNotEmpty && roomId != _roomId) return <String, dynamic>{};
-        if (id != null && _historyIdsSeen.contains(id)) {
-          return <String, dynamic>{};
+      final history = await _api.getChatHistory(widget.astrologerProfileId);
+      setState(() {
+        _messages.clear();
+        for (final msg in history) {
+          _messages.add({
+            'sender_id': msg.senderId,
+            'message': msg.content.toString(),
+            'created_at': msg.createdAt.toIso8601String(),
+          });
         }
-
-        return <String, dynamic>{
-          'sender_id': msg.senderId?.toString() ?? '',
-          'message': msg.content?.toString() ?? '',
-          'created_at': msg.createdAt.toIso8601String(),
-          if (id != null) 'server_id': id,
-          if (roomId.isNotEmpty) 'room_id': roomId,
-        };
-      }).where((m) => m.isNotEmpty).toList();
-
-      candidates.sort((a, b) {
-        final ta = DateTime.tryParse(a['created_at'] ?? '') ?? DateTime(0);
-        final tb = DateTime.tryParse(b['created_at'] ?? '') ?? DateTime(0);
-        return ta.compareTo(tb);
       });
-
-      bool added = false;
-      for (final m in candidates) {
-        if (_addMessageIfNew(m)) added = true;
-      }
-
-      if (added && mounted) {
-        setState(() {});
-        _maybeScrollToBottom();
-      }
-    } catch (e, st) {
-      debugPrint('⚠️ Poll failed: $e\n$st');
-    } finally {
-      _isPolling = false;
+      _scrollToBottom(force: true);
+    } catch (e) {
+      debugPrint("❌ History load failed: $e");
     }
   }
 
   // ---------------------------------------------------------------------------
-  // WebSocket
+  // WEBSOCKET
   // ---------------------------------------------------------------------------
 
   Future<void> _connectWebSocket() async {
-    if (_socket != null) return;
+    if (_socket != null || _manuallyClosed) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    _token = _token ?? prefs.getString('accessToken');
-
-    final wsUrl = Uri(
-      scheme: 'wss',
-      host: 'fastapi.jyotishionline.com',
-      path: '/chat/ws/$_roomId',
-      queryParameters: {
-        if (_token != null && _token!.isNotEmpty) 'token': _token!,
-        'user_id': _myUserId,
-        'role': 'customer',
-      },
-    );
-
-    debugPrint('🌐 Connecting WS: $wsUrl');
+    final wsUrl = "wss://fastapi.jyotishionline.com/chat/ws/$_roomId?token=$_token&user_id=$_myUserId&role=customer";
+    debugPrint("🔗 [WS] Connecting: $wsUrl");
 
     try {
-      final socket = await WebSocket.connect(wsUrl.toString());
-      if (!mounted) {
+      final socket = await WebSocket.connect(wsUrl).timeout(const Duration(seconds: 10));
+
+      if (!mounted || _manuallyClosed) {
         socket.close();
         return;
       }
+
       _socket = socket;
       _socket!.pingInterval = const Duration(seconds: 20);
-
       _retries = 0;
-      setState(() => _isConnected = true);
-      debugPrint('✅ WebSocket connected');
 
-      _sendRaw({
-        "action": "join",
-        "type": "join",
-        "event": "subscribe",
-        "room": _roomId,
-        "room_id": _roomId,
-        "user_id": _myUserId,
-        "sender_id": _myUserId,
-        "receiver_id": widget.astrologerUid,
-        "role": "customer",
-        "token": _token,
-      });
+      setState(() => _isConnected = true);
 
       _socket!.listen(
-            (data) {
-          _lastWsAt = DateTime.now();
-          try {
-            _wsFrameCount++;
-            _lastWsRaw =
-            data is String ? data : utf8.decode(data as List<int>);
-            debugPrint('⬅️ WS #$_wsFrameCount: $_lastWsRaw');
-          } catch (_) {}
-          _handleIncomingMessage(data);
-        },
+        _handleIncomingMessage,
         onDone: _handleDisconnect,
-        onError: (error, st) {
-          debugPrint('⚠️ WebSocket error: $error');
-          _handleDisconnect();
-        },
-        cancelOnError: false,
+        onError: (_) => _handleDisconnect(),
       );
     } catch (e) {
-      debugPrint('❌ WS connect failed: $e');
+      debugPrint("💥 [WS] Connection Error: $e");
       _handleDisconnect();
     }
   }
 
   void _handleDisconnect() {
-    debugPrint('❌ WS disconnected');
-    if (mounted) setState(() => _isConnected = false);
-    try {
-      _socket?.close();
-    } catch (_) {}
+    if (_manuallyClosed) return;
     _socket = null;
-    _scheduleReconnect();
-  }
+    if (mounted) setState(() => _isConnected = false);
 
-  void _scheduleReconnect() {
-    if (!mounted) return;
-    if (_reconnectTimer?.isActive ?? false) return;
-    final delaySecs = [2, 5, 10, 20, 30][_retries.clamp(0, 4)];
-    debugPrint('🔁 Reconnect in $delaySecs s (attempt ${_retries + 1})…');
-    _reconnectTimer = Timer(Duration(seconds: delaySecs), () {
-      _retries++;
-      _connectWebSocket();
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // Message handling
-  // ---------------------------------------------------------------------------
-
-  String? _extractClientSeqId(Map<String, dynamic> map) {
-    for (final k in const [
-      'client_sequence_id',
-      'client_seq',
-      'cid',
-      'clientId',
-      'client_id'
-    ]) {
-      final v = map[k];
-      if (v != null && v.toString().isNotEmpty) return v.toString();
-    }
-    for (final k in const ['message_obj', 'data', 'payload']) {
-      final v = map[k];
-      if (v is Map) {
-        final nested = _extractClientSeqId(Map<String, dynamic>.from(v));
-        if (nested != null) return nested;
-      }
-    }
-    return null;
-  }
-
-  Map<String, dynamic>? _extractMessage(dynamic node) {
-    if (node == null) return null;
-    if (node is String) return null;
-
-    if (node is List) {
-      for (final item in node) {
-        final found = _extractMessage(item);
-        if (found != null) return found;
-      }
-      return null;
-    }
-
-    if (node is Map) {
-      final map = Map<String, dynamic>.from(node);
-
-      for (final k in const [
-        'message',
-        'data',
-        'payload',
-        'detail',
-        'result',
-        'message_obj',
-        'event',
-        'record',
-        'value'
-      ]) {
-        if (map.containsKey(k) && map[k] is Map) {
-          final found = _extractMessage(map[k]);
-          if (found != null) return found;
-        }
-      }
-
-      final content =
-      (map['content'] ?? map['message'] ?? map['text'] ?? map['body']);
-      if (content != null && content.toString().trim().isNotEmpty) {
-        final created = (map['created_at'] ??
-            map['timestamp'] ??
-            map['time'] ??
-            DateTime.now().toIso8601String())
-            .toString();
-        final out = <String, dynamic>{
-          'sender_id':
-          (map['sender_id'] ?? map['user_id'] ?? map['from'] ?? '')
-              .toString(),
-          'message': content.toString(),
-          'created_at': created,
-        };
-        if (map['id'] != null) out['server_id'] = map['id'].toString();
-        if (map['room_id'] != null) {
-          out['room_id'] = map['room_id'].toString();
-        }
-        final cid = _extractClientSeqId(map);
-        if (cid != null) out['client_sequence_id'] = cid;
-        return out;
-      }
-    }
-    return null;
+    if (_retries >= 5) return;
+    final delay = [2, 4, 8, 16, 30][_retries++];
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(Duration(seconds: delay), _connectWebSocket);
   }
 
   void _handleIncomingMessage(dynamic data) {
     try {
       final raw = data is String ? data : utf8.decode(data as List<int>);
       final parsed = jsonDecode(raw);
+      if (parsed['type'] != 'message' || parsed['message'] == null) return;
 
-      // 🔥 Detect astrologer WS "joined" event → start timer
-      if (!_timerStarted && parsed is Map) {
-        final evt = parsed['event']?.toString().toLowerCase();
-        final role = parsed['role']?.toString().toLowerCase();
-        final uid =
-        (parsed['user_id'] ?? parsed['sender_id'] ?? '').toString();
+      final msg = parsed['message'] as Map<String, dynamic>;
+      final senderId = msg['sender_user_id'];
+      final content = msg['content'];
 
-        if (evt == 'joined' &&
-            (uid == widget.astrologerUid ||
-                role == 'astrologer' ||
-                role == 'astro')) {
-          debugPrint('⏱️ Astrologer joined via WS → start timer');
-          _startSessionCountdownIfNeeded();
-        }
+      if (senderId == null || content == null || senderId == _myUserId) return;
+
+      setState(() {
+        _messages.add({
+          'sender_id': senderId,
+          'message': content.toString(),
+          'created_at': msg['created_at'] ?? DateTime.now().toIso8601String(),
+        });
+      });
+
+      if (!_timerStarted && senderId == widget.astrologerUserId) {
+        _startTimer();
       }
-
-      final msg = _extractMessage(parsed);
-      if (msg == null) {
-        if (parsed is Map &&
-            (parsed['type'] == 'pong' ||
-                parsed['type'] == 'ping' ||
-                parsed['action'] == 'join' ||
-                parsed['event'] == 'joined')) {
-          return;
-        }
-        debugPrint('ℹ️ WS frame had no message content, ignored.');
-        return;
-      }
-
-      final room = (msg['room_id'] ?? '').toString();
-      if (room.isNotEmpty && room != _roomId) {
-        debugPrint('↩️ Ignored message for other room: $room');
-        return;
-      }
-
-      // 🔥 Start timer on first message from astrologer
-      final senderId = (msg['sender_id'] ?? '').toString();
-      if (!_timerStarted && senderId == widget.astrologerUid) {
-        debugPrint('⏱️ First message from astrologer → start timer');
-        _startSessionCountdownIfNeeded();
-      }
-
-      if (_addMessageIfNew(msg) && mounted) {
-        setState(() {});
-        _maybeScrollToBottom();
-      }
-    } catch (e, st) {
-      debugPrint('❌ Failed to decode WS message: $e\n$st\ndata=$data');
-    }
-  }
-
-  bool _addMessageIfNew(Map<String, dynamic> m) {
-    final cid = (m['client_sequence_id'] ?? '').toString();
-    final sid = (m['server_id'] ?? '').toString();
-
-    if (cid.isNotEmpty) {
-      if (_clientSeqSeen.contains(cid)) {
-        final idx = _clientSeqIndex[cid];
-        if (idx != null && idx >= 0 && idx < _messages.length) {
-          _messages[idx]['created_at'] =
-              m['created_at'] ?? _messages[idx]['created_at'];
-          if (sid.isNotEmpty) _messages[idx]['server_id'] = sid;
-          return false;
-        }
-        return false;
-      }
-    }
-
-    if (sid.isNotEmpty && _historyIdsSeen.contains(sid)) {
-      return false;
-    }
-
-    final s = (m['sender_id'] ?? '').toString();
-    final c = (m['message'] ?? '').toString().trim();
-    final t = DateTime.tryParse((m['created_at'] ?? '').toString()) ??
-        DateTime.now();
-
-    for (var i = _messages.length - 1;
-    i >= 0 && i >= _messages.length - 20;
-    i--) {
-      final mm = _messages[i];
-      final ms = (mm['sender_id'] ?? '').toString();
-      final mc = (mm['message'] ?? '').toString().trim();
-      final mt =
-          DateTime.tryParse((mm['created_at'] ?? '').toString()) ??
-              DateTime(0);
-      if (ms == s &&
-          mc == c &&
-          (t.difference(mt).inMilliseconds).abs() <= 2000) {
-        return false;
-      }
-    }
-
-    final addedIndex = _messages.length;
-    _messages.add(m);
-
-    if (cid.isNotEmpty) {
-      _clientSeqSeen.add(cid);
-      _clientSeqIndex[cid] = addedIndex;
-    }
-    if (sid.isNotEmpty) {
-      _historyIdsSeen.add(sid);
-    }
-
-    // 🔥 Also start timer from history messages, only when first astrologer message appears
-    if (!_timerStarted && s == widget.astrologerUid) {
-      debugPrint('⏱️ Astrologer message in history → start timer');
-      _startSessionCountdownIfNeeded();
-    }
-
-    _updateLatestSeenAt(m['created_at']);
-    return true;
-  }
-
-  void _updateLatestSeenAt(String? iso) {
-    if (iso == null) return;
-    final dt = DateTime.tryParse(iso);
-    if (dt == null) return;
-    if (_latestSeenAt == null || dt.isAfter(_latestSeenAt!)) {
-      _latestSeenAt = dt;
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Send
-  // ---------------------------------------------------------------------------
-
-  void _sendRaw(Map<String, dynamic> map) {
-    if (_socket == null) {
-      debugPrint('🚫 _sendRaw while socket=null');
-      return;
-    }
-    try {
-      _socket!.add(jsonEncode(Map<String, dynamic>.from(map)));
-    } catch (e, st) {
-      debugPrint('❌ _sendRaw failed: $e\n$st\npayload=$map');
+      _scrollToBottom();
+    } catch (e) {
+      debugPrint("❌ WS parse error: $e");
     }
   }
 
   void _sendMessage() {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
-
-    if (!_isConnected || _socket == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Connecting… please wait')),
-      );
-      _connectWebSocket();
-      return;
-    }
-
-    final clientId =
-        'c:${_myUserId}:${DateTime.now().millisecondsSinceEpoch}:${_seq++}';
-    final nowIso = DateTime.now().toIso8601String();
+    if (text.isEmpty || !_isConnected || _socket == null) return;
 
     final payload = {
-      "action": "send",
-      "type": "message",
-      "event": "message",
-      "room": _roomId,
-      "room_id": _roomId,
-      "sender_id": _myUserId,
-      "user_id": _myUserId,
-      "receiver_id": widget.astrologerUid,
-      "role": "customer",
-      "content": text,
-      "message": text,
-      "client_sequence_id": clientId,
-      "message_obj": {
-        "room_id": _roomId,
-        "sender_id": _myUserId,
-        "receiver_id": widget.astrologerUid,
-        "role": "customer",
-        "content": text,
-        "client_sequence_id": clientId,
-        "created_at": nowIso,
-        "token": _token,
-      }
+      'action': 'send',
+      'room_id': _roomId,
+      'sender_id': _myUserId,
+      'receiver_id': widget.astrologerUserId,
+      'content': text,
     };
 
-    debugPrint('➡️ WS SEND: ${jsonEncode(payload)}');
-    _sendRaw(payload);
-
-    final local = <String, dynamic>{
-      "sender_id": _myUserId,
-      "message": text,
-      "created_at": nowIso,
-      "client_sequence_id": clientId,
-      "room_id": _roomId,
-    };
-    _addMessageIfNew(local);
+    _socket!.add(jsonEncode(payload));
 
     setState(() {
+      _messages.add({
+        'sender_id': _myUserId,
+        'message': text,
+        'created_at': DateTime.now().toIso8601String(),
+      });
       _controller.clear();
     });
-    _maybeScrollToBottom(force: true);
+
+    _scrollToBottom(force: true);
   }
 
-  // ---------------------------------------------------------------------------
-  // UI helpers
-  // ---------------------------------------------------------------------------
+  void _startTimer() {
+    if (_timerStarted) return;
+    _timerStarted = true;
+    _sessionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() => _secondsLeft--);
+        if (_secondsLeft <= 0) {
+          timer.cancel();
+          _endSession();
+        }
+      }
+    });
+  }
 
-  void _maybeScrollToBottom({bool force = false}) {
+  void _endSession() {
+    _manuallyClosed = true;
+    _socket?.close();
+    if (mounted) Navigator.pop(context);
+  }
+
+  void _scrollToBottom({bool force = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      final atBottom = _scrollController.position.pixels >=
-          _scrollController.position.maxScrollExtent - 80;
-      if (force || atBottom) {
+      if (force) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      } else {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
+          duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
       }
     });
   }
 
-  // Decode emojis if they are coming as \uXXXX sequences
-  String _decodeMessageText(dynamic raw) {
-    final text = (raw ?? '').toString();
-    // If it doesn't look escaped, just return
-    if (!text.contains(r'\u')) return text;
-
-    try {
-      // Try JSON decode trick
-      final fixed = jsonDecode(
-          '"${text.replaceAll(r'\', r'\\').replaceAll('"', r'\"')}"');
-      if (fixed is String) return fixed;
-      return text;
-    } catch (_) {
-      return text;
-    }
-  }
-
   @override
   void dispose() {
-    try {
-      _socket?.close();
-    } catch (_) {}
+    _manuallyClosed = true;
+    _socket?.close();
     _reconnectTimer?.cancel();
-    _pollTimer?.cancel();
     _sessionTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  // ---------------------------------------------------------------------------
+  // HELPERS
+  // ---------------------------------------------------------------------------
+
+  String buildImageUrl(String? rawPath) {
+    if (rawPath == null || rawPath.isEmpty || rawPath.toLowerCase().contains('null')) return '';
+    final cleaned = rawPath.replaceAll('\n', '').replaceAll('\r', '').replaceAll(RegExp(r'\s+'), '');
+    if (cleaned.startsWith('http')) return cleaned;
+    return 'https://fastapi.jyotishionline.com${cleaned.startsWith('/') ? cleaned : '/$cleaned'}';
+  }
+
+  String _formatTime(String isoString) {
+    try {
+      final dt = DateTime.parse(isoString);
+      return DateFormat('h:mm a').format(dt);
+    } catch (e) {
+      return '';
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -837,71 +332,45 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    final canSend = _isConnected && _socket != null && !_isCharging;
-
-    // format countdown as MM:SS
-    final String countdownStr =
-        '${(_secondsLeft ~/ 60).toString().padLeft(2, '0')}:${(_secondsLeft % 60).toString().padLeft(2, '0')}';
-
+    final imageUrl = buildImageUrl(_profileImageUrl);
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: appLight,
       appBar: AppBar(
-        backgroundColor: _primaryColor,
-        elevation: 2,
-        shadowColor: _primaryColor.withOpacity(0.3),
+        backgroundColor: appDark,
+        elevation: 3,
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Row(
           children: [
-            // Profile avatar circle
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: _primaryColor.withOpacity(0.2),
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color: _primaryColor.withOpacity(0.5), width: 1.5),
-              ),
-              child: Icon(
-                Icons.person,
-                color: _primaryColor,
-                size: 20,
-              ),
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: appYellow,
+              backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+              child: imageUrl.isEmpty ? const Icon(Icons.person, color: appDark, size: 20) : null,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.astrologerName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
+                    _displayName ?? widget.astrologerName,
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                     overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
                   ),
-                  const SizedBox(height: 2),
                   Row(
                     children: [
                       Container(
-                        width: 8,
-                        height: 8,
+                        width: 7,
+                        height: 7,
                         decoration: BoxDecoration(
-                          color:
-                          _isConnected ? _onlineColor : _offlineColor,
+                          color: _isConnected ? Colors.green : Colors.red,
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 4),
                       Text(
-                        _isConnected ? 'Online' : 'Offline',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.9),
-                          fontWeight: FontWeight.w500,
-                        ),
+                        _isConnected ? 'Online' : 'Connecting...',
+                        style: const TextStyle(fontSize: 11, color: Colors.white70),
                       ),
                     ],
                   ),
@@ -911,361 +380,104 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           ],
         ),
         actions: [
-          // ⏱ timer label without emojis
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(14),
+          if (_timerStarted)
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: appYellow.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: appYellow),
+                ),
+                child: Text(
+                  '${(_secondsLeft ~/ 60).toString().padLeft(2, '0')}:${(_secondsLeft % 60).toString().padLeft(2, '0')}',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: appYellow),
+                ),
+              ),
             ),
-            child: Text(
-              'Session: $countdownStr',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () {},
-          ),
         ],
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _isLoading
-          ? _buildLoadingIndicator()
+          ? const Center(child: CircularProgressIndicator(color: appYellow))
           : Column(
         children: [
-          if (_isCharging)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 8),
-              color: Colors.orange.shade50,
-              child: Row(
-                children: [
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Processing payment for this chat session…',
-                      style: TextStyle(
-                        color: Colors.orange.shade900,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    _backgroundColor,
-                    _cardColor.withOpacity(0.3),
-                  ],
-                ),
-              ),
-              child: _buildMessageList(),
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: _messages.length,
+              itemBuilder: (_, i) {
+                final m = _messages[i];
+                final isMine = m['sender_id'] == _myUserId;
+                return _buildMessageBubble(m, isMine);
+              },
             ),
           ),
-          _buildInputBox(canSend: canSend),
+          _buildInputArea(),
         ],
       ),
     );
   }
 
-  Widget _buildLoadingIndicator() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: _primaryColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
-              strokeWidth: 3,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Loading chat...',
-            style: TextStyle(
-              color: _textColor.withOpacity(0.7),
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMessageList() {
-    return Stack(
-      children: [
-        // Background pattern (optional)
-        Opacity(
-          opacity: 0.03,
-          child: Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/pattern.png'),
-                repeat: ImageRepeat.repeat,
-              ),
-            ),
-          ),
-        ),
-        ListView.builder(
-          controller: _scrollController,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          itemCount: _messages.length + (_isFetchingMore ? 1 : 0),
-          itemBuilder: (context, index) {
-            if (_isFetchingMore && index == 0) {
-              return _buildLoadingMoreIndicator();
-            }
-
-            final msg =
-            _messages[_isFetchingMore ? index - 1 : index];
-            final isMine =
-                msg['sender_id']?.toString() == _myUserId;
-
-            return _buildMessageBubble(msg, isMine);
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLoadingMoreIndicator() {
+  Widget _buildMessageBubble(Map<String, dynamic> m, bool isMine) {
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Center(
-        child: Container(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: _primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor:
-                  AlwaysStoppedAnimation<Color>(_primaryColor),
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Align(
+        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+              decoration: BoxDecoration(
+                color: isMine ? appYellow : Colors.white,
+                borderRadius: BorderRadius.circular(15).copyWith(
+                  bottomRight: isMine ? const Radius.circular(0) : null,
+                  bottomLeft: !isMine ? const Radius.circular(0) : null,
                 ),
+                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
               ),
-              const SizedBox(width: 8),
-              Text(
-                'Loading older messages...',
-                style: TextStyle(
-                  color: _textColor.withOpacity(0.7),
-                  fontSize: 12,
-                ),
+              child: Text(
+                m['message'],
+                style: TextStyle(color: isMine ? appDark : Colors.black87),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 2),
+            Text(_formatTime(m['created_at']), style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildMessageBubble(Map<String, dynamic> msg, bool isMine) {
-    final messageTime = DateTime.tryParse(msg['created_at'] ?? '');
-    final timeString = messageTime != null
-        ? '${messageTime.hour}:${messageTime.minute.toString().padLeft(2, '0')}'
-        : '';
-
-    final displayText = _decodeMessageText(msg['message']);
-
+  Widget _buildInputArea() {
     return Container(
-      margin:
-      const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-      child: Row(
-        mainAxisAlignment:
-        isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          if (!isMine)
-            Container(
-              width: 32,
-              height: 32,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: _primaryColor.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.person,
-                color: _primaryColor,
-                size: 16,
-              ),
-            ),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isMine ? _primaryColor : _cardColor,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(20),
-                  topRight: const Radius.circular(20),
-                  bottomLeft: isMine
-                      ? const Radius.circular(20)
-                      : const Radius.circular(4),
-                  bottomRight: isMine
-                      ? const Radius.circular(4)
-                      : const Radius.circular(20),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    displayText,
-                    style: TextStyle(
-                      color: isMine ? Colors.white : _textColor,
-                      fontSize: 15,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    timeString,
-                    style: TextStyle(
-                      color: isMine
-                          ? Colors.white.withOpacity(0.7)
-                          : _hintColor,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (isMine)
-            Container(
-              width: 32,
-              height: 32,
-              margin: const EdgeInsets.only(left: 8),
-              decoration: BoxDecoration(
-                color: _primaryColor.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.person,
-                color: _primaryColor,
-                size: 16,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInputBox({required bool canSend}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _backgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: Row(
         children: [
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: _cardColor,
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _controller,
-                maxLines: null,
-                textInputAction: TextInputAction.send,
-                decoration: InputDecoration(
-                  hintText: 'Type your message...',
-                  hintStyle: TextStyle(color: _hintColor),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
-                  ),
-                ),
-                onSubmitted: (_) {
-                  if (canSend) {
-                    _sendMessage();
-                  }
-                },
+            child: TextField(
+              controller: _controller,
+              decoration: InputDecoration(
+                hintText: 'Type here...',
+                filled: true,
+                fillColor: appLight,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: canSend
-                  ? _primaryColor
-                  : _primaryColor.withOpacity(0.3),
-              shape: BoxShape.circle,
-              boxShadow: canSend
-                  ? [
-                BoxShadow(
-                  color: _primaryColor.withOpacity(0.4),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-                  : null,
-            ),
+          const SizedBox(width: 8),
+          CircleAvatar(
+            backgroundColor: appYellow,
             child: IconButton(
-              icon: const Icon(
-                Icons.send,
-                color: Colors.white,
-                size: 20,
-              ),
-              onPressed: canSend ? _sendMessage : null,
-              tooltip:
-              canSend ? 'Send message' : 'Connecting...',
+              icon: const Icon(Icons.send, color: appDark),
+              onPressed: _sendMessage,
             ),
           ),
         ],

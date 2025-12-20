@@ -1,8 +1,8 @@
 class ChatMessage {
   final int id;
   final String roomId;
-  final String senderId;
-  final String receiverId;
+  final String senderId;     // USER ID
+  final String receiverId;   // USER ID
   final String content;
   final DateTime createdAt;
   final bool isRead;
@@ -21,10 +21,14 @@ class ChatMessage {
     return ChatMessage(
       id: json['id'] ?? 0,
       roomId: json['room_id'] ?? '',
-      senderId: json['sender_id'] ?? '',
-      receiverId: json['receiver_id'] ?? '',
+
+      // 🔥 FIXED KEYS
+      senderId: json['sender_user_id'] ?? '',
+      receiverId: json['receiver_user_id'] ?? '',
+
       content: json['content'] ?? '',
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
+      createdAt:
+      DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
       isRead: json['is_read'] ?? false,
     );
   }
