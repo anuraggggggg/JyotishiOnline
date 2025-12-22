@@ -177,7 +177,7 @@ class FastApiEndpoints {
 
   /// 🔹 Signup With Full Details (creates User, CustomerDetail & Wallet)
   static const String signupWithDetails =
-      "$fastApiBaseUrl/api/v1/user-signup-with-details";
+      "$fastApiBaseUrl/api/v1/customerdetails";
 
 
   static const String sendAstrologerNotification =

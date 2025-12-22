@@ -2064,54 +2064,44 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
                       Container(
-                        height: 150,
+                        height: 160, // Sufficient height for image + text + padding
                         width: double.infinity,
                         child: Consumer<GetAllAstrologerProvider>(
                           builder: (context, provider, child) {
                             if (provider.isLoading) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
+                              return const Center(child: CircularProgressIndicator());
                             }
 
                             if (provider.astrologers.isEmpty) {
-                              return const Center(
-                                  child: Text("No astrologers found"));
+                              return const Center(child: Text("No astrologers found"));
                             }
 
-                            return SizedBox(
-                              height: 100, // Horizontal scroll container height
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.all(12),
-                                itemCount: provider.astrologers.length,
-                                itemBuilder: (context, index) {
-                                  final astrologer = provider.astrologers[index];
-                                  return InkWell(
+                            return ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              itemCount: provider.astrologers.length,
+                              itemBuilder: (context, index) {
+                                final astrologer = provider.astrologers[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 12),
+                                  child: InkWell(
                                     onTap: () {
-                                      // Navigate to detail page
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) => AstrologerDetailPage(
-                                            astroId: astrologer.astroId , // Pass the ID only
+                                            astroId: astrologer.astroId,
                                           ),
                                         ),
                                       );
                                     },
-                                    borderRadius: BorderRadius.circular(12), // optional for ripple effect
-                                    child: Container(
-
-
-                                      height: 40,
-                                      width: 90,
-                                      child: _buildAstroTile(astrologer),
-                                    ),
-                                  );
-
-                                },
-                              ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    // ✅ Removed fixed height: 40, width: 90 Container here
+                                    child: _buildAstroTile(astrologer),
+                                  ),
+                                );
+                              },
                             );
-
                           },
                         ),
                       ),

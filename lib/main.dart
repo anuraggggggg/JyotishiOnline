@@ -530,12 +530,10 @@ Future<void> _handleChatAccept(Map<String, dynamic> data) async {
   // SOURCE OF TRUTH (FROM PAYLOAD)
   // ---------------------------------------------------------------------------
 
-  final String roomId =
-      data["roomId"]?.toString().trim() ?? "";
+  final String roomId = data["roomId"]?.toString().trim() ?? "";
 
   /// CUSTOMER USER ID
-  final String myUserId =
-      data["myUserId"]?.toString().trim() ?? "";
+  final String myUserId = data["myUserId"]?.toString().trim() ?? "";
 
   /// ASTROLOGER USER ID (CHAT / WS)
   final String astrologerUserId =
@@ -564,15 +562,15 @@ Future<void> _handleChatAccept(Map<String, dynamic> data) async {
   // ---------------------------------------------------------------------------
 
   debugPrint("━━━━━━━━ CHAT NAVIGATION DATA ━━━━━━━━");
-  debugPrint("🆔 roomId                : $roomId");
-  debugPrint("🙋 customerUserId        : $myUserId");
-  debugPrint("🧙 astrologerUserId      : $astrologerUserId");
-  debugPrint("🧾 astrologerProfileId  : $astrologerProfileId");
-  debugPrint("👤 astrologerName        : $astrologerName");
-  debugPrint("💰 chatRate              : $chatRate");
-  debugPrint("🔐 notificationToken     : ${notificationToken ?? 'NULL'}");
-  debugPrint("💾 stored accessToken    : ${storedToken ?? 'NULL'}");
-  debugPrint("✅ FINAL token used      : ${token ?? 'NULL'}");
+  debugPrint("🆔 roomId               : $roomId");
+  debugPrint("🙋 customerUserId       : $myUserId");
+  debugPrint("🧙 astrologerUserId     : $astrologerUserId");
+  debugPrint("🧾 astrologerProfileId : $astrologerProfileId");
+  debugPrint("👤 astrologerName       : $astrologerName");
+  debugPrint("💰 chatRate             : $chatRate");
+  debugPrint("🔐 notificationToken    : ${notificationToken ?? 'NULL'}");
+  debugPrint("💾 stored accessToken   : ${storedToken ?? 'NULL'}");
+  debugPrint("✅ FINAL token used     : ${token ?? 'NULL'}");
   debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
   // ---------------------------------------------------------------------------
@@ -603,13 +601,32 @@ Future<void> _handleChatAccept(Map<String, dynamic> data) async {
   "❌ FATAL: ASTROLOGER USER ID AND PROFILE ID ARE SAME!",
   );
 
-  // Store role explicitly
+  // ---------------------------------------------------------------------------
+  // ACCEPT / REJECT POPUP
+  // ---------------------------------------------------------------------------
+
+  final bool accepted = await _showChatAcceptDialog(
+    astrologerName: astrologerName,
+    chatRate: chatRate,
+  );
+
+  if (!accepted) {
+    debugPrint("🚫 Chat request rejected by user");
+    return;
+  }
+
+  debugPrint("✅ Chat request accepted");
+
+  // ---------------------------------------------------------------------------
+  // STORE ROLE
+  // ---------------------------------------------------------------------------
+
   await prefs.setString("user_role", "customer");
 
   debugPrint("🚀 Navigating to CustomerChatPage...");
 
   // ---------------------------------------------------------------------------
-  // NAVIGATION (MATCHES UPDATED CustomerChatPage)
+  // NAVIGATION
   // ---------------------------------------------------------------------------
 
   Get.to(() => CustomerChatPage(
@@ -627,6 +644,47 @@ Future<void> _handleChatAccept(Map<String, dynamic> data) async {
   ));
 }
 
+Future<bool> _showChatAcceptDialog({
+  required String astrologerName,
+  required double chatRate,
+}) async {
+  return await Get.dialog<bool>(
+    AlertDialog(
+      title: const Text("Incoming Chat Request"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Astrologer: $astrologerName"),
+          const SizedBox(height: 8),
+          // Text("Chat Charge: ₹$chatRate"),
+          // const SizedBox(height: 12),
+          const Text(
+            "Do you want to accept this chat?",
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Get.back(result: false),
+          child: const Text(
+            "Reject",
+            style: TextStyle(color: Colors.red),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: () => Get.back(result: true),
+          child: const Text("Accept"),
+        ),
+      ],
+    ),
+    barrierDismissible: false,
+  ) ??
+      false;
+}
+
+
 
 
 
@@ -637,6 +695,8 @@ Future<void> _handleChatAccept(Map<String, dynamic> data) async {
 // Handler
 Future<void> _handleVideoAccept(Map<String, dynamic> data) async {
   final astroId = (data["astro_id"] ?? data["astrologerUid"] ?? "").toString();
+  final astrologerName = data["astrologerName"]?.toString() ?? "Astrologer";
+
   debugPrint("📌 FINAL astrologerUid (video) → $astroId");
 
   if (astroId.isEmpty) {
@@ -644,169 +704,279 @@ Future<void> _handleVideoAccept(Map<String, dynamic> data) async {
     return;
   }
 
-  // Prefer channel/token/account/appId straight from push payload if present
-  String channelFromPush = (data['agora_channel'] ?? data['room_id'] ?? data['roomId'] ?? '').toString();
-  String tokenFromPush = (data['agora_token'] ?? data['token'] ?? '').toString();
-  String accountFromPush = (data['agora_account'] ?? data['account'] ?? data['user'] ?? '').toString();
-  String appIdFromPush = (data['appID'] ?? data['appId'] ?? data['agora_appid'] ?? '').toString();
-  final requestId = (data['request_id'] ?? data['requestId'] ?? '').toString();
+  // ---------------------------------------------------------------------------
+  // ACCEPT / REJECT POPUP
+  // ---------------------------------------------------------------------------
 
-  // If push contains channel info, navigate immediately with overrides (best-case)
+  final bool accepted = await _showVideoAcceptDialog(
+    astrologerName: astrologerName,
+  );
+
+  if (!accepted) {
+    debugPrint("🚫 Video call rejected by user");
+    return;
+  }
+
+  debugPrint("✅ Video call accepted");
+
+  // ---------------------------------------------------------------------------
+  // PAYLOAD OVERRIDES (BEST CASE)
+  // ---------------------------------------------------------------------------
+
+  String channelFromPush =
+  (data['agora_channel'] ??
+      data['room_id'] ??
+      data['roomId'] ??
+      '')
+      .toString();
+  String tokenFromPush =
+  (data['agora_token'] ?? data['token'] ?? '').toString();
+  String accountFromPush =
+  (data['agora_account'] ?? data['account'] ?? data['user'] ?? '')
+      .toString();
+  String appIdFromPush =
+  (data['appID'] ?? data['appId'] ?? data['agora_appid'] ?? '')
+      .toString();
+  final requestId =
+  (data['request_id'] ?? data['requestId'] ?? '').toString();
+
+  // ---------------------------------------------------------------------------
+  // 1️⃣ DIRECT NAVIGATION IF PUSH HAS CHANNEL
+  // ---------------------------------------------------------------------------
+
   if (channelFromPush.isNotEmpty) {
-    debugPrint("🔔 Push contains channel -> navigating: channel=$channelFromPush tokenPresent=${tokenFromPush.isNotEmpty} account=$accountFromPush appId=$appIdFromPush");
+    debugPrint(
+        "🔔 Push contains channel -> navigating: channel=$channelFromPush");
     Get.to(() => CustomerVideoCallPage(
       astroId: astroId,
       overrideRoomId: channelFromPush,
-      overrideToken: tokenFromPush.isNotEmpty ? tokenFromPush : null,
-      overrideAccount: accountFromPush.isNotEmpty ? accountFromPush : null,
-      overrideAppId: appIdFromPush.isNotEmpty ? appIdFromPush : null,
+      overrideToken:
+      tokenFromPush.isNotEmpty ? tokenFromPush : null,
+      overrideAccount:
+      accountFromPush.isNotEmpty ? accountFromPush : null,
+      overrideAppId:
+      appIdFromPush.isNotEmpty ? appIdFromPush : null,
     ));
     return;
   }
 
-  // If push gave a request_id, fetch that exact session object from server (preferred)
+  // ---------------------------------------------------------------------------
+  // 2️⃣ FETCH SESSION BY request_id (PREFERRED)
+  // ---------------------------------------------------------------------------
+
   if (requestId.isNotEmpty) {
     try {
       final prefs = await SharedPreferences.getInstance();
       final bearer = prefs.getString('access_token') ?? '';
-      final uri = Uri.parse("https://fastapi.jyotishionline.com/api/v1/$requestId");
+      final uri = Uri.parse(
+          "https://fastapi.jyotishionline.com/api/v1/$requestId");
 
       debugPrint("🔎 Fetching session by request_id -> GET $uri");
-      final resp = await http.get(uri, headers: {
-        "accept": "application/json",
-        if (bearer.isNotEmpty) "Authorization": "Bearer $bearer",
-      });
+
+      final resp = await http.get(
+        uri,
+        headers: {
+          "accept": "application/json",
+          if (bearer.isNotEmpty) "Authorization": "Bearer $bearer",
+        },
+      );
 
       if (resp.statusCode == 200) {
-        final Map<String, dynamic> session = jsonDecode(resp.body) as Map<String, dynamic>;
-        debugPrint("✅ Session fetched id=${session['id']} room_id=${session['room_id']} status=${session['status']}");
+        final Map<String, dynamic> session =
+        jsonDecode(resp.body) as Map<String, dynamic>;
 
-        final roomId = (session['room_id'] ?? session['agora_channel'] ?? '').toString();
-        final agoraToken = (session['agora_token'] ?? session['token'] ?? session['current_user_token'] ?? '').toString();
-        final agoraAccount = (session['agora_account'] ?? session['user_account'] ?? session['current_user_id'] ?? '').toString();
-        final appId = (session['appID'] ?? session['appId'] ?? '').toString();
+        final roomId =
+        (session['room_id'] ?? session['agora_channel'] ?? '')
+            .toString();
+        final agoraToken =
+        (session['agora_token'] ?? session['token'] ?? '')
+            .toString();
+        final agoraAccount =
+        (session['agora_account'] ??
+            session['user_account'] ??
+            '')
+            .toString();
+        final appId =
+        (session['appID'] ?? session['appId'] ?? '').toString();
 
         if (roomId.isNotEmpty) {
-          debugPrint("➡️ Navigating with room_id=$roomId tokenPresent=${agoraToken.isNotEmpty} account=$agoraAccount appId=$appId");
           Get.to(() => CustomerVideoCallPage(
             astroId: astroId,
             overrideRoomId: roomId,
-            overrideToken: (agoraToken.isNotEmpty ? agoraToken : null),
-            overrideAccount: (agoraAccount.isNotEmpty ? agoraAccount : null),
-            overrideAppId: (appId.isNotEmpty ? appId : null),
+            overrideToken:
+            agoraToken.isNotEmpty ? agoraToken : null,
+            overrideAccount:
+            agoraAccount.isNotEmpty ? agoraAccount : null,
+            overrideAppId: appId.isNotEmpty ? appId : null,
           ));
           return;
-        } else {
-          debugPrint("⚠️ Session returned but no room_id/agora_channel present. session JSON keys: ${session.keys.toList()}");
         }
-      } else {
-        debugPrint("⚠️ Failed to fetch session $requestId: ${resp.statusCode} ${resp.body}");
       }
     } catch (e, st) {
-      debugPrint("⚠️ Exception fetching session by id: $e\n$st");
+      debugPrint("⚠️ Exception fetching session: $e\n$st");
     }
-  } else {
-    debugPrint("⚠️ No request_id present in push; will try polling fallback.");
   }
 
-  // 3) Fallback: short polling (only if you have a valid list endpoint)
+  // ---------------------------------------------------------------------------
+  // 3️⃣ FALLBACK POLLING
+  // ---------------------------------------------------------------------------
+
   const int maxAttempts = 5;
   const Duration delayBetween = Duration(seconds: 1);
-  bool found = false;
-  Map<String, dynamic>? matchedSession;
 
-  for (int attempt = 1; attempt <= maxAttempts && !found; attempt++) {
+  for (int attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      debugPrint("🔎 Polling for sessions for astro ($astroId) — attempt $attempt/$maxAttempts");
+      debugPrint(
+          "🔎 Polling for video session — attempt $attempt/$maxAttempts");
+
       final prefs = await SharedPreferences.getInstance();
       final bearer = prefs.getString('access_token') ?? '';
 
-      final uri = Uri.parse("https://fastapi.jyotishionline.com/api/v1/sessions")
+      final uri = Uri.parse(
+          "https://fastapi.jyotishionline.com/api/v1/sessions")
           .replace(queryParameters: {"astrologer_id": astroId});
-      final resp = await http.get(uri, headers: {
-        "accept": "application/json",
-        if (bearer.isNotEmpty) "Authorization": "Bearer $bearer",
-      });
+
+      final resp = await http.get(
+        uri,
+        headers: {
+          "accept": "application/json",
+          if (bearer.isNotEmpty) "Authorization": "Bearer $bearer",
+        },
+      );
 
       if (resp.statusCode == 200) {
         final body = jsonDecode(resp.body);
         if (body is List) {
-          debugPrint("🔎 sessions fetched: count=${body.length}");
           final match = body.firstWhere(
                 (s) =>
             s is Map<String, dynamic> &&
-                (s["session_type"] == "video_call") &&
-                (s["status"] == "pending" || s["status"] == "accepted"),
+                s["session_type"] == "video_call" &&
+                (s["status"] == "pending" ||
+                    s["status"] == "accepted"),
             orElse: () => null,
           );
-          if (match != null && match is Map<String, dynamic>) {
-            matchedSession = match;
-            found = true;
-            debugPrint("✅ Found matching session (id=${matchedSession['id']}, room_id=${matchedSession['room_id']})");
-            break;
+
+          if (match != null) {
+            final roomId =
+            (match['room_id'] ?? match['agora_channel'] ?? '')
+                .toString();
+            final agoraToken =
+            (match['agora_token'] ?? '').toString();
+            final agoraAccount =
+            (match['agora_account'] ?? '').toString();
+            final appId =
+            (match['appID'] ?? match['appId'] ?? '').toString();
+
+            if (roomId.isNotEmpty) {
+              Get.to(() => CustomerVideoCallPage(
+                astroId: astroId,
+                overrideRoomId: roomId,
+                overrideToken:
+                agoraToken.isNotEmpty ? agoraToken : null,
+                overrideAccount:
+                agoraAccount.isNotEmpty ? agoraAccount : null,
+                overrideAppId:
+                appId.isNotEmpty ? appId : null,
+              ));
+              return;
+            }
           }
-        } else {
-          debugPrint("⚠️ Unexpected sessions payload (not a list): ${resp.body}");
-        }
-      } else {
-        debugPrint("⚠️ Failed to fetch sessions: ${resp.statusCode} ${resp.body}");
-        if (resp.statusCode == 405) {
-          debugPrint("❌ Server responded 405 for sessions list — polling aborted.");
-          break;
         }
       }
     } catch (e, st) {
-      debugPrint("⚠️ Exception while polling sessions: $e\n$st");
+      debugPrint("⚠️ Polling exception: $e\n$st");
     }
 
     await Future.delayed(delayBetween);
   }
 
-  if (!found || matchedSession == null) {
-    debugPrint("❌ Could not find a matching video session for astro=$astroId after fallback. Aborting navigation.");
-    return;
-  }
-
-  final roomId = (matchedSession['room_id'] ?? matchedSession['agora_channel'] ?? '').toString();
-  final agoraToken = (matchedSession['agora_token'] ?? matchedSession['token'] ?? matchedSession['current_user_token'] ?? '').toString();
-  final agoraAccount = (matchedSession['agora_account'] ?? matchedSession['user_account'] ?? matchedSession['current_user_id'] ?? '').toString();
-  final appId = (matchedSession['appID'] ?? matchedSession['appId'] ?? '').toString();
-
-  if (roomId.isNotEmpty) {
-    debugPrint("➡️ Navigating to CustomerVideoCallPage with session room_id=$roomId tokenPresent=${agoraToken.isNotEmpty} account=$agoraAccount appId=$appId");
-    Get.to(() => CustomerVideoCallPage(
-      astroId: astroId,
-      overrideRoomId: roomId,
-      overrideToken: (agoraToken.isNotEmpty ? agoraToken : null),
-      overrideAccount: (agoraAccount.isNotEmpty ? agoraAccount : null),
-      overrideAppId: (appId.isNotEmpty ? appId : null),
-    ));
-  } else {
-    debugPrint("❌ Matching session found but no room_id present. Aborting.");
-  }
+  debugPrint(
+      "❌ Could not find a valid video session after fallback. Aborting.");
 }
+
+Future<bool> _showVideoAcceptDialog({
+  required String astrologerName,
+}) async {
+  return await Get.dialog<bool>(
+    AlertDialog(
+      title: const Text("Incoming Video Call"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Astrologer: $astrologerName"),
+          const SizedBox(height: 12),
+          const Text(
+            "Do you want to accept this video call?",
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Get.back(result: false),
+          child: const Text(
+            "Reject",
+            style: TextStyle(color: Colors.red),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: () => Get.back(result: true),
+          child: const Text("Accept"),
+        ),
+      ],
+    ),
+    barrierDismissible: false,
+  ) ??
+      false;
+}
+
+
 
 
 
 Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
   final astroId = (data["astro_id"] ?? data["astrologerUid"] ?? "").toString();
+  final astrologerName = data["astrologerName"]?.toString() ?? "Astrologer";
 
   if (astroId.isEmpty) {
     debugPrint("❌ ERROR: astro_id missing in audio_accept");
     return;
   }
 
+  // ---------------------------------------------------------------------------
+  // ACCEPT / REJECT POPUP
+  // ---------------------------------------------------------------------------
+
+  final bool accepted = await _showAudioAcceptDialog(
+    astrologerName: astrologerName,
+  );
+
+  if (!accepted) {
+    debugPrint("🚫 Audio call rejected by user");
+    return;
+  }
+
+  debugPrint("✅ Audio call accepted");
+
+  // ---------------------------------------------------------------------------
   // Extract from push (BEST CASE)
+  // ---------------------------------------------------------------------------
+
   String channelFromPush =
-  (data['agora_channel'] ?? data['room_id'] ?? data['roomId'] ?? '').toString();
+  (data['agora_channel'] ?? data['room_id'] ?? data['roomId'] ?? '')
+      .toString();
   String tokenFromPush =
   (data['agora_token'] ?? data['token'] ?? '').toString();
   String accountFromPush =
-  (data['agora_account'] ?? data['account'] ?? data['user'] ?? '').toString();
+  (data['agora_account'] ?? data['account'] ?? data['user'] ?? '')
+      .toString();
   String appIdFromPush =
-  (data['appID'] ?? data['appId'] ?? data['agora_appid'] ?? '').toString();
+  (data['appID'] ?? data['appId'] ?? data['agora_appid'] ?? '')
+      .toString();
 
-  final requestId = (data['request_id'] ?? data['requestId'] ?? '').toString();
+  final requestId =
+  (data['request_id'] ?? data['requestId'] ?? '').toString();
 
   int? timerSeconds = int.tryParse("${data['timer'] ?? ''}");
 
@@ -816,30 +986,36 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
   // -----------------------------------------------------
   // 1️⃣ BEST CASE — PUSH ALREADY HAS channel
   // -----------------------------------------------------
+
   if (channelFromPush.isNotEmpty) {
     debugPrint("➡️ Using PUSH override for AUDIO call");
 
     Get.to(() => AudioCallPage(
       astroId: astroId,
       overrideChannel: channelFromPush,
-      overrideToken: tokenFromPush.isNotEmpty ? tokenFromPush : null,
-      overrideAccount: accountFromPush.isNotEmpty ? accountFromPush : null,
-      overrideAppId: appIdFromPush.isNotEmpty ? appIdFromPush : null,
-      // overrideTimerSeconds: timerSeconds,
-      overrideTimerSeconds: 60,
+      overrideToken:
+      tokenFromPush.isNotEmpty ? tokenFromPush : null,
+      overrideAccount:
+      accountFromPush.isNotEmpty ? accountFromPush : null,
+      overrideAppId:
+      appIdFromPush.isNotEmpty ? appIdFromPush : null,
+      overrideTimerSeconds: timerSeconds ?? 60,
     ));
     return;
   }
 
   // -----------------------------------------------------
-  // 2️⃣ If push provided request_id → fetch exact session
+  // 2️⃣ Fetch exact session using request_id
   // -----------------------------------------------------
+
   if (requestId.isNotEmpty) {
     try {
       final prefs = await SharedPreferences.getInstance();
       final bearer = prefs.getString("access_token") ?? '';
 
-      final uri = Uri.parse("https://fastapi.jyotishionline.com/api/v1/$requestId");
+      final uri =
+      Uri.parse("https://fastapi.jyotishionline.com/api/v1/$requestId");
+
       final resp = await http.get(uri, headers: {
         "accept": "application/json",
         if (bearer.isNotEmpty) "Authorization": "Bearer $bearer",
@@ -849,13 +1025,21 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
         final session = jsonDecode(resp.body);
 
         final roomId =
-        (session["room_id"] ?? session["agora_channel"] ?? "").toString();
+        (session["room_id"] ?? session["agora_channel"] ?? "")
+            .toString();
         final token =
-        (session["agora_token"] ?? session["current_user_token"] ?? "").toString();
+        (session["agora_token"] ??
+            session["current_user_token"] ??
+            "")
+            .toString();
         final acc =
-        (session["agora_account"] ?? session["current_user_id"] ?? "").toString();
+        (session["agora_account"] ??
+            session["current_user_id"] ??
+            "")
+            .toString();
         final app =
-        (session["appID"] ?? session["appId"] ?? "").toString();
+        (session["appID"] ?? session["appId"] ?? "")
+            .toString();
 
         if (roomId.isNotEmpty) {
           debugPrint("➡️ Navigating via session fetch (audio)");
@@ -866,7 +1050,7 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
             overrideToken: token.isNotEmpty ? token : null,
             overrideAccount: acc.isNotEmpty ? acc : null,
             overrideAppId: app.isNotEmpty ? app : null,
-            overrideTimerSeconds: 600,
+            overrideTimerSeconds: timerSeconds ?? 600,
           ));
           return;
         }
@@ -877,8 +1061,9 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
   }
 
   // -----------------------------------------------------
-  // 3️⃣ Fallback → Polling (same logic as video)
+  // 3️⃣ FALLBACK → Polling
   // -----------------------------------------------------
+
   const maxAttempts = 5;
   const delayBetween = Duration(seconds: 1);
 
@@ -889,7 +1074,8 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
       final prefs = await SharedPreferences.getInstance();
       final bearer = prefs.getString("access_token") ?? '';
 
-      final uri = Uri.parse("https://fastapi.jyotishionline.com/api/v1/sessions")
+      final uri = Uri.parse(
+          "https://fastapi.jyotishionline.com/api/v1/sessions")
           .replace(queryParameters: {"astrologer_id": astroId});
 
       final resp = await http.get(uri, headers: {
@@ -905,7 +1091,8 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
                 (s) =>
             s is Map &&
                 s["session_type"] == "audio_call" &&
-                (s["status"] == "pending" || s["status"] == "accepted"),
+                (s["status"] == "pending" ||
+                    s["status"] == "accepted"),
             orElse: () => null,
           );
 
@@ -927,11 +1114,18 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
 
   final roomId = (found["room_id"] ?? "").toString();
   final token =
-  (found["agora_token"] ?? found["current_user_token"] ?? "").toString();
+  (found["agora_token"] ??
+      found["current_user_token"] ??
+      "")
+      .toString();
   final acc =
-  (found["agora_account"] ?? found["current_user_id"] ?? "").toString();
+  (found["agora_account"] ??
+      found["current_user_id"] ??
+      "")
+      .toString();
   final app =
-  (found["appID"] ?? found["appId"] ?? "").toString();
+  (found["appID"] ?? found["appId"] ?? "")
+      .toString();
 
   if (roomId.isEmpty) {
     debugPrint("❌ Audio session found but room_id missing.");
@@ -946,8 +1140,45 @@ Future<void> _handleAudioAccept(Map<String, dynamic> data) async {
     overrideToken: token.isNotEmpty ? token : null,
     overrideAccount: acc.isNotEmpty ? acc : null,
     overrideAppId: app.isNotEmpty ? app : null,
-    overrideTimerSeconds: 60,
+    overrideTimerSeconds: timerSeconds ?? 60,
   ));
+}
+
+Future<bool> _showAudioAcceptDialog({
+  required String astrologerName,
+}) async {
+  return await Get.dialog<bool>(
+    AlertDialog(
+      title: const Text("Incoming Audio Call"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Astrologer: $astrologerName"),
+          const SizedBox(height: 12),
+          const Text(
+            "Do you want to accept this audio call?",
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Get.back(result: false),
+          child: const Text(
+            "Reject",
+            style: TextStyle(color: Colors.red),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: () => Get.back(result: true),
+          child: const Text("Accept"),
+        ),
+      ],
+    ),
+    barrierDismissible: false,
+  ) ??
+      false;
 }
 
 

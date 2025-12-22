@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../model/fastApiModel/LiveAstrologerModel.dart';
 import '../model/fastApiModel/NotificationModel.dart';
 import '../model/fastApiModel/OnlineAstrologerModel.dart';
+import '../model/fastApiModel/allAstrologerModel.dart';
 import '../model/fastApiModel/astrologerProfileModel.dart';
 import '../model/fastApiModel/newChatModel.dart';
 import '../model/fastApiModel/sendMoneyModel.dart';
@@ -164,8 +165,11 @@ class FastAPIServices {
 
 
 
-  /// 🗂️ Get Chat History (Refactored to use internal credentials)
-  Future<List<ChatMessage>> getChatHistory(String otherUserId) async {
+  Future<List<ChatMessage>> getChatHistory(
+      String otherUserId, {
+        int page = 1,
+        int size = 20,
+      }) async {
     await _loadCredentials();
 
     if (_accessToken == null) {
@@ -174,11 +178,14 @@ class FastAPIServices {
     }
 
     final url = Uri.parse(
-      "https://fastapi.jyotishionline.com/chat/history/$otherUserId?page=1&size=20",
+      "https://fastapi.jyotishionline.com/chat/history/$otherUserId"
+          "?page=$page&size=$size",
     );
 
-    debugPrint("🌐 Fetching chat history for user: $otherUserId");
-    debugPrint("🔗 API URL: $url");
+    debugPrint("🌐 Fetching chat history");
+    debugPrint("👤 Other User: $otherUserId");
+    debugPrint("📄 Page: $page | Size: $size");
+    debugPrint("🔗 URL: $url");
 
     try {
       final response = await http.get(
@@ -199,22 +206,23 @@ class FastAPIServices {
               .map((msg) => ChatMessage.fromJson(msg))
               .toList();
 
-          debugPrint("✅ Successfully fetched ${messages.length} messages.");
-          return messages.reversed.toList(); // optional: newest last
+          debugPrint("✅ Fetched ${messages.length} messages");
+          return messages; // ❗ DO NOT reverse here
         } else {
-          debugPrint("⚠️ No 'messages' key found in response.");
+          debugPrint("⚠️ 'messages' key missing");
           return [];
         }
       } else {
-        debugPrint("❌ Failed to load chat history: ${response.body}");
+        debugPrint("❌ Failed: ${response.body}");
         throw Exception('Failed to load chat history');
       }
     } catch (e, st) {
-      debugPrint("💥 Exception while fetching chat history: $e");
-      debugPrint("📄 Stack trace: $st");
+      debugPrint("💥 Exception: $e");
+      debugPrint("📄 StackTrace: $st");
       rethrow;
     }
   }
+
 
 
 
@@ -350,8 +358,7 @@ class FastAPIServices {
     String? gender,
     String? profile,
     String? fcmToken,
-    String? token,
-    String? profilePicPath, // optional local file path for image
+    String? profilePicPath,
   }) async {
     final url = Uri.parse(FastApiEndpoints.signupWithDetails);
 
@@ -359,77 +366,52 @@ class FastAPIServices {
       final request = http.MultipartRequest('POST', url)
         ..headers['accept'] = 'application/json';
 
-      // ✅ Required fields
+      // ✅ REQUIRED (snake_case)
       request.fields['name'] = name;
-      request.fields['contactNo'] = contactNo;
-      request.fields['countryCode'] = countryCode;
       request.fields['email'] = email;
       request.fields['password'] = password;
+      request.fields['contact_no'] = contactNo;
+      request.fields['country_code'] = countryCode;
       request.fields['pincode'] = pincode.toString();
 
-      // ✅ Optional fields
-      if (birthDate != null) request.fields['birthDate'] = birthDate;
-      if (birthTime != null) request.fields['birthTime'] = birthTime;
-      if (birthPlace != null) request.fields['birthPlace'] = birthPlace;
-      if (addressLine1 != null) request.fields['addressLine1'] = addressLine1;
-      if (addressLine2 != null) request.fields['addressLine2'] = addressLine2;
+      // ✅ OPTIONAL
+      if (birthDate != null) request.fields['birth_date'] = birthDate;
+      if (birthTime != null) request.fields['birth_time'] = birthTime;
+      if (birthPlace != null) request.fields['birth_place'] = birthPlace;
+      if (addressLine1 != null) request.fields['address_line1'] = addressLine1;
+      if (addressLine2 != null) request.fields['address_line2'] = addressLine2;
       if (location != null) request.fields['location'] = location;
       if (gender != null) request.fields['gender'] = gender;
       if (profile != null) request.fields['profile'] = profile;
       if (fcmToken != null) request.fields['fcm_token'] = fcmToken;
-      if (token != null) request.fields['token'] = token;
 
-      // ✅ Optional image upload
+      // ✅ IMAGE (ONLY IF EXISTS)
       if (profilePicPath != null && profilePicPath.isNotEmpty) {
-        final file = File(profilePicPath);
-        if (await file.exists()) {
-          request.files.add(await http.MultipartFile.fromPath('profile_pic', profilePicPath));
-          debugPrint("🖼️ Profile picture attached: $profilePicPath");
-        } else {
-          debugPrint("⚠️ Profile picture not found at path: $profilePicPath");
-        }
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'profile_pic',
+            profilePicPath,
+          ),
+        );
       }
 
-      debugPrint("🚀 Sending signup request → $url");
-      debugPrint("🧾 Fields: ${request.fields}");
-
-      // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      debugPrint("📡 Response Status: ${response.statusCode}");
-      debugPrint("📦 Response Body: ${response.body}");
-
-      // ✅ Handle success
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-
-        // Automatically save credentials if token is returned
-        if (data is Map && data.containsKey("access_token")) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString("access_token", data["access_token"]);
-          if (data["user"]?["id"] != null) {
-            await prefs.setString("user_id", data["user"]["id"].toString());
-          }
-          debugPrint("🔐 Credentials saved locally after signup!");
-        }
-
-        debugPrint("✅ Signup Successful!");
-        return data;
+        return jsonDecode(response.body);
       } else {
-        debugPrint("❌ Signup Failed (${response.statusCode}) → ${response.body}");
-        try {
-          final error = jsonDecode(response.body);
-          return {"error": true, "message": error["detail"] ?? "Signup failed"};
-        } catch (_) {
-          return {"error": true, "message": "Unexpected error occurred"};
-        }
+        final error = jsonDecode(response.body);
+        return {
+          "error": true,
+          "message": error["detail"]?.toString() ?? "Signup failed",
+        };
       }
     } catch (e) {
-      debugPrint("💥 Signup Exception: $e");
       return {"error": true, "message": e.toString()};
     }
   }
+
 
 
 
@@ -960,44 +942,42 @@ class FastAPIServices {
 
 
   // ---------------- FETCH ALL ASTROLOGERS ----------------
-  Future<List<dynamic>> fetchAllAstrologers() async {
-    await _loadCredentials(); // Load token
+  Future<List<GetAllAstrologerModel>> fetchAllAstrologers({
+    int page = 1,
+    int size = 10,
+  }) async {
+    await _loadCredentials();
 
-    final url = Uri.parse(FastApiEndpoints.allAstrologers);
-    print("🔮 [API CALL] Fetching all astrologers from $url");
+    final url = Uri.parse(
+      "${FastApiEndpoints.allAstrologers}?page=$page&size=$size",
+    );
+
+    print("🔮 [API CALL] Fetching astrologers from $url");
 
     final response = await http.get(
       url,
       headers: {
         "accept": "application/json",
-        "Authorization": "Bearer ${_accessToken}",
+        if (_accessToken != null)
+          "Authorization": "Bearer $_accessToken",
       },
     );
 
     print("📡 Status Code: ${response.statusCode}");
-    print("📩 Response Body: ${response.body}");
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      print("🧙‍♂️ Total Astrologers Fetched: ${data.length}");
+      final decoded = jsonDecode(response.body);
 
-      for (var astro in data) {
-        print("""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔮 ASTROLOGER DETAILS
-🆔 ID: ${astro['astro_id']}
-👤 Name: ${astro['name']}
-🖼 Profile Image: ${astro['profileImage']}
-✨ Primary Skill: ${astro['primarySkill']}
-🗣 Languages: ${astro['languageKnown']}
-📆 Experience: ${astro['experienceInYears']} years
-💰 Charge: ₹${astro['charge']} per min
-🏙 Current City: ${astro['currentCity']}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-""");
-      }
+      /// ✅ PAGINATED LIST
+      final List<dynamic> list = decoded['data'] ?? [];
 
-      return data;
+      final astrologers = list
+          .map((e) => GetAllAstrologerModel.fromJson(e))
+          .toList();
+
+      print("🧙‍♂️ Total Astrologers Fetched: ${astrologers.length}");
+
+      return astrologers;
     } else if (response.statusCode == 401) {
       throw Exception("🚨 Unauthorized. Please login again.");
     } else {
