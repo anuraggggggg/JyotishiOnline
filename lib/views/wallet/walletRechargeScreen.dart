@@ -271,22 +271,23 @@ class _RechargeWalletScreenState extends State<RechargeWalletScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Icon(Icons.info_outline, color: textColor, size: 18),
                             const SizedBox(width: 8),
-                            Flexible( // 👈 wrap Text with Flexible
+                            Expanded( // ✅ Use Expanded instead of Flexible
                               child: Text(
                                 "Recharge now to enjoy seamless services".tr(),
                                 style: const TextStyle(color: textColor),
-                                overflow: TextOverflow.ellipsis, // 👈 will now show “...”
-                                maxLines: 1,
-                                softWrap: false,
+                                softWrap: true,          // ✅ allow wrapping
+                                maxLines: null,          // ✅ unlimited lines
+                                overflow: TextOverflow.visible, // ✅ no dots
                               ),
                             ),
                           ],
                         ),
                       ),
+
 
                     ],
                   ),

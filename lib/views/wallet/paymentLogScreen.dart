@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../../controllers/fastApiProvider/WalletProvider.dart';
 import 'package:AstrowayCustomer/theme/appTheme.dart';
+// ✅ Updated to use the new file name
+import 'package:AstrowayCustomer/model/fastApiModel/wallet_tx_model.dart';
 
 class PaymentLogScreen extends StatefulWidget {
   @override
@@ -11,253 +13,93 @@ class PaymentLogScreen extends StatefulWidget {
 }
 
 class _PaymentLogScreenState extends State<PaymentLogScreen> {
-  String _selectedFilter = 'all'; // 'all', 'credit', 'debit'
-  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+  String _selectedFilter = 'all'; // all | credit | debit
+  final GlobalKey<RefreshIndicatorState> _refreshKey =
   GlobalKey<RefreshIndicatorState>();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<WalletProvider>(context, listen: false).fetchWalletTransactions();
+      context.read<WalletProvider>().fetchWalletTransactions();
     });
   }
 
-  Future<void> _refreshData() async {
-    await Provider.of<WalletProvider>(context, listen: false)
-        .fetchWalletTransactions();
+  Future<void> _refresh() async {
+    await context.read<WalletProvider>().fetchWalletTransactions();
+  }
+
+  // ---------------------------------------------------------------------------
+  // FILTER CHIPS
+  // ---------------------------------------------------------------------------
+
+  Widget _chip(String label, String value, Color color) {
+    final selected = _selectedFilter == value;
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => setState(() => _selectedFilter = value),
+      selectedColor: color.withOpacity(0.25),
+      checkmarkColor: color,
+      labelStyle: TextStyle(
+        color: selected ? color : Colors.grey[700],
+        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
   }
 
   Widget _buildFilterChips() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          FilterChip(
-            label: const Text('All'),
-            selected: _selectedFilter == 'all',
-            onSelected: (bool selected) {
-              setState(() {
-                _selectedFilter = selected ? 'all' : _selectedFilter;
-              });
-            },
-            selectedColor: appYellow.withOpacity(0.3),
-            checkmarkColor: textColor,
-            labelStyle: TextStyle(
-              color: _selectedFilter == 'all' ? textColor : Colors.grey[700],
-              fontWeight: _selectedFilter == 'all' ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          FilterChip(
-            label: const Text('Credits'),
-            selected: _selectedFilter == 'credit',
-            onSelected: (bool selected) {
-              setState(() {
-                _selectedFilter = selected ? 'credit' : _selectedFilter;
-              });
-            },
-            selectedColor: Colors.green.withOpacity(0.3),
-            checkmarkColor: Colors.green,
-            labelStyle: TextStyle(
-              color: _selectedFilter == 'credit' ? Colors.green[700] : Colors.grey[700],
-              fontWeight: _selectedFilter == 'credit' ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          FilterChip(
-            label: const Text('Debits'),
-            selected: _selectedFilter == 'debit',
-            onSelected: (bool selected) {
-              setState(() {
-                _selectedFilter = selected ? 'debit' : _selectedFilter;
-              });
-            },
-            selectedColor: Colors.red.withOpacity(0.3),
-            checkmarkColor: Colors.red,
-            labelStyle: TextStyle(
-              color: _selectedFilter == 'debit' ? Colors.red[700] : Colors.grey[700],
-              fontWeight: _selectedFilter == 'debit' ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
+          _chip('All', 'all', appYellow),
+          _chip('Credits', 'credit', Colors.green),
+          _chip('Debits', 'debit', Colors.red),
         ],
       ),
     );
   }
 
-  Widget _buildTransactionList(WalletProvider walletProvider, List<dynamic> transactions) {
-    if (walletProvider.isLoading) {
+  // ---------------------------------------------------------------------------
+  // TRANSACTION LIST
+  // ---------------------------------------------------------------------------
+
+  Widget _buildList(
+      WalletProvider provider,
+      List<WalletTxModel> list, // ✅ Updated Type
+      ) {
+    if (provider.isLoading) {
       return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(appYellow),
-        ),
-      );
-    } else if (walletProvider.errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-              'Something went wrong',
-              style: TextStyle(fontSize: 18, color: Colors.grey[700]),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${walletProvider.errorMessage}',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[500]),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                walletProvider.fetchWalletTransactions();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: appYellow,
-                foregroundColor: textColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              child: const Text('Try Again'),
-            ),
-          ],
-        ),
-      );
-    } else if (transactions.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.receipt_long,
-              size: 100,
-              color: Colors.grey[300],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'No transactions found',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _selectedFilter == 'all'
-                  ? 'Your transactions will appear here'
-                  : 'No ${_selectedFilter == 'credit' ? 'credits' : 'debits'} found',
-              style: TextStyle(color: Colors.grey[500]),
-            ),
-          ],
-        ),
-      );
-    } else {
-      return ListView.builder(
-        itemCount: transactions.length,
-        itemBuilder: (context, index) {
-          final log = transactions[index];
-          return _buildTransactionCard(log);
-        },
+        child: CircularProgressIndicator(color: appYellow),
       );
     }
-  }
 
-  // Widget _buildSummaryCard(List<dynamic> logs) {
-  //   double totalCredits = 0;
-  //   double totalDebits = 0;
-  //
-  //   for (var log in logs) {
-  //     final amount = (log['amount'] ?? 0).toDouble();
-  //     if (log['transactionType'] == 'credit' && log['status'] == 'success') {
-  //       totalCredits += amount;
-  //     } else if (log['transactionType'] == 'debit' && log['status'] == 'success') {
-  //       totalDebits += amount;
-  //     }
-  //   }
-  //
-  //   return Container(
-  //     padding: const EdgeInsets.all(16),
-  //     margin: const EdgeInsets.all(16),
-  //     decoration: BoxDecoration(
-  //       gradient: LinearGradient(
-  //         begin: Alignment.topLeft,
-  //         end: Alignment.bottomRight,
-  //         colors: [appYellow.withOpacity(0.8), appYellow],
-  //       ),
-  //       borderRadius: BorderRadius.circular(16),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: Colors.grey.withOpacity(0.3),
-  //           spreadRadius: 1,
-  //           blurRadius: 5,
-  //           offset: const Offset(0, 3),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Column(
-  //       children: [
-  //         const Text(
-  //           "Wallet Summary",
-  //           style: TextStyle(
-  //             fontSize: 16,
-  //             fontWeight: FontWeight.bold,
-  //             color: textColor,
-  //           ),
-  //         ),
-  //         const SizedBox(height: 16),
-  //         Row(
-  //           mainAxisAlignment: MainAxisAlignment.spaceAround,
-  //           children: [
-  //             _buildSummaryItem("Total Credits", totalCredits, Colors.green[700]!),
-  //             Container(
-  //               width: 1,
-  //               height: 40,
-  //               color: Colors.white.withOpacity(0.5),
-  //             ),
-  //             _buildSummaryItem("Total Debits", totalDebits, Colors.red[700]!),
-  //           ],
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
+    if (provider.errorMessage != null) {
+      return _errorState(provider.errorMessage!);
+    }
 
-  Widget _buildSummaryItem(String title, double value, Color color) {
-    return Column(
-      children: [
-        Text(title,
-            style: const TextStyle(fontSize: 14, color: Colors.white)),
-        const SizedBox(height: 4),
-        Text(
-          "₹${value.toStringAsFixed(0)}",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ],
+    if (list.isEmpty) {
+      return _emptyState();
+    }
+
+    return ListView.builder(
+      itemCount: list.length,
+      itemBuilder: (_, i) => _transactionCard(list[i]),
     );
   }
 
-  Widget _buildTransactionCard(Map<String, dynamic> log) {
-    final isCredit = log['transactionType'] == 'credit';
-    final icon = isCredit ? Icons.arrow_circle_up : Icons.arrow_circle_down;
-    final color = isCredit ? Colors.green : Colors.red;
-    final status = (log['status'] ?? 'Completed').toLowerCase();
-    final statusColor = status == 'success' ? Colors.green : Colors.orange;
-    final amount = (log['amount'] ?? 0).toDouble();
+  // ---------------------------------------------------------------------------
+  // TRANSACTION CARD
+  // ---------------------------------------------------------------------------
 
-    // Custom description
-    final description = isCredit
-        ? "Added to Wallet"
-        : "Cosmic Insights Services";
+  Widget _transactionCard(WalletTxModel tx) { // ✅ Updated Type
+    final bool isCredit = tx.isCredit;
+    final Color color = isCredit ? Colors.green : Colors.red;
 
-    DateTime? date;
-    try {
-      date = DateTime.parse(log['created_at']);
-    } catch (e) {
-      date = null;
-    }
+    // Check for null duration or default empty value
+    final bool hasDuration = tx.duration != "00:00:00";
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -267,93 +109,137 @@ class _PaymentLogScreenState extends State<PaymentLogScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
           ),
         ],
       ),
       child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color),
+        leading: CircleAvatar(
+          backgroundColor: color.withOpacity(0.15),
+          child: Icon(_icon(tx.transactionType), color: color),
         ),
         title: Text(
-          description,
-          style: const TextStyle(fontWeight: FontWeight.w500),
+          _description(tx.transactionType, isCredit),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              date != null
-                  ? DateFormat('dd MMM yyyy, hh:mm a').format(date)
-                  : 'Invalid Date',
+              DateFormat('dd MMM yyyy, hh:mm a').format(tx.createdAt),
               style: const TextStyle(fontSize: 12),
             ),
+            if (hasDuration) ...[
+              const SizedBox(height: 2),
+              Text(
+                "Duration: ${tx.duration}",
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
             const SizedBox(height: 4),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            _statusChip(tx.status),
           ],
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              isCredit ? "+₹${amount.toStringAsFixed(0)}" : "-₹${amount.toStringAsFixed(0)}",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Balance: ₹${(log['balance_after'] ?? 0).toStringAsFixed(0)}",
-              style: const TextStyle(
-                fontSize: 10,
-                color: Colors.grey,
-              ),
-            ),
-          ],
+        trailing: Text(
+          isCredit
+              ? "+₹${tx.amount.toStringAsFixed(0)}"
+              : "-₹${tx.amount.toStringAsFixed(0)}",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
       ),
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // HELPERS (Same as before)
+  // ---------------------------------------------------------------------------
+
+  IconData _icon(String type) {
+    switch (type) {
+      case 'chat': return Icons.chat_bubble_outline;
+      case 'audio_call': return Icons.call_outlined;
+      case 'video_call': return Icons.videocam_outlined;
+      case 'send_money': return Icons.compare_arrows;
+      default: return Icons.account_balance_wallet;
+    }
+  }
+
+  String _description(String type, bool isCredit) {
+    if (isCredit) return "Wallet Credit";
+    switch (type) {
+      case 'chat': return "Chat Consultation";
+      case 'audio_call': return "Audio Call";
+      case 'video_call': return "Video Call";
+      case 'send_money': return "Money Sent";
+      default: return "Wallet Transaction";
+    }
+  }
+
+  Widget _statusChip(String status) {
+    final color = status.toLowerCase() == 'success' ? Colors.green : Colors.orange;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _errorState(String msg) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64),
+          const SizedBox(height: 12),
+          Text(msg),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.receipt_long, size: 80, color: Colors.grey),
+          SizedBox(height: 12),
+          Text("No transactions found"),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // BUILD
+  // ---------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     return Consumer<WalletProvider>(
-      builder: (context, walletProvider, child) {
-        // Filter transactions based on selection
-        final filteredTransactions = _selectedFilter == 'all'
-            ? walletProvider.transactions
-            : walletProvider.transactions
-            .where((t) => t['transactionType'] == _selectedFilter)
-            .toList();
+      builder: (_, provider, __) {
+        // ✅ Updated Type here
+        final List<WalletTxModel> all = [...provider.transactions]
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+        final filtered = _selectedFilter == 'all'
+            ? all
+            : all.where((tx) {
+          return _selectedFilter == 'credit'
+              ? tx.isCredit
+              : !tx.isCredit;
+        }).toList();
 
         return Scaffold(
           appBar: AppBar(
@@ -363,37 +249,19 @@ class _PaymentLogScreenState extends State<PaymentLogScreen> {
             ),
             backgroundColor: appYellow,
             iconTheme: const IconThemeData(color: textColor),
-            elevation: 0,
             centerTitle: true,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: () {
-                  _refreshIndicatorKey.currentState?.show();
-                },
-              ),
-            ],
           ),
           body: RefreshIndicator(
-            key: _refreshIndicatorKey,
-            onRefresh: _refreshData,
+            key: _refreshKey,
+            onRefresh: _refresh,
             color: appYellow,
-            backgroundColor: Colors.white,
-            strokeWidth: 2.5,
-            displacement: 40,
-            edgeOffset: 0,
-            child: Container(
-              color: Colors.grey[50],
-              child: Column(
-                children: [
-                  // _buildSummaryCard(walletProvider.transactions),
-                  _buildFilterChips(),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: _buildTransactionList(walletProvider, filteredTransactions),
-                  ),
-                ],
-              ),
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                _buildFilterChips(),
+                const SizedBox(height: 8),
+                Expanded(child: _buildList(provider, filtered)),
+              ],
             ),
           ),
         );

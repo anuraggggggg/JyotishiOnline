@@ -29,14 +29,11 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
   @override
   void initState() {
     super.initState();
-    // Initial fetch (Page 1)
     _fetchNextPage();
 
-    // Listen to scroll to detect bottom of list
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent - 200) {
-        // Fetch next page if we aren't loading, have more data, and not searching
         if (!_isLoading && _hasMoreData && _searchController.text.isEmpty) {
           _fetchNextPage();
         }
@@ -45,7 +42,7 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
   }
 
   // ------------------------------------------------------
-  // 📡 PAGINATION LOGIC (LOADS PAGE 1, 2, 3...)
+  // 📡 PAGINATION LOGIC
   // ------------------------------------------------------
   Future<void> _fetchNextPage() async {
     if (_isLoading || !_hasMoreData) return;
@@ -58,10 +55,10 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
 
       setState(() {
         if (newItems.isEmpty) {
-          _hasMoreData = false; // No more pages to load
+          _hasMoreData = false;
         } else {
           _currentPage++;
-          _allAstrologers.addAll(newItems); // Append new data to existing list
+          _allAstrologers.addAll(newItems);
           _filteredAstrologers = List.from(_allAstrologers);
           _sortAstrologers();
         }
@@ -94,8 +91,10 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
         _filteredAstrologers = _allAstrologers.where((astro) {
           final name = astro.name.toLowerCase();
           final skill = astro.primarySkill?.toLowerCase() ?? '';
+          final language = astro.languageKnown?.toLowerCase() ?? '';
           return name.contains(query.toLowerCase()) ||
-              skill.contains(query.toLowerCase());
+              skill.contains(query.toLowerCase()) ||
+              language.contains(query.toLowerCase());
         }).toList();
       }
       _sortAstrologers();
@@ -103,7 +102,7 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
   }
 
   // ------------------------------------------------------
-  // 🖼 HELPERS (Kept from your original code)
+  // 🖼️ IMAGE URL HELPER
   // ------------------------------------------------------
   String _buildImageUrl(String? rawPath) {
     if (rawPath == null || rawPath.trim().isEmpty) return '';
@@ -112,74 +111,302 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
     return "https://fastapi.jyotishionline.com/${cleaned.startsWith('/') ? cleaned.substring(1) : cleaned}";
   }
 
-  Widget _buildRatingRow(double rating, int reviews) {
-    return Row(
-      children: [
-        const Icon(Icons.star, size: 14, color: Colors.orange),
-        const SizedBox(width: 4),
-        Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-        const SizedBox(width: 6),
-        Text("($reviews reviews)", style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-        const Spacer(),
-        if (rating >= 4.5)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(color: Colors.green.shade600, borderRadius: BorderRadius.circular(4)),
-            child: const Text("TOP RATED", style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildChargeChip(IconData icon, double charge) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.grey.shade300)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: Colors.blueGrey),
-          const SizedBox(width: 4),
-          Text("₹${charge.toStringAsFixed(0)}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
+  // ------------------------------------------------------
+  // 🎨 ENHANCED ASTROLOGER CARD
+  // ------------------------------------------------------
   Widget _buildAstrologerCard(GetAllAstrologerModel astro) {
     final imageUrl = _buildImageUrl(astro.profileImage);
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 35,
-              backgroundColor: appYellow.withOpacity(0.2),
-              backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-              child: imageUrl.isEmpty ? const Icon(Icons.person, size: 35, color: Colors.grey) : null,
+
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AstrologerDetailPage(astroId: astro.astroId),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+              spreadRadius: 0.5,
             ),
-            const SizedBox(width: 12),
+          ],
+          border: Border.all(color: Colors.grey.shade100, width: 1),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Profile Image Section
+            Container(
+              padding: const EdgeInsets.only(right: 16),
+              child: Column(
+                children: [
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 70,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey.shade100,
+                          image: imageUrl.isNotEmpty
+                              ? DecorationImage(
+                            image: NetworkImage(imageUrl),
+                            fit: BoxFit.cover,
+                          )
+                              : null,
+                        ),
+                        child: imageUrl.isEmpty
+                            ? Icon(Icons.person, size: 36, color: Colors.grey.shade400)
+                            : null,
+                      ),
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Rating Section
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star, color: Colors.amber.shade700, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          astro.overallRating.toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.amber.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "${astro.totalReviews} reviews",
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Astrologer Details Section
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(astro.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 2),
-                  Text("${astro.primarySkill ?? 'Astrologer'} • ${astro.experienceInYears} yrs", style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-                  const SizedBox(height: 4),
-                  _buildRatingRow(astro.overallRating, astro.totalReviews),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              astro.name,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black87,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            if (astro.primarySkill != null && astro.primarySkill!.isNotEmpty)
+                              Text(
+                                astro.primarySkill!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: appYellow,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      // Top Rated Badge
+                      if (astro.overallRating >= 4.5)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade600,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            "TOP RATED",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+
                   const SizedBox(height: 8),
+
+                  // Languages & Experience
+                  Row(
+                    children: [
+                      Icon(Icons.language, size: 14, color: Colors.grey.shade600),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          astro.languageKnown ?? 'English, Hindi',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  Row(
+                    children: [
+                      Icon(Icons.work_outline, size: 14, color: Colors.grey.shade600),
+                      const SizedBox(width: 6),
+                      Text(
+                        "${astro.experienceInYears} Years Experience",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Pricing Chips
                   Wrap(
                     spacing: 8,
-                    runSpacing: 4,
+                    runSpacing: 6,
                     children: [
-                      _buildChargeChip(Icons.chat_bubble_outline, astro.chatCharge),
-                      _buildChargeChip(Icons.call_outlined, astro.audioCallCharge),
-                      _buildChargeChip(Icons.videocam_outlined, astro.videoCallCharge),
+                      // Chat Pricing
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.chat_bubble_outline, size: 14, color: appYellow),
+                            const SizedBox(width: 6),
+                            Text(
+                              "₹${astro.chatCharge.toStringAsFixed(0)}",
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Call Pricing
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.call_outlined, size: 14, color: Colors.blue),
+                            const SizedBox(width: 6),
+                            Text(
+                              "₹${astro.audioCallCharge.toStringAsFixed(0)}",
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Video Pricing
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.videocam_outlined, size: 14, color: Colors.purple),
+                            const SizedBox(width: 6),
+                            Text(
+                              "₹${astro.videoCallCharge.toStringAsFixed(0)}",
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -201,61 +428,194 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text("All Astrologers", style: TextStyle(color: Colors.black)),
+        title: const Text(
+          "All Astrologers",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            letterSpacing: 0.5,
+            color: Colors.black,
+          ),
+        ),
         backgroundColor: Colors.white,
-        elevation: 0,
+        foregroundColor: Colors.black,
+        centerTitle: true,
+        elevation: 1,
         iconTheme: const IconThemeData(color: Colors.black),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(12),
+          ),
+        ),
       ),
       body: Column(
         children: [
-          // SEARCH INPUT
-          Padding(
+          // Search Bar
+          Container(
             padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: TextField(
               controller: _searchController,
               onChanged: _filterAstrologers,
               decoration: InputDecoration(
-                hintText: "Search name or skill...",
-                prefixIcon: const Icon(Icons.search),
+                hintText: "Search by name, skill, or language...",
+                prefixIcon: Icon(Icons.search, color: appYellow),
                 filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                hintStyle: TextStyle(color: Colors.grey.shade500),
               ),
             ),
           ),
 
-          // LIST VIEW
+          // Stats Bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "${_filteredAstrologers.length} Astrologers Found",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                if (_searchController.text.isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      _searchController.clear();
+                      _filterAstrologers('');
+                    },
+                    child: Text(
+                      "Clear Search",
+                      style: TextStyle(
+                        color: appYellow,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Astrologers List
           Expanded(
             child: _isFirstLoad
-                ? const Center(child: CircularProgressIndicator(color: appYellow))
+                ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    color: appYellow,
+                    strokeWidth: 2,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Loading Astrologers...",
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            )
                 : _filteredAstrologers.isEmpty
-                ? const Center(child: Text("No astrologers found"))
+                ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.search_off,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _searchController.text.isEmpty
+                        ? "No astrologers available"
+                        : "No results found for '${_searchController.text}'",
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  if (_searchController.text.isNotEmpty)
+                    TextButton(
+                      onPressed: () {
+                        _searchController.clear();
+                        _filterAstrologers('');
+                      },
+                      child: Text(
+                        "View all astrologers",
+                        style: TextStyle(
+                          color: appYellow,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            )
                 : ListView.builder(
-              controller: _scrollController, // IMPORTANT: Connect controller here
+              controller: _scrollController,
+              padding: const EdgeInsets.only(top: 8, bottom: 20),
               itemCount: _filteredAstrologers.length + (_isLoading ? 1 : 0),
               itemBuilder: (context, index) {
-                // Show loading spinner at bottom
                 if (index == _filteredAstrologers.length) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(child: CircularProgressIndicator(color: appYellow)),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: appYellow,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "Loading more astrologers...",
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   );
                 }
-
-                final astro = _filteredAstrologers[index];
-                return InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AstrologerDetailPage(astroId: astro.astroId),
-                      ),
-                    );
-                  },
-                  child: _buildAstrologerCard(astro),
-                );
+                return _buildAstrologerCard(_filteredAstrologers[index]);
               },
             ),
           ),

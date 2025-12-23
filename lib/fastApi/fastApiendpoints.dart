@@ -53,7 +53,8 @@ class FastApiEndpoints {
   static const String walletTransfer = "$fastApiBaseUrl/api/v1/wallet/transfer";
 
   static const String walletTransactions =
-      "$fastApiBaseUrl/api/v1/wallettransactions/user/";
+      "$fastApiBaseUrl/api/v1/wallettransactions/user";
+
 
 
 

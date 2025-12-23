@@ -24,6 +24,7 @@ import '../model/fastApiModel/allAstrologerModel.dart';
 import '../model/fastApiModel/astrologerProfileModel.dart';
 import '../model/fastApiModel/newChatModel.dart';
 import '../model/fastApiModel/sendMoneyModel.dart';
+import '../model/fastApiModel/wallet_tx_model.dart';
 
 extension MultipartFieldHelper on http.MultipartRequest {
   void addIfPresent(String key, String? value) {
@@ -783,35 +784,69 @@ class FastAPIServices {
 
 
   // A method to fetch wallet transactions
-  Future<List<dynamic>> getWalletTransactions() async {
-    await _loadCredentials(); // ✅ Ensure token & userId are loaded first
-    // Ensure both the user ID and access token are available
-    if (_userId == null || _accessToken == null) {
-      throw Exception('User ID or Access Token is not set.');
+  // ---------------- FETCH WALLET TRANSACTIONS ----------------
+  Future<List<WalletTxModel>> getWalletTransactions() async {
+    await _loadCredentials();
+
+    // ✅ JWT is mandatory for authorization
+    if (_accessToken == null || _accessToken!.isEmpty) {
+      throw Exception('Access token missing. Please login again.');
     }
 
-    final url = Uri.parse('${FastApiEndpoints.walletTransactions}$_userId');
+    // ✅ Ensure we have the userId to build the path
+    if (_userId == null || _userId!.isEmpty) {
+      throw Exception('User ID missing. Cannot fetch transactions.');
+    }
 
-    // 2. Make the GET request
-    final response = await http.get(
-      url,
-      headers: {
-        'accept': 'application/json',
-        'Authorization': 'Bearer $_accessToken',
-      },
-    );
+    // ✅ HARDCODED WORKING URL STRUCTURE
+    // Path corrected from 'wallettransactions' to 'wallet/transactions'
+    // Added '/user/$_userId' to the end of the URL
+    final String baseUrl = "https://fastapi.jyotishionline.com/api/v1";
+    final url = Uri.parse('$baseUrl/wallet/transactions/user/$_userId');
 
-    // 3. Handle the response
-    if (response.statusCode == 200) {
-      // Decode the JSON response body
-      final List<dynamic> transactions = json.decode(response.body);
-      return transactions;
-    } else {
-      // Throw an exception for a non-200 status code
+    debugPrint("💰 Wallet Tx API → $url");
+    debugPrint("🔑 Using JWT and Path ID for user identification");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $_accessToken', // Keep the token for security
+        },
+      );
+
+      debugPrint("💰 Wallet Tx Status → ${response.statusCode}");
+      debugPrint("💰 Wallet Tx Body → ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> decoded = jsonDecode(response.body);
+
+        return decoded
+            .map((e) => WalletTxModel.fromJson(e))
+            .toList();
+      }
+
+      if (response.statusCode == 401) {
+        throw Exception("Unauthorized. Token may be expired.");
+      }
+
+      if (response.statusCode == 404) {
+        throw Exception("Wallet transactions not found (404). Check if the URL path is correct.");
+      }
+
       throw Exception(
-          'Failed to load wallet transactions. Status code: ${response.statusCode}');
+        "Failed to load wallet transactions (${response.statusCode})",
+      );
+    } catch (e, st) {
+      debugPrint("❌ Wallet Tx Exception: $e");
+      debugPrint("📄 StackTrace: $st");
+      rethrow;
     }
   }
+
+
+
 
   // ---------------- LOGIN WITH EMAIL ----------------
   Future<void> loginWithEmail({
