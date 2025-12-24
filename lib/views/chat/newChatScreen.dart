@@ -69,6 +69,25 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   static const Color appDark = Color(0xFF1A1A1A);
   static const Color appLight = Color(0xFFF8F9FA);
 
+  // ---------------------------------------------------------------------------
+  // UTF-8 NORMALIZER
+  // ---------------------------------------------------------------------------
+
+  String _normalizeText(dynamic value) {
+    if (value == null) return '';
+    try {
+      if (value is String) {
+        return utf8.decode(value.codeUnits, allowMalformed: true);
+      }
+      if (value is List<int>) {
+        return utf8.decode(value, allowMalformed: true);
+      }
+      return value.toString();
+    } catch (_) {
+      return value.toString();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -136,7 +155,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       for (final msg in batch) {
         all.add({
           'sender_id': msg.senderId,
-          'message': msg.content,
+          'message': _normalizeText(msg.content),
           'created_at': msg.createdAt.toIso8601String(),
         });
       }
@@ -168,7 +187,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           0,
           batch.map((m) => {
             'sender_id': m.senderId,
-            'message': m.content,
+            'message': _normalizeText(m.content),
             'created_at': m.createdAt.toIso8601String(),
           }),
         );
@@ -223,7 +242,6 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
         onError: (_) => _handleDisconnect(),
       );
 
-      // 🔥 READY SIGNAL
       _iAmReady = true;
       _socket!.add(jsonEncode({
         "type": "connectivity",
@@ -247,7 +265,6 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       final raw = data is String ? data : utf8.decode(data);
       final parsed = jsonDecode(raw);
 
-      // 🔥 HANDSHAKE
       if (parsed['type'] == 'connectivity') {
         if (parsed['user_id'] == _myUserId) return;
 
@@ -266,13 +283,16 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       final msg = parsed['message'];
       if (msg == null) return;
 
+      // 🔥 Ignore echo of my own message
+      if (msg['sender_user_id'] == _myUserId) return;
+
       _otherIsReady = true;
       _tryStartTimer();
 
       setState(() {
         _messages.add({
           'sender_id': msg['sender_user_id'],
-          'message': msg['content'],
+          'message': _normalizeText(msg['content']),
           'created_at': msg['created_at'],
         });
       });
@@ -319,7 +339,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     setState(() {
       _messages.add({
         'sender_id': _myUserId,
-        'message': text,
+        'message': _normalizeText(text),
         'created_at': DateTime.now().toIso8601String(),
       });
     });
@@ -337,18 +357,9 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   void _scrollToBottom({bool force = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-
-      if (force) {
-        _scrollController.jumpTo(
-          _scrollController.position.maxScrollExtent,
-        );
-      } else {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
+      _scrollController.jumpTo(
+        _scrollController.position.maxScrollExtent,
+      );
     });
   }
 
@@ -362,9 +373,10 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
       backgroundColor: appLight,
       appBar: AppBar(
         backgroundColor: appDark,
-        title: Text(_displayName ?? widget.astrologerName, style: TextStyle(
-          color: Colors.white
-        ),),
+        title: Text(
+          _displayName ?? widget.astrologerName,
+          style: const TextStyle(color: Colors.white),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -404,8 +416,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
 
   Widget _buildBubble(Map<String, dynamic> m, bool isMine) {
     return Align(
-      alignment:
-      isMine ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.all(12),
@@ -413,7 +424,17 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
           color: isMine ? appYellow : Colors.white,
           borderRadius: BorderRadius.circular(15),
         ),
-        child: Text(m['message']),
+        child: Text(
+          m['message'],
+          style: const TextStyle(
+            fontSize: 16,
+            fontFamilyFallback: [
+              'Noto Color Emoji',
+              'Segoe UI Emoji',
+              'Apple Color Emoji',
+            ],
+          ),
+        ),
       ),
     );
   }

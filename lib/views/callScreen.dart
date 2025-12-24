@@ -419,18 +419,18 @@ class _CallAstrologerScreenState extends State<CallAstrologerScreen> {
                       color: Colors.grey.shade700,
                     ),
                   ),
-                  Row(
-                    children: [
-                      Icon(Icons.filter_list, size: 18, color: Colors.grey.shade600),
-                      const SizedBox(width: 6),
-                      Text(
-                        "Filter",
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
+                  // Row(
+                  //   children: [
+                  //     Icon(Icons.filter_list, size: 18, color: Colors.grey.shade600),
+                  //     const SizedBox(width: 6),
+                  //     Text(
+                  //       "Filter",
+                  //       style: TextStyle(
+                  //         color: Colors.grey.shade600,
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
                 ],
               ),
             ),

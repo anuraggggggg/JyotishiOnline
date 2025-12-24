@@ -255,25 +255,25 @@ class _DailyPredictionInputScreenState
                                   style: const TextStyle(
                                       color: stardustWhite),
                                 ),
-                                ElevatedButton(
-                                  onPressed: () async {
-                                    final picked = await showDatePicker(
-                                      context: context,
-                                      initialDate:
-                                      controller.selectedDate.value,
-                                      firstDate: DateTime(2000),
-                                      lastDate: DateTime.now(),
-                                    );
-                                    if (picked != null) {
-                                      controller.selectedDate.value =
-                                          picked;
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                      celestialGold),
-                                  child: const Text('Pick Date'),
-                                ),
+                                // ElevatedButton(
+                                //   onPressed: () async {
+                                //     final picked = await showDatePicker(
+                                //       context: context,
+                                //       initialDate:
+                                //       controller.selectedDate.value,
+                                //       firstDate: DateTime(2000),
+                                //       lastDate: DateTime.now(),
+                                //     );
+                                //     if (picked != null) {
+                                //       controller.selectedDate.value =
+                                //           picked;
+                                //     }
+                                //   },
+                                //   style: ElevatedButton.styleFrom(
+                                //       backgroundColor:
+                                //       celestialGold),
+                                //   child: const Text('Pick Date'),
+                                // ),
                               ],
                             )),
                           ],
