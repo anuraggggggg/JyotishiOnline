@@ -335,10 +335,10 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
   }
 
   Future<void> _submit() async {
-    // Hide keyboard
     FocusScope.of(context).unfocus();
 
-    const int kundliServicePrice = 599;
+    final int kundliServicePrice = widget.servicePrice.toInt();
+
 
     if (_formKey.currentState!.validate()) {
       if (selectedDate == null || selectedTime == null) {
@@ -347,61 +347,43 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
       }
 
       if (_cityController.text.trim().isEmpty) {
-        _showSnackbar(
-            'Location Error', 'City/Place name is required.', warningRed);
+        _showSnackbar('Location Error', 'City/Place name is required.', warningRed);
         return;
       }
 
       controller.isLoading.value = true;
 
       try {
-        // 1️⃣ Fetch wallet balance from backend
         final wallet = await FastAPIServices().fetchCurrentWallet();
         if (wallet == null) {
-          _showSnackbar('Wallet Error',
-              'Unable to fetch wallet balance. Please try again.', warningRed);
-          controller.isLoading.value = false;
+          _showSnackbar('Wallet Error', 'Unable to fetch wallet balance.', warningRed);
           return;
         }
 
-        // 2️⃣ Check balance
         if (wallet.amount < kundliServicePrice) {
           final shortfall = kundliServicePrice - wallet.amount;
           _showSnackbar(
             'Insufficient Balance',
-            'You need ₹${shortfall.toStringAsFixed(2)} more to access Kundli service. Please recharge your wallet.',
+            'You need ₹${shortfall.toStringAsFixed(2)} more.',
             warningRed,
           );
-          controller.isLoading.value = false;
           return;
         }
 
-        // 3️⃣ Deduct using debit API
         final updatedWallet =
         await FastAPIServices().debitWallet(kundliServicePrice);
 
         if (updatedWallet == null) {
-          _showSnackbar(
-              'Payment Failed', 'Could not deduct wallet. Try again.', warningRed);
-          controller.isLoading.value = false;
+          _showSnackbar('Payment Failed', 'Could not deduct wallet.', warningRed);
           return;
         }
 
-        // 4️⃣ Success → show snackbar
         _showSnackbar(
           'Payment Successful',
-          '₹${kundliServicePrice.toStringAsFixed(2)} deducted from your wallet for Kundli service.',
+          '₹${kundliServicePrice.toStringAsFixed(2)} deducted successfully.',
           celestialGold,
         );
 
-        // 5️⃣ Update local wallet state for UI
-        setState(() {
-          _wallet = updatedWallet;
-        });
-
-        await Future.delayed(const Duration(milliseconds: 400));
-
-        // 6️⃣ Fetch Kundli data
         await controller.fetchFromInputFields(
           cityName: _cityController.text.trim(),
           date: _dateController.text.trim(),
@@ -410,31 +392,15 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
           language: _selectedLanguage.value,
         );
 
-        if (controller.kundliData.value != null &&
-            controller.errorMessage.isEmpty) {
+        if (controller.kundliData.value != null) {
           Get.to(() => DetailedKundliResultScreen());
-          _showSnackbar(
-              'Success', 'Kundli data fetched successfully!', celestialGold);
-        } else {
-          _showSnackbar(
-            'Kundli Generation Error',
-            controller.errorMessage.value.isNotEmpty
-                ? controller.errorMessage.value
-                : 'Failed to fetch Kundli data. Please try again.',
-            warningRed,
-          );
         }
-      } catch (e) {
-        print('Kundli generation error: $e');
-        _showSnackbar('Unexpected Error', 'Please try again.', warningRed);
       } finally {
         controller.isLoading.value = false;
       }
-    } else {
-      _showSnackbar(
-          'Input Error', 'Please fill all required fields correctly.', warningRed);
     }
   }
+
 
 
 

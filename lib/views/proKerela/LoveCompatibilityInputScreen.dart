@@ -155,44 +155,66 @@ class _LoveCompatibilityInputScreenState extends State<LoveCompatibilityInputScr
     );
   }
 
-  void _submit() async {
-    const int compatibilityPrice = 599;
+  Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
+
+    print('========== LOVE COMPATIBILITY SUBMIT ==========');
+
+    // 🔥 FIX: use widget.servicePrice safely
+    final int compatibilityPrice = widget.servicePrice.toInt();
+    print('Service Price (int): ₹$compatibilityPrice');
 
     final signOne = selectedSignOne.value;
     final signTwo = selectedSignTwo.value;
 
     if (signOne == null || signTwo == null) {
-      _showSnackbar('Error', 'Please select both zodiac signs', LoveCompatibilityInputScreen.warningRed);
+      _showSnackbar(
+        'Error',
+        'Please select both zodiac signs',
+        LoveCompatibilityInputScreen.warningRed,
+      );
       return;
     }
 
+    controller.isLoading(true);
+
     try {
-      // 1️⃣ Fetch wallet balance
+      // 1️⃣ Fetch wallet
+      print('Fetching wallet...');
       final wallet = await FastAPIServices().fetchCurrentWallet();
+
       if (wallet == null) {
+        print('ERROR: Wallet fetch failed');
         _showSnackbar(
           'Wallet Error',
-          'Unable to fetch wallet balance. Please try again.',
+          'Unable to fetch wallet balance.',
           LoveCompatibilityInputScreen.warningRed,
         );
         return;
       }
 
-      // 2️⃣ Check balance
+      print('Wallet balance: ₹${wallet.amount}');
+
+      // 2️⃣ Balance check
       if (wallet.amount < compatibilityPrice) {
         final shortfall = compatibilityPrice - wallet.amount;
+        print('ERROR: Insufficient balance, missing ₹$shortfall');
+
         _showSnackbar(
           'Insufficient Balance',
-          'You need ₹${shortfall.toStringAsFixed(2)} more to access Love Compatibility. Please recharge your wallet.',
+          'You need ₹$shortfall more to access Love Compatibility.',
           LoveCompatibilityInputScreen.warningRed,
         );
         return;
       }
 
-      // 3️⃣ Deduct using debit API
+      // 3️⃣ Debit wallet
+      print('Debiting wallet: ₹$compatibilityPrice');
       final updatedWallet =
       await FastAPIServices().debitWallet(compatibilityPrice);
+
       if (updatedWallet == null) {
+        print('ERROR: Wallet debit failed');
         _showSnackbar(
           'Payment Failed',
           'Could not deduct wallet. Try again.',
@@ -201,18 +223,17 @@ class _LoveCompatibilityInputScreenState extends State<LoveCompatibilityInputScr
         return;
       }
 
-      // 4️⃣ Payment success
+      print('Wallet debited successfully');
       _showSnackbar(
         'Payment Successful',
-        '₹${compatibilityPrice.toStringAsFixed(2)} deducted from your wallet for Love Compatibility.',
+        '₹$compatibilityPrice deducted for Love Compatibility.',
         LoveCompatibilityInputScreen.celestialGold,
       );
 
-      setState(() {
-        _wallet = updatedWallet;
-      });
+      setState(() => _wallet = updatedWallet);
 
-      // 5️⃣ Call API
+      // 4️⃣ Call compatibility API
+      print('Calling Love Compatibility API...');
       final result = await controller.fetchCompatibility(
         signOne: signOne,
         signTwo: signTwo,
@@ -220,15 +241,33 @@ class _LoveCompatibilityInputScreenState extends State<LoveCompatibilityInputScr
       );
 
       if (result != null) {
-        Get.to(() => LoveCompatibilityResultScreen(
-          compatibility: result.compatibility ?? 'N/A',
-          report: result.report ?? 'No report available',
-        ));
+        print('Compatibility result received');
+        Get.to(
+              () => LoveCompatibilityResultScreen(
+            compatibility: result.compatibility ?? 'N/A',
+            report: result.report ?? 'No report available',
+          ),
+        );
       } else {
-        _showSnackbar('Error', 'Failed to fetch compatibility', LoveCompatibilityInputScreen.warningRed);
+        print('ERROR: Compatibility API returned null');
+        _showSnackbar(
+          'Error',
+          'Failed to fetch compatibility.',
+          LoveCompatibilityInputScreen.warningRed,
+        );
       }
-    } catch (e) {
-      _showSnackbar('Unexpected Error', 'Please try again.', LoveCompatibilityInputScreen.warningRed);
+    } catch (e, stackTrace) {
+      print('========== LOVE COMPATIBILITY ERROR ==========');
+      print(e);
+      print(stackTrace);
+      _showSnackbar(
+        'Unexpected Error',
+        'Please try again.',
+        LoveCompatibilityInputScreen.warningRed,
+      );
+    } finally {
+      controller.isLoading(false);
+      print('========== LOVE COMPATIBILITY END ==========');
     }
   }
 

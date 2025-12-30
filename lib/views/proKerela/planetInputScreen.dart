@@ -310,79 +310,115 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-    const int planetPositionPrice = 599;
+
+    print('========== PLANET SUBMIT START ==========');
+
+    // 🔥 FIX: use widget.servicePrice safely
+    final int planetPositionPrice = widget.servicePrice.toInt();
+    print('Service Price (int): ₹$planetPositionPrice');
 
     if (!(_formKey.currentState?.validate() ?? false) ||
         selectedDateTime == null) {
-      _snack('Required',
-          'Please select date & time and fill all required fields.',
-          warningRed);
+      _snack(
+        'Required',
+        'Please select date & time and fill all required fields.',
+        warningRed,
+      );
       return;
     }
 
     controller.isLoading(true);
+
     try {
-      // 1) Wallet
+      // 1️⃣ Wallet
+      print('Fetching wallet...');
       final wallet = await FastAPIServices().fetchCurrentWallet();
+
       if (wallet == null) {
-        _snack('Wallet Error',
-            'Unable to fetch wallet balance. Please try again.',
-            warningRed);
-        return;
-      }
-      if (wallet.amount < planetPositionPrice) {
-        final shortfall = planetPositionPrice - wallet.amount;
+        print('ERROR: Wallet fetch failed');
         _snack(
-            'Insufficient Balance',
-            'You need ₹${shortfall.toStringAsFixed(2)} more to access Planet Positions. Please recharge your wallet.',
-            warningRed);
+          'Wallet Error',
+          'Unable to fetch wallet balance. Please try again.',
+          warningRed,
+        );
         return;
       }
 
-      // 2) Ensure coordinates
+      print('Wallet balance: ₹${wallet.amount}');
+
+      if (wallet.amount < planetPositionPrice) {
+        final shortfall = planetPositionPrice - wallet.amount;
+        print('ERROR: Insufficient balance. Missing ₹$shortfall');
+
+        _snack(
+          'Insufficient Balance',
+          'You need ₹$shortfall more to access Planet Positions.',
+          warningRed,
+        );
+        return;
+      }
+
+      // 2️⃣ Ensure coordinates
       if (_latitude == null || _longitude == null) {
+        print('Coordinates missing, geocoding...');
         if (_placeController.text.trim().isEmpty) {
           _snack('Location Error', 'City/Place name is required.', warningRed);
           return;
         }
+
         try {
           final locations =
           await locationFromAddress(_placeController.text.trim());
-          if (locations.isNotEmpty) {
-            _latitude = locations.first.latitude;
-            _longitude = locations.first.longitude;
-            _snack('Location Found',
-                'Found coordinates for ${_placeController.text.trim()}',
-                celestialGold);
-          } else {
-            _snack('Location Error',
-                'No precise coordinates found. Enter a valid city/town.',
-                warningRed);
+          if (locations.isEmpty) {
+            print('ERROR: Geocoding returned empty');
+            _snack(
+              'Location Error',
+              'No precise coordinates found.',
+              warningRed,
+            );
             return;
           }
+
+          _latitude = locations.first.latitude;
+          _longitude = locations.first.longitude;
+
+          print('Latitude: $_latitude');
+          print('Longitude: $_longitude');
         } catch (e) {
-          _snack('Location Error', 'Failed to geocode: $e', warningRed);
+          print('ERROR: Geocoding failed → $e');
+          _snack('Location Error', 'Failed to geocode location.', warningRed);
           return;
         }
       }
 
-      // 3) Debit
+      // 3️⃣ Debit wallet
+      print('Debiting wallet: ₹$planetPositionPrice');
       final updatedWallet =
       await FastAPIServices().debitWallet(planetPositionPrice);
+
       if (updatedWallet == null) {
-        _snack('Payment Failed',
-            'Could not deduct from wallet. Try again.', warningRed);
+        print('ERROR: Wallet debit failed');
+        _snack(
+          'Payment Failed',
+          'Could not deduct from wallet. Try again.',
+          warningRed,
+        );
         return;
       }
+
+      print('Wallet debited successfully');
       _snack(
-          'Payment Successful',
-          '₹${planetPositionPrice.toStringAsFixed(2)} deducted from your wallet for Planet Position.',
-          celestialGold);
+        'Payment Successful',
+        '₹$planetPositionPrice deducted for Planet Position.',
+        celestialGold,
+      );
+
       setState(() => _wallet = updatedWallet);
 
-      // 4) Fetch Planet Positions
+      // 4️⃣ Fetch planet positions
+      print('Calling Planet Position API...');
       await controller.getPlanetPositions(
-        ayanamsa: _selectedAyanamsa, // 1 Lahiri, 3 Raman, 5 KP
+        ayanamsa: _selectedAyanamsa,
         latitude: _latitude!,
         longitude: _longitude!,
         datetime: selectedDateTime!,
@@ -390,22 +426,31 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
       );
 
       final planetData = controller.planetResponse.value;
+
       if (planetData != null && planetData.planetPositions.isNotEmpty) {
+        print('Planet data received successfully');
         Get.to(() => PlanetResultScreen(planetData: planetData));
       } else {
+        print('ERROR: Planet API returned no data');
         _snack(
-            'No Data',
-            controller.errorMessage.value.isNotEmpty
-                ? controller.errorMessage.value
-                : 'No planet positions found. Please check your inputs.',
-            warningRed);
+          'No Data',
+          controller.errorMessage.value.isNotEmpty
+              ? controller.errorMessage.value
+              : 'No planet positions found.',
+          warningRed,
+        );
       }
-    } catch (_) {
+    } catch (e, stackTrace) {
+      print('========== PLANET SUBMIT EXCEPTION ==========');
+      print(e);
+      print(stackTrace);
       _snack('Unexpected Error', 'Please try again.', warningRed);
     } finally {
       controller.isLoading(false);
+      print('========== PLANET SUBMIT END ==========');
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

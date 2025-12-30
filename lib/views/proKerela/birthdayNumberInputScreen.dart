@@ -95,13 +95,24 @@ class _BirthdayNumberInputScreenState extends State<BirthdayNumberInputScreen> {
     );
   }
 
-  void _submit() async {
-    const int birthdayNumberPrice = 100;
+  Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
+
+    print('========== BIRTHDAY NUMBER SUBMIT ==========');
+
+    // 🔥 FIX: use widget.servicePrice
+    final int birthdayNumberPrice = widget.servicePrice.toInt();
+    print('Service Price (int): ₹$birthdayNumberPrice');
+
+    controller.isLoading(true);
 
     try {
       // 1️⃣ Fetch wallet balance
+      print('Fetching wallet...');
       final wallet = await FastAPIServices().fetchCurrentWallet();
+
       if (wallet == null) {
+        print('ERROR: Wallet fetch failed');
         _showSnackbar(
           'Wallet Error',
           'Unable to fetch wallet balance. Please try again.',
@@ -110,22 +121,28 @@ class _BirthdayNumberInputScreenState extends State<BirthdayNumberInputScreen> {
         return;
       }
 
-      // 2️⃣ Check balance
+      print('Wallet balance: ₹${wallet.amount}');
+
+      // 2️⃣ Balance check
       if (wallet.amount < birthdayNumberPrice) {
         final shortfall = birthdayNumberPrice - wallet.amount;
+        print('ERROR: Insufficient balance, missing ₹$shortfall');
+
         _showSnackbar(
           'Insufficient Balance',
-          'You need ₹${shortfall.toStringAsFixed(2)} more to access Birthday Number. Please recharge your wallet.',
+          'You need ₹$shortfall more to access Birthday Number.',
           BirthdayNumberInputScreen.warningRed,
         );
         return;
       }
 
-      // 3️⃣ Deduct using debit API
+      // 3️⃣ Debit wallet
+      print('Debiting wallet: ₹$birthdayNumberPrice');
       final updatedWallet =
       await FastAPIServices().debitWallet(birthdayNumberPrice);
 
       if (updatedWallet == null) {
+        print('ERROR: Wallet debit failed');
         _showSnackbar(
           'Payment Failed',
           'Could not deduct wallet. Try again.',
@@ -134,10 +151,10 @@ class _BirthdayNumberInputScreenState extends State<BirthdayNumberInputScreen> {
         return;
       }
 
-      // 4️⃣ Payment success
+      print('Wallet debited successfully');
       _showSnackbar(
         'Payment Successful',
-        '₹${birthdayNumberPrice.toStringAsFixed(2)} deducted from your wallet for Birthday Number.',
+        '₹$birthdayNumberPrice deducted from your wallet for Birthday Number.',
         BirthdayNumberInputScreen.celestialGold,
       );
 
@@ -145,18 +162,22 @@ class _BirthdayNumberInputScreenState extends State<BirthdayNumberInputScreen> {
         _wallet = updatedWallet;
       });
 
-      // 5️⃣ API Call → Birthday Number
+      // 4️⃣ API call
+      print('Calling Birthday Number API...');
       final result = await controller.fetchBirthdayNumber(
         dateTime: selectedDate.value,
       );
 
       if (result != null) {
+        print('Birthday Number result received');
         Get.to(() => BirthdayNumberResultScreen(
           name: result.name ?? 'Birthday Number',
           number: result.number?.toString() ?? '0',
-          description: result.description ?? 'No description available',
+          description:
+          result.description ?? 'No description available',
         ));
       } else {
+        print('ERROR: Birthday Number API returned null');
         _showSnackbar(
           'Error',
           controller.errorMessage.value.isNotEmpty
@@ -165,10 +186,22 @@ class _BirthdayNumberInputScreenState extends State<BirthdayNumberInputScreen> {
           BirthdayNumberInputScreen.warningRed,
         );
       }
-    } catch (e) {
-      _showSnackbar('Unexpected Error', 'Please try again.', BirthdayNumberInputScreen.warningRed);
+    } catch (e, stackTrace) {
+      print('========== BIRTHDAY NUMBER ERROR ==========');
+      print(e);
+      print(stackTrace);
+
+      _showSnackbar(
+        'Unexpected Error',
+        'Please try again.',
+        BirthdayNumberInputScreen.warningRed,
+      );
+    } finally {
+      controller.isLoading(false);
+      print('========== BIRTHDAY NUMBER END ==========');
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

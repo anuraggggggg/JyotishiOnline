@@ -124,102 +124,142 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
     // Hide keyboard if open
     FocusScope.of(context).unfocus();
 
+    print('========== PANCHANG SUBMIT START ==========');
+
+    // 🔥 FIX: Convert price ONCE
+    final int servicePrice = widget.servicePrice.toInt();
+    print('Service Price (int): $servicePrice');
 
     if (_formKey.currentState!.validate()) {
+      print('Form validation: PASSED');
       controller.isLoading(true);
 
-      // 1️⃣ Fetch wallet balance from API
-      final wallet = await FastAPIServices().fetchCurrentWallet();
-      if (wallet == null) {
+      try {
+        // 1️⃣ Fetch wallet balance
+        print('Fetching wallet balance...');
+        final wallet = await FastAPIServices().fetchCurrentWallet();
+
+        if (wallet == null) {
+          print('ERROR: Wallet API returned null');
+          controller.isLoading(false);
+          Get.snackbar(
+            'Wallet Error',
+            'Unable to fetch wallet balance. Please try again.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.redAccent.withOpacity(0.8),
+            colorText: stardustWhite,
+            icon: const Icon(Icons.error_outline, color: stardustWhite),
+          );
+          return;
+        }
+
+        print('Wallet balance: ₹${wallet.amount}');
+
+        // 2️⃣ Balance check
+        if (wallet.amount < servicePrice) {
+          final int missingAmount = servicePrice - wallet.amount;
+          print('ERROR: Insufficient balance. Missing ₹$missingAmount');
+
+          controller.isLoading(false);
+          Get.snackbar(
+            'Insufficient Balance',
+            'You need ₹$missingAmount more to access Daily Panchang.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.redAccent.withOpacity(0.8),
+            colorText: stardustWhite,
+            icon: const Icon(Icons.account_balance_wallet_outlined,
+                color: stardustWhite),
+          );
+          return;
+        }
+
+        // 3️⃣ Debit wallet
+        print('Debiting wallet with ₹$servicePrice...');
+        final updatedWallet =
+        await FastAPIServices().debitWallet(servicePrice);
+
+        if (updatedWallet == null) {
+          print('ERROR: Wallet debit failed');
+          controller.isLoading(false);
+          Get.snackbar(
+            'Payment Failed',
+            'Could not deduct wallet balance. Please try again.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.redAccent.withOpacity(0.8),
+            colorText: stardustWhite,
+            icon: const Icon(Icons.error, color: stardustWhite),
+          );
+          return;
+        }
+
+        print('Wallet debited successfully');
+        print('Updated wallet balance: ₹${updatedWallet.amount}');
+
+        // 4️⃣ Success snackbar
+        Get.snackbar(
+          'Payment Successful',
+          '₹$servicePrice deducted from your wallet for Daily Panchang.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: celestialGold.withOpacity(0.9),
+          colorText: Colors.white,
+          icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+          duration: const Duration(seconds: 2),
+        );
+
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // 5️⃣ Panchang API call
+        print('Calling Panchang API...');
+        print('Ayanamsa : $_ayanamsa');
+        print('Latitude : $_latitude');
+        print('Longitude: $_longitude');
+        print('DateTime : $_selectedDateTime');
+        print('Language : $_language');
+
+        await controller.loadPanchang(
+          ayanamsa: _ayanamsa,
+          latitude: _latitude!,
+          longitude: _longitude!,
+          datetime: _selectedDateTime,
+          language: _language,
+        );
+
         controller.isLoading(false);
-        Get.snackbar(
-          'Wallet Error',
-          'Unable to fetch wallet balance. Please try again.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.redAccent.withOpacity(0.8),
-          colorText: stardustWhite,
-          icon: const Icon(Icons.error_outline, color: stardustWhite),
-        );
-        return;
-      }
 
-      if (wallet.amount < widget.servicePrice) {
-        // 2️⃣ Insufficient balance → Show error
-        final int missingAmount = widget.servicePrice - wallet.amount;
+        // 6️⃣ Result handling
+        if (controller.panchangData.value != null) {
+          print('Panchang data received successfully');
+          Get.to(() =>
+              PanchangResultScreen(data: controller.panchangData.value!));
+        } else if (controller.errorMessage.value.isNotEmpty) {
+          print('ERROR from Panchang API: ${controller.errorMessage.value}');
+          Get.snackbar(
+            'Panchang Error',
+            controller.errorMessage.value,
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.redAccent.withOpacity(0.8),
+            colorText: stardustWhite,
+            icon: const Icon(Icons.warning_amber, color: stardustWhite),
+          );
+        } else {
+          print('ERROR: Panchang failed for unknown reason');
+          Get.snackbar(
+            'Panchang Error',
+            'Failed to get Panchang data. Please try again.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.redAccent.withOpacity(0.8),
+            colorText: stardustWhite,
+            icon: const Icon(Icons.warning_amber, color: stardustWhite),
+          );
+        }
+      } catch (e, stackTrace) {
         controller.isLoading(false);
-        Get.snackbar(
-          'Insufficient Balance',
-          'You need ₹${missingAmount.toStringAsFixed(2)} more to access Daily Panchang. Please recharge your wallet.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.redAccent.withOpacity(0.8),
-          colorText: stardustWhite,
-          icon: const Icon(Icons.account_balance_wallet_outlined, color: stardustWhite),
-        );
-        return;
-      }
-
-      // 3️⃣ Deduct money using debit API
-      final updatedWallet = await FastAPIServices().debitWallet(widget.servicePrice);
-      if (updatedWallet == null) {
-        controller.isLoading(false);
-        Get.snackbar(
-          'Payment Failed',
-          'Could not deduct wallet balance. Please try again.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.redAccent.withOpacity(0.8),
-          colorText: stardustWhite,
-          icon: const Icon(Icons.error, color: stardustWhite),
-        );
-        return;
-      }
-
-      // 4️⃣ Success → show snackbar
-      Get.snackbar(
-        'Payment Successful',
-        '₹${widget.servicePrice} deducted from your wallet for Daily Panchang.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: celestialGold.withOpacity(0.9),
-        colorText: Colors.white,
-        icon: const Icon(Icons.check_circle_outline, color: Colors.white),
-        duration: const Duration(seconds: 2),
-      );
-
-      // 🕓 Small delay so user sees success
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // 5️⃣ Proceed with Panchang API
-      await controller.loadPanchang(
-        ayanamsa: _ayanamsa,
-        latitude: _latitude!,
-        longitude: _longitude!,
-        datetime: _selectedDateTime,
-        language: _language,
-      );
-
-      controller.isLoading(false);
-
-      if (controller.panchangData.value != null) {
-        Get.to(() => PanchangResultScreen(data: controller.panchangData.value!));
-      } else if (controller.errorMessage.value.isNotEmpty) {
-        Get.snackbar(
-          'Panchang Error',
-          controller.errorMessage.value,
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.redAccent.withOpacity(0.8),
-          colorText: stardustWhite,
-          icon: const Icon(Icons.warning_amber, color: stardustWhite),
-        );
-      } else {
-        Get.snackbar(
-          'Panchang Error',
-          'Failed to get Panchang data for unknown reasons. Please try again.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.redAccent.withOpacity(0.8),
-          colorText: stardustWhite,
-          icon: const Icon(Icons.warning_amber, color: stardustWhite),
-        );
+        print('========== PANCHANG SUBMIT EXCEPTION ==========');
+        print('Exception: $e');
+        print('StackTrace: $stackTrace');
       }
     } else {
+      print('Form validation: FAILED');
       Get.snackbar(
         'Input Error',
         'Please ensure all fields are filled correctly.',
@@ -229,7 +269,10 @@ class _PanchangInputScreenState extends State<PanchangInputScreen> {
         icon: const Icon(Icons.error, color: stardustWhite),
       );
     }
+
+    print('========== PANCHANG SUBMIT END ==========');
   }
+
 
 
   @override

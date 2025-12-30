@@ -3,11 +3,10 @@ import 'package:intl/intl.dart';
 import 'package:geocoding/geocoding.dart';
 
 import '../../apiManager/apiServices.dart';
-import '../../model/proKerla/detailedKundliModel.dart'; // Ensure this path is correct
+import '../../model/proKerla/detailedKundliModel.dart';
 
 class DetailedKundliController extends GetxController {
   var isLoading = false.obs;
-  // Rxn<DetailedKundliModel> is correct for nullable Rx
   var kundliData = Rxn<KundliModel>();
   var errorMessage = ''.obs;
 
@@ -18,25 +17,50 @@ class DetailedKundliController extends GetxController {
     required int ayanamsa,
     required String language,
   }) async {
+    print('========== KUNDLI CONTROLLER START ==========');
+
     try {
       isLoading.value = true;
-      errorMessage.value = ''; // Clear previous error
+      errorMessage.value = '';
+      kundliData.value = null;
 
-      // Parse date and time string to DateTime
-      final DateTime dateTime = DateFormat("yyyy-MM-dd HH:mm").parse('$date $time');
+      print('INPUT RECEIVED');
+      print('City     : $cityName');
+      print('Date     : $date');
+      print('Time     : $time');
+      print('Ayanamsa : $ayanamsa');
+      print('Language : $language');
 
-      // Convert cityName to coordinates using geocoding package
+      // ---------- DATE TIME ----------
+      print('Parsing DateTime...');
+      final DateTime dateTime =
+      DateFormat("yyyy-MM-dd HH:mm").parse('$date $time');
+      print('Parsed DateTime: $dateTime');
+
+      // ---------- GEOCODING ----------
+      print('Calling locationFromAddress...');
       List<Location> locations = await locationFromAddress(cityName);
+
+      print('Geocoding result length: ${locations.length}');
+
       if (locations.isEmpty) {
-        errorMessage.value = 'City not found. Please check the spelling or try another city.';
-        kundliData.value = null; // Ensure kundliData is cleared on error
+        errorMessage.value =
+        'City not found. Please check the spelling or try another city.';
+        kundliData.value = null;
+        print('ERROR: No locations found for city');
         return;
       }
+
       final latitude = locations.first.latitude;
       final longitude = locations.first.longitude;
 
-      // Fetch detailed kundli data
-      final KundliModel? apiResponse = await ApiService().fetchDetailedKundli(
+      print('Latitude  : $latitude');
+      print('Longitude : $longitude');
+
+      // ---------- API CALL ----------
+      print('Calling fetchDetailedKundli API...');
+      final KundliModel? apiResponse =
+      await ApiService().fetchDetailedKundli(
         ayanamsa: ayanamsa,
         latitude: latitude,
         longitude: longitude,
@@ -44,25 +68,52 @@ class DetailedKundliController extends GetxController {
         language: language,
       );
 
-      // Check if API response itself is null or status is not 'ok'
-      if (apiResponse == null || apiResponse.status != 'ok') {
-        errorMessage.value = apiResponse?.status == 'ok' ? 'Failed to fetch Kundli data. Status: ${apiResponse?.status}' : 'An unexpected error occurred with the API response.';
-        kundliData.value = null; // Clear data if not successful
+      print('API call completed');
+
+      if (apiResponse == null) {
+        errorMessage.value = 'API returned null response';
+        kundliData.value = null;
+        print('ERROR: apiResponse is NULL');
         return;
       }
 
-      // If status is 'ok', assign the entire response model to kundliData.value
-      // Your UI then accesses kundliData.value!.data!
+      print('API Status: ${apiResponse.status}');
+
+      if (apiResponse.status != 'ok') {
+        errorMessage.value =
+        'API failed with status: ${apiResponse.status}';
+        kundliData.value = null;
+        print('ERROR: API status not ok');
+        return;
+      }
+
+      // ---------- DATA ASSIGN ----------
+      print('Assigning kundliData...');
       kundliData.value = apiResponse;
-      print('Controller: Kundli data assigned. Nakshatra: ${kundliData.value?.data?.nakshatraDetails?.nakshatra?.name}');
 
+      print('Kundli data assigned successfully');
 
-    } catch (e) {
-      errorMessage.value = 'An error occurred: ${e.toString()}. Please try again.';
-      kundliData.value = null; // Clear data on any exception
-      print('Error in DetailedKundliController: $e'); // For debugging
+      print(
+          'Nakshatra: ${kundliData.value?.data?.nakshatraDetails?.nakshatra?.name}');
+      // print(
+      //     'Rashi    : ${kundliData.value?.data?.rasiDetails?.rasi?.name}');
+      // print(
+      //     'Tithi    : ${kundliData.value?.data?.tithiDetails?.tithi?.name}');
+
+      print('========== KUNDLI CONTROLLER SUCCESS ==========');
+
+    } catch (e, stackTrace) {
+      errorMessage.value =
+      'An error occurred: ${e.toString()}. Please try again.';
+      kundliData.value = null;
+
+      print('========== KUNDLI CONTROLLER ERROR ==========');
+      print('Exception: $e');
+      print('StackTrace: $stackTrace');
     } finally {
-      isLoading.value = false; // Always set loading to false
+      isLoading.value = false;
+      print('Loading set to false');
+      print('========== KUNDLI CONTROLLER END ==========');
     }
   }
 }
