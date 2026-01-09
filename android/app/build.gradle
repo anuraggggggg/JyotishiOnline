@@ -72,7 +72,7 @@ dexOptions {
 //        applicationId "com.jyotishi.user"
         applicationId "com.jyotishi2025.user"
         minSdkVersion 23
-        targetSdkVersion 34
+        targetSdkVersion 35
 //        targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
