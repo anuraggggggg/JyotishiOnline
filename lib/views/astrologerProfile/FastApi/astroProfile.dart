@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:AstrowayCustomer/controllers/bottomNavigationController.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -222,8 +223,14 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
   }
 
   // 🚀 Send Push Notification via FastAPI
-  Future<void> _sendAstrologerNotification(
-      Astrologer astrologer, String type) async {
+  Future<void> _sendAstrologerNotification({
+    required Astrologer astrologer,
+    required String type,
+    required String roomId,
+    required String sessionType,   // "audio_call" | "video_call" | "chat"
+    required String customerId,
+    required String astrologerId,
+  }) async {
     try {
       final api = FastAPIServices();
       String title, body, screen;
@@ -234,11 +241,13 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
           body = "A client wants to start an audio consultation with you.";
           screen = "AudioCallScreen";
           break;
+
         case 'video':
           title = "Incoming Video Call 🎥";
           body = "A client wants to start a video consultation with you.";
           screen = "VideoCallScreen";
           break;
+
         default:
           title = "New Chat Request 💬";
           body = "A client wants to start a chat consultation with you.";
@@ -246,13 +255,16 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       }
 
       final payload = {
-        "client_name": "Astroway User",
+        "call_type": type,            // "audio" / "video" / "chat"
+        "session_type": sessionType,  // "audio_call" / "video_call" / "chat"
+        "room_id": roomId,
+        "customer_id": customerId,
+        "astrologer_id": astrologerId,
         "timestamp": DateTime.now().toIso8601String(),
-        "call_type": type,
       };
 
-      _d(
-          "📡 Sending FCM notification to ${astrologer.name} (${astrologer.astroId}) → $title");
+      _d("📡 Sending FCM to ${astrologer.name} (${astrologer.astroId}) with payload → $payload");
+
       final res = await api.sendNotificationToAstrologer(
         astrologerId: astrologer.astroId,
         title: title,
@@ -266,10 +278,12 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       } else {
         _d("⚠️ Failed to send notification: ${res['error']}");
       }
+
     } catch (e, st) {
       _d("💥 Exception in _sendAstrologerNotification: $e\n$st");
     }
   }
+
 
   // Simple debug printer
   void _d(Object msg) => debugPrint("🧭 [AstroDetail] $msg");
@@ -1261,7 +1275,14 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                           _d(
                               "📨 Sending notification now (after session created, no deduction)...");
                           await _sendAstrologerNotification(
-                              astrologer, callType);
+                            astrologer: astrologer,
+                            type: callType,
+                            roomId: roomId,
+                            sessionType: apiType,       // example: "audio_call" / "video_call"
+                            customerId: userUid,
+                            astrologerId: astrologerUid,
+                          );
+
 
                           // Close sheet then navigate
                           if (Navigator.of(sheetCtx).canPop()) {
@@ -1601,36 +1622,93 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
   }
 
   void _showRequestSentDialog(String requestType) {
+    int remainingSeconds = 60;
+    Timer? timer;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 8),
-              Text("Request Sent!"),
-            ],
-          ),
-          content: Text(
-            "Your $requestType request has been sent.\n\n"
-                "You will be notified when the astrologer accepts the request. "
-                "Once accepted, the session will automatically start.",
-          ),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: appColor),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-              child: const Text("OK", style: TextStyle(color: Colors.white)),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Start timer only once
+            if (timer == null) {
+              timer = Timer.periodic(const Duration(seconds: 1), (t) {
+                if (remainingSeconds == 0) {
+                  t.cancel();
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (Navigator.canPop(dialogContext)) {
+                      Navigator.of(dialogContext).pop();
+                    }
+                  });
+                } else {
+                  setState(() {
+                    remainingSeconds--;
+                  });
+                }
+              });
+            }
+
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text("Request Sent!"),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Your $requestType request has been sent.\n\n"
+                        // "Please stay on this page — the astrologer will accept your request "
+                        // "within 1 minute if they are available.\n\n"
+                        // "Once accepted, the session will automatically start.",
+                  ),
+                  
+                  Text("Please stay on this page — the astrologer will accept your request within 1 minute if they are available.").tr(),
+
+                  Text("Once accepted, the session will automatically start.").tr(),
+                  
+                  Text('If he didnt repond now , you will be notified once they respoond').tr(),
+                  
+
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Text(
+                      "Time remaining: $remainingSeconds sec",
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: appColor,
+                  ),
+                  onPressed: () {
+                    timer?.cancel();
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: const Text("OK", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
         );
       },
-    );
+    ).then((_) {
+      timer?.cancel(); // extra safety
+    });
   }
+
+
 
 
   void _showReportDialog() {

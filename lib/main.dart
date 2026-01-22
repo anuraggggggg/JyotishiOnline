@@ -11,6 +11,7 @@ import 'package:AstrowayCustomer/controllers/fastApiProvider/cosmic_services_pro
 import 'package:AstrowayCustomer/controllers/liveController.dart';
 import 'package:AstrowayCustomer/controllers/splashController.dart';
 import 'package:AstrowayCustomer/controllers/themeController.dart';
+import 'package:AstrowayCustomer/services/location_services.dart';
 import 'package:AstrowayCustomer/theme/nativeTheme.dart';
 import 'package:AstrowayCustomer/utils/CallUtils.dart';
 import 'package:AstrowayCustomer/utils/FallbackLocalizationDelegate.dart'; // Keep this for now, we'll address it later if needed
@@ -258,6 +259,9 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // 🌍 Detect user country
+  await LocationService.detectUserCountry();
+
   print("🔥 Firebase Project ID: ${Firebase.app().options.projectId}");
   print("🔥 Sender ID: ${Firebase.app().options.messagingSenderId}");
   print("🔥 App ID: ${Firebase.app().options.appId}");
@@ -438,20 +442,22 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
 
 
-    FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      print("📲 Notification tapped: ${message.data}");
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
+      debugPrint("📲 Notification tapped (background)");
+      await handleAcceptFromPush(message.data);
     });
 
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       onSelectNotification(json.encode(message.data));
     });
-    FirebaseMessaging.instance.getInitialMessage().then((message) {
+    FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) async {
       if (message != null) {
-        global.generalPayload = json.encode(message.data);
-        log('initial msg in firebase is ${message.data}');
+        debugPrint("🚀 App opened from terminated state");
+        await handleAcceptFromPush(message.data);
       }
     });
+
 
     initializeCallKitEventHandlers();
   }
@@ -931,6 +937,20 @@ Future<bool> _showVideoAcceptDialog({
       false;
 }
 
+Future<void> handleAcceptFromPush(Map<String, dynamic> data) async {
+  debugPrint("🚀 handleAcceptFromPush triggered");
+  debugPrint(const JsonEncoder.withIndent('  ').convert(data));
+
+  final type = data["type"];
+
+  if (type == "audio_accept") {
+    await _handleAudioAccept(data);
+  } else if (type == "video_accept") {
+    await _handleVideoAccept(data);
+  } else if (type == "chat_accept") {
+    await _handleChatAccept(data);
+  }
+}
 
 
 

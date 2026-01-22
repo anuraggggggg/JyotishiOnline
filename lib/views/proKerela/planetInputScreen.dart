@@ -38,7 +38,6 @@ class _PlanetInputScreenState extends State<PlanetInputScreen> {
   Timer? _debounce;
   List<LocationSuggestion> _suggestions = [];
   CurrentUserWalletModel? _wallet;
-
   // Theme
   static const Color cosmicBlue = Color(0xFF1A2B42);
   static const Color celestialGold = Color(0xFFD4AF37);

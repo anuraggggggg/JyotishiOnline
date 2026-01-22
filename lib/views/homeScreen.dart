@@ -1141,27 +1141,36 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         body: RefreshIndicator(
-          onRefresh: () async {
+            onRefresh: () async {
+              // 🔹 Providers (single source of truth for UI)
+              final onlineProvider =
+              Provider.of<GetOnlineAstrologerProvider>(context, listen: false);
 
-            FastAPIServices().fetchCustomerDetails();
-            FastAPIServices().fetchCurrentUserDetails();
-            FastAPIServices().getAllWalletDetails();
-            FastAPIServices().fetchCurrentWallet();
-            FastAPIServices().fetchAllAstrologers();
-            FastAPIServices().fetchCurrentUserDetails();
-            Provider.of<LiveAstrologerProvider>(context, listen: false)
-                .fetchLiveAstrologers();
+              final liveProvider =
+              Provider.of<LiveAstrologerProvider>(context, listen: false);
 
-            _fetchUserProfile();
+              final allAstroProvider =
+              Provider.of<GetAllAstrologerProvider>(context, listen: false);
 
-            _fetchAllData();
+              // 🔥 IMPORTANT: Await provider methods so UI rebuilds
+              await onlineProvider.fetchOnlineAstrologers();
 
-            Future.microtask(() =>
-                Provider.of<GetAllAstrologerProvider>(context, listen: false)
-                    .getAstrologers());
+              await liveProvider.fetchLiveAstrologers();
 
-          },
-          child: GetBuilder<BottomNavigationController>(
+              await allAstroProvider.getAstrologers();
+
+              // 🔹 Keep your existing calls (if needed elsewhere)
+              await FastAPIServices().fetchCustomerDetails();
+              await FastAPIServices().fetchCurrentUserDetails();
+              await FastAPIServices().getAllWalletDetails();
+              await FastAPIServices().fetchCurrentWallet();
+
+              // 🔹 Your existing methods
+              await _fetchUserProfile();
+              // await _fetchAllData();
+            },
+
+            child: GetBuilder<BottomNavigationController>(
               builder: (bottomController) {
             return Stack(
               alignment: Alignment.bottomCenter,
