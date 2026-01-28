@@ -1,84 +1,15 @@
-////buildscript {
-//////    ext.kotlin_version = '1.6.20'
-////    //ext.kotlin_version = '1.8.20'
-////    ext.kotlin_version = '1.9.21'
-////    repositories {
-////        google()
-//////        mavenCentral()  // Maven Central repository
-//////        jcenter()
-////        mavenCentral()
-////        maven {
-////            url = uri("https://storage.googleapis.com/r8-releases/raw")
-////        }
-////
-////    }
-////
-////    dependencies {
-////        classpath 'com.android.tools.build:gradle:7.2.1'
-////        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-////        classpath 'com.google.gms:google-services:4.3.13'
-////        classpath("com.android.tools:r8:8.2.24")
-////    }
-////}
-//
-//allprojects {
-//    repositories {
-//        google()
-//        mavenCentral()// Maven Central repository
-//        jcenter()
-//
-//        maven { url 'https://jitpack.io' }
-////        maven {
-////            url  "https://phonepe.mycloudrepo.io/public/repositories/phonepe-intentsdk-android"
-////        }
-//    }
-//
-//    tasks.withType(JavaCompile) {
-//        options.compilerArgs << '-Xlint:-options'
-//    }
-//    configurations.all {
-//        exclude group:"io.agora.rtc", module:"full-screen-sharing"
-//        exclude group: 'com.google.android.gms', module: 'play-services-safetynet'
-//    }
-//}
-//
-//rootProject.buildDir = '../build'
-//subprojects {
-//    project.buildDir = "${rootProject.buildDir}/${project.name}"
-//}
-//subprojects {
-//    afterEvaluate{
-//        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
-//            if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
-//                kotlinOptions.jvmTarget = android.compileOptions.sourceCompatibility
-//            } else {
-//                kotlinOptions.jvmTarget = sourceCompatibility
-//            }
-//        }
-//    }
-//}
-//subprojects {
-//    project.evaluationDependsOn(':app')
-//}
-//tasks.register("clean", Delete) {
-//    delete rootProject.buildDir
-//}
-
 buildscript {
-    ext.kotlin_version = '1.9.21'
+    ext.kotlin_version = '2.1.0'
 
     repositories {
         google()
         mavenCentral()
-        maven {
-            url = uri("https://storage.googleapis.com/r8-releases/raw")
-        }
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.4.2'  // Updated to newer stable AGP version
+        classpath 'com.android.tools.build:gradle:8.1.0'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath "com.android.tools:r8:8.2.47"           // Updated R8 version
+        classpath 'com.google.gms:google-services:4.4.1'
     }
 }
 
@@ -86,34 +17,33 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        jcenter()  // Deprecated but might still be needed for some libs
+        // jcenter() is deprecated; keep only if older libraries strictly require it
+        jcenter()
         maven { url 'https://jitpack.io' }
-    }
-
-    tasks.withType(JavaCompile) {
-        options.compilerArgs << '-Xlint:-options'
-    }
-
-    configurations.all {
-        exclude group: "io.agora.rtc", module: "full-screen-sharing"
-        exclude group: 'com.google.android.gms', module: 'play-services-safetynet'
     }
 }
 
 rootProject.buildDir = '../build'
 
 subprojects {
+    // 1. Set the build directory
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
 
-subprojects {
-    afterEvaluate {
-        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-            kotlinOptions.jvmTarget = '17' // Match your app-level Java compatibility
+    // 2. The Global Namespace Fix
+    // We use afterEvaluate with a try-catch style or direct check
+    // to ensure we catch plugins like :auto_orientation
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                if (namespace == null) {
+                    namespace project.group
+                }
+            }
         }
     }
 }
 
+// 3. Separate the app dependency to avoid circular evaluation loops
 subprojects {
     project.evaluationDependsOn(':app')
 }

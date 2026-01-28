@@ -18,12 +18,12 @@ class NetworkController extends GetxController {
   void onInit() {
     super.onInit();
     initConnectivity();
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(updateConnectivity);
+    // _connectivitySubscription = _connectivity.onConnectivityChanged.listen(updateConnectivity);
   }
   Future<void> initConnectivity() async {
     ConnectivityResult? result;
     try {
-      result = await _connectivity.checkConnectivity();
+      // result = await _connectivity.checkConnectivity();
     } catch (e) {
       print(e.toString());
     }

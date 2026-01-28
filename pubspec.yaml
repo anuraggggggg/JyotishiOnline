@@ -3,7 +3,7 @@ description: The Astrology app
 
 publish_to: "none"
 
-version: 1.0.0+6
+version: 1.0.0+7
 
 environment:
   sdk: ">=3.2.1 <4.0.0"
@@ -12,7 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  font_awesome_flutter: ^10.8.0
+  font_awesome_flutter: 10.7.0
   new_version_plus: ^0.0.11
   facebook_app_events: ^0.19.0
   cupertino_icons: ^1.0.6
@@ -39,16 +39,18 @@ dependencies:
   permission_handler: ^11.3.1
   path_provider: ^2.1.4
 
-  device_info_plus: ^9.1.2
-  connectivity_plus: ^5.0.2
+  device_info_plus: ^10.1.0
+  connectivity_plus: ^6.0.0
   http: ^1.2.2
 
   geocoding: ^3.0.0
   flutter_google_places_sdk: ^0.3.7
 
-  syncfusion_flutter_pdfviewer: ^24.1.41
+  syncfusion_flutter_pdfviewer: ^26.1.40
+
   store_redirect: ^2.0.1
-  syncfusion_flutter_gauges: ^24.2.9
+  syncfusion_flutter_gauges: ^26.1.40
+
 
   package_info_plus: ^8.0.0
   flutter_countdown_timer: ^4.1.0
@@ -76,7 +78,7 @@ dependencies:
 
   marquee: ^2.2.3
   audioplayers: ^5.2.1
-  youtube_player_flutter: ^9.0.0
+  youtube_player_flutter: 9.0.1
 
   pdf: ^3.11.0
   share_plus: ^10.0.0
@@ -85,7 +87,7 @@ dependencies:
   draggable_widget: ^2.0.0
   responsive_sizer: ^3.3.0+1
 
-  intl: any
+#  intl: any
 
   story_view: ^0.16.5
   swipe_to: ^1.0.6
