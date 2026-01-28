@@ -1,0 +1,14 @@
+<resources>
+
+    <!-- App Name -->
+    <string name="app_name">Jyotishi Online</string>
+
+    <!-- ======================= -->
+    <!-- META / FACEBOOK CONFIG -->
+    <!-- ======================= -->
+
+    <string name="facebook_app_id">1207191314339791</string>
+    <string name="facebook_client_token">4ebf343f148bb0e91bfcac9e380ad44a</string>
+    <string name="fb_login_protocol_scheme">fb1207191314339791</string>
+
+</resources>

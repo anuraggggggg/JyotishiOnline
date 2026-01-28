@@ -523,7 +523,8 @@ String getSystemFlagValueForLogin(String flag) {
     // Return a default value if flag not found or list is empty
     print('Warning: System flag "$flag" not found, returning default value');
     return getDefaultFlagValue(flag);
-  } catch (e) {
+  }
+  catch (e) {
     print('Error in getSystemFlagValueForLogin: $e');
     return getDefaultFlagValue(flag); // Fallback to default
   }

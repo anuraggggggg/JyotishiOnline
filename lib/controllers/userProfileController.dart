@@ -52,7 +52,7 @@ class UserProfileController extends GetxController {
   }
 
   _inIt() async {
-    await splashController.getCurrentUserData();
+    // await splashController.getCurrentUserData();
     await getValue();
   }
 
@@ -164,7 +164,7 @@ class UserProfileController extends GetxController {
                 textColor: global.textColor,
                 bgColor: global.toastBackGoundColor,
               );
-              await splashController.getCurrentUserData();
+              // await splashController.getCurrentUserData();
               Get.back();
             } else {
               global.showToast(
@@ -192,7 +192,7 @@ class UserProfileController extends GetxController {
                 textColor: global.textColor,
                 bgColor: global.toastBackGoundColor,
               );
-              await splashController.getCurrentUserData();
+              // await splashController.getCurrentUserData();
               Get.back();
             } else {
               global.showToast(

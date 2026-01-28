@@ -605,20 +605,14 @@ class FastAPIServices {
 
 
   // ---------------- CHECK LOGIN STATUS ----------------
-  Future<void> checkLoginStatus() async {
+  Future<bool> hasValidSession() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("access_token");
     final userId = prefs.getString("user_id");
 
-    if (token != null && token.isNotEmpty && userId != null) {
-      print("🔐 User already logged in: $userId");
-      final bottomNavController = Get.find<BottomNavigationController>();
-      bottomNavController.setBottomIndex(0, 0);
-      Get.offAll(() => BottomNavigationBarScreen(index: 0));
-    } else {
-      print("🛑 No saved session. Redirecting to login.");
-      Get.offAll(() => LoginScreen());
-    }
+    print("🔐 [SESSION CHECK] token=$token userId=$userId");
+
+    return token != null && token.isNotEmpty && userId != null;
   }
 
   // ---------------- FETCH ASTROLOGER DETAIL BY ID ----------------

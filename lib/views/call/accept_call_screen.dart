@@ -451,7 +451,7 @@ class _AcceptCallScreenState extends State<AcceptCallScreen> {
     }
     await callController.endCall(widget.callId!, _callController.totalSeconds,
         global.agoraSid1, global.agoraSid2);
-    await global.splashController.getCurrentUserData();
+    // await global.splashController.getCurrentUserData();
     global.hideLoader();
     if (mounted) {
       setState(() {

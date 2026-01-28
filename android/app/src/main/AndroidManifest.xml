@@ -1,83 +1,136 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.jyotishi2025.user">
 
-    <!-- ✅ Network -->
+    <!-- ===================== -->
+    <!-- REQUIRED PERMISSIONS -->
+    <!-- ===================== -->
+
+    <!-- Internet access (required for API, Meta, Firebase, etc.) -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
-    <!-- ✅ Microphone + audio routing (required for Agora voice) -->
+    <!-- Audio permissions (Agora / voice calls) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
 
-    <!-- ✅ Optional but recommended (keeps CPU awake during a call) -->
+    <!-- Keeps CPU awake during calls -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
-    <!-- ✅ Optional: Bluetooth audio support (A12+ needs BLUETOOTH_CONNECT) -->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" tools:targetApi="s" />
+    <!-- Bluetooth audio support -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" tools:targetApi="s"/>
 
-    <!-- Your existing permissions (kept) -->
+    <!-- Storage & media -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- (Optional) Declare microphone hardware so Play knows we use it -->
-    <uses-feature android:name="android.hardware.microphone" android:required="false"/>
+    <!-- Location -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
+    <!-- Declare microphone usage (Play Store visibility) -->
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false"/>
+
+    <!-- ================= -->
+    <!-- APPLICATION BLOCK -->
+    <!-- ================= -->
 
     <application
-        android:label="Jyotishi Online"
         android:name="${applicationName}"
-        android:requestLegacyExternalStorage="true"
+        android:label="Jyotishi Online"
+        android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"
-        android:icon="@mipmap/ic_launcher">
+        android:requestLegacyExternalStorage="true">
+
+        <!-- ======================= -->
+        <!-- META (FACEBOOK) SDK SETUP -->
+        <!-- ======================= -->
+
+        <!-- Facebook App ID -->
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/facebook_app_id"/>
+
+        <!-- Facebook Client Token -->
+        <meta-data
+            android:name="com.facebook.sdk.ClientToken"
+            android:value="@string/facebook_client_token"/>
+
+        <!-- Auto initialize Facebook SDK -->
+        <meta-data
+            android:name="com.facebook.sdk.AutoInitEnabled"
+            android:value="true"/>
+
+        <!-- REQUIRED for App Install & App Activate tracking -->
+        <meta-data
+            android:name="com.facebook.sdk.AutoLogAppEventsEnabled"
+            android:value="true"/>
+
+        <!-- ================= -->
+        <!-- MAIN ACTIVITY -->
+        <!-- ================= -->
 
         <activity
-            android:name="com.jyotishi2025.user.MainActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:theme="@style/LaunchTheme"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode">
 
+            <!-- Flutter normal theme -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
-                android:resource="@style/NormalTheme" />
+                android:resource="@style/NormalTheme"/>
 
+            <!-- App launcher -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
+            <!-- Deep links / OTP-less login -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="com.jyotishi2025.user" />
-                <data android:host="otpless" android:scheme="otpless.egn337d0735vtpmtqybu"/>
+                <data
+                    android:scheme="https"
+                    android:host="com.jyotishi2025.user"/>
+                <data
+                    android:scheme="otpless.egn337d0735vtpmtqybu"
+                    android:host="otpless"/>
             </intent-filter>
         </activity>
 
+        <!-- ================= -->
+        <!-- GOOGLE MAPS -->
+        <!-- ================= -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyCM2HCYWwzoIuvRqhY1quig6_A6bIzuEHg"/>
 
+        <!-- ================= -->
+        <!-- UCROP IMAGE CROP -->
+        <!-- ================= -->
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
 
-        <meta-data
-            android:name="flutterEmbedding"
-            android:value="2" />
-
+        <!-- ================= -->
+        <!-- FILE PROVIDER -->
+        <!-- ================= -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
@@ -88,8 +141,17 @@
                 android:resource="@xml/provider_paths"/>
         </provider>
 
+        <!-- ================= -->
+        <!-- TRUECALLER SDK -->
+        <!-- ================= -->
         <meta-data
             android:name="com.truecaller.android.sdk.ClientId"
             android:value="hkz1qlhjacz8l_o6hztcrnnufltntljnbujmxeacvju"/>
+
+        <!-- Flutter embedding -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2"/>
+
     </application>
 </manifest>

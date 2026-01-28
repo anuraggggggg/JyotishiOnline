@@ -323,8 +323,8 @@ class OneToOneLiveScreenState extends State<OneToOneLiveScreen> {
                                             _callController.totalSeconds,
                                             global.agoraSid1,
                                             global.agoraSid2);
-                                        await global.splashController
-                                            .getCurrentUserData();
+                                        // await global.splashController
+                                        //     .getCurrentUserData();
                                         // await historyController.getChatHistory(
                                         //     global.currentUserId!, false);
                                         BottomNavigationController
@@ -493,7 +493,7 @@ class OneToOneLiveScreenState extends State<OneToOneLiveScreen> {
                   .endCall(widget.callId, _callController.totalSeconds,
                       global.agoraSid1, global.agoraSid2)
                   .then((value) async {
-                await global.splashController.getCurrentUserData();
+                // await global.splashController.getCurrentUserData();
 
                 BottomNavigationController bottomNavigationController =
                     Get.find<BottomNavigationController>();
@@ -526,7 +526,7 @@ class OneToOneLiveScreenState extends State<OneToOneLiveScreen> {
                   .then((value) async {
                 global.hideLoader();
 
-                await global.splashController.getCurrentUserData();
+                // await global.splashController.getCurrentUserData();
 
                 BottomNavigationController bottomNavigationController =
                     Get.find<BottomNavigationController>();
@@ -548,7 +548,7 @@ class OneToOneLiveScreenState extends State<OneToOneLiveScreen> {
         remoteUid.value = null;
         agoraEngine.leaveChannel();
         agoraEngine.release();
-        await global.splashController.getCurrentUserData();
+        // await global.splashController.getCurrentUserData();
         BottomNavigationController bottomNavigationController =
             Get.find<BottomNavigationController>();
         //global.hideLoader();
@@ -629,7 +629,7 @@ class OneToOneLiveScreenState extends State<OneToOneLiveScreen> {
                             global.agoraSid1, global.agoraSid2)
                         .then((value) async {
                       global.hideLoader();
-                      await global.splashController.getCurrentUserData();
+                      // await global.splashController.getCurrentUserData();
                       BottomNavigationController bottomNavigationController =
                           Get.find<BottomNavigationController>();
                       global.hideLoader();

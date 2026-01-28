@@ -1,313 +1,159 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:AstrowayCustomer/controllers/bottomNavigationController.dart';
-import 'package:AstrowayCustomer/controllers/callController.dart';
-import 'package:AstrowayCustomer/controllers/homeController.dart';
-import 'package:AstrowayCustomer/controllers/reviewController.dart';
-import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
-import 'package:AstrowayCustomer/model/current_user_model.dart';
-import 'package:AstrowayCustomer/model/systemFlagModel.dart';
-import 'package:AstrowayCustomer/utils/global.dart';
-import 'package:AstrowayCustomer/utils/services/api_helper.dart';
-import 'package:AstrowayCustomer/views/loginScreen.dart';
-import 'package:AstrowayCustomer/views/settings/termsAndConditionScreen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_share/flutter_share.dart';
 import 'package:get/get.dart';
-import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../views/astrologerProfile/astrologerProfile.dart';
-import '../views/bottomNavigationBarScreen.dart';
-import '../views/call/accept_call_screen.dart';
-import '../views/call/incoming_call_request.dart';
-import '../views/call/oneToOneVideo/onetooneVideo.dart';
-import '../views/chat/incoming_chat_request.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import 'package:AstrowayCustomer/controllers/bottomNavigationController.dart';
+import 'package:AstrowayCustomer/model/current_user_model.dart';
+import 'package:AstrowayCustomer/model/systemFlagModel.dart';
+import 'package:AstrowayCustomer/utils/global.dart' as global;
+import 'package:AstrowayCustomer/utils/services/api_helper.dart';
+import 'package:AstrowayCustomer/views/loginScreen.dart';
+import 'package:AstrowayCustomer/views/bottomNavigationBarScreen.dart';
 
 class SplashController extends GetxController {
-  final FastAPIServices _fastAPIServices = FastAPIServices();
-  APIHelper apiHelper = APIHelper();
+  // =====================================================
+  // STATE (KEEPED)
+  // =====================================================
   CurrentUserModel? currentUser;
-  String appName = "";
   String currentLanguageCode = 'en';
   String? version;
   double? totalGst;
-  var syatemFlag = <SystemFlag>[];
+  var syatemFlag = <SystemFlag>[]; // ✅ REQUIRED
   String? appShareLinkForLiveSreaming;
 
+  final APIHelper apiHelper = APIHelper();
+
+  // =====================================================
+  // INIT
+  // =====================================================
   @override
   void onInit() {
-    _inIt();
     super.onInit();
+    debugPrint("[SPLASH] 🟢 SplashController onInit()");
+    _init();
   }
 
-  _inIt() async {
-    // Check login status using saved token
-    await _fastAPIServices.checkLoginStatus();
-    // await getSystemFlag();
+  // =====================================================
+  // FORCE UPDATE
+  // =====================================================
+  Future<bool> _checkForceUpdate() async {
+    debugPrint("[SPLASH] 🔍 Force update check started");
 
-    // Commented out to prevent splash from hanging when API data is missing
-    // appName = global.getSystemFlagValueForLogin(global.systemFlagNameList.appName);
-    appName = "Astroway"; // Fallback value
+    final info = await PackageInfo.fromPlatform();
+    final int installed = int.parse(info.buildNumber);
+    const int required = 5;
 
+    debugPrint("[SPLASH] 📦 Version → installed=$installed required=$required");
+
+    if (installed < required) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.dialog(
+          WillPopScope(
+            onWillPop: () async => false,
+            child: AlertDialog(
+              title: const Text("Update Required"),
+              content: const Text(
+                "A new version of the app is available. Please update to continue.",
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () async {
+                    final url = Uri.parse(
+                      "https://play.google.com/store/apps/details?id=com.jyotishi2025.user",
+                    );
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  },
+                  child: const Text("Update"),
+                ),
+              ],
+            ),
+          ),
+          barrierDismissible: false,
+        );
+      });
+      return true;
+    }
+
+    debugPrint("[SPLASH] ✅ No force update needed");
+    return false;
+  }
+
+  // =====================================================
+  // MAIN FLOW (FINAL & SAFE)
+  // =====================================================
+  Future<void> _init() async {
+    debugPrint("[SPLASH] 🚀 _init() started");
+
+    final blocked = await _checkForceUpdate();
+    if (blocked) return;
+
+    // Language
     global.sp = await SharedPreferences.getInstance();
     currentLanguageCode = global.sp!.getString('currentLanguage') ?? 'en';
     global.sp!.setString('currentLanguage', currentLanguageCode);
-    update();
+    debugPrint("[SPLASH] 🌐 Language = $currentLanguageCode");
 
     Timer(const Duration(seconds: 3), () async {
-      try {
-        bool termsAccepted = global.sp!.getBool('termsAccepted') ?? false;
+      debugPrint("[SPLASH] ⏱ Splash delay completed");
 
-        if (!termsAccepted) {
-          Get.off(() => const TermAndConditionScreen());
-          return;
-        }
+      final hasSession = await _hasFastApiSession();
+      debugPrint("[SPLASH] 🔐 Session exists = $hasSession");
 
-        bool isLogin = await global.isLogin();
-
-        if (isLogin) {
-          PackageInfo.fromPlatform().then((info) {
-            version = info.version;
-            update();
-          });
-
-          await global.checkBody().then((result) async {
-            if (result) {
-              await apiHelper.validateSession().then((result) async {
-                if (result.status == "200") {
-                  currentUser = result.recordList;
-                  global.saveUser(currentUser!);
-                  global.user = currentUser!;
-                  await getCurrentUserData();
-                  await global.getCurrentUser();
-                  _loadsaveChatData();
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _loadSavedData();
-                  });
-
-                  if (global.generalPayload != null) {
-                    Map<String, dynamic> payload =
-                        json.decode(global.generalPayload);
-                    Map<String, dynamic> body = jsonDecode(payload['body']);
-
-                    switch (body["notificationType"]) {
-                      case 1:
-                        if (body['call_type'].toString() == "11") {
-                          Get.to(() => OneToOneLiveScreen(
-                                channelname: body["channelName"],
-                                callId: body["callId"],
-                                fcmToken: body["token"],
-                                end_time: body['call_duration'].toString(),
-                              ));
-                        } else {
-                          Get.to(() => IncomingCallRequest(
-                                astrologerId: body["astrologerId"],
-                                astrologerName:
-                                    body["astrologerName"] ?? "Astrologer",
-                                astrologerProfile: body["profile"] ?? "",
-                                token: body["token"],
-                                channel: body["channelName"],
-                                callId: int.parse(body["callId"].toString()),
-                                fcmToken: body["fcmToken"] ?? "",
-                                duration: body['call_duration'].toString(),
-                              ));
-                        }
-                        break;
-
-                      case 3:
-                        Get.to(() => IncomingChatRequest(
-                              astrologerName:
-                                  body["astrologerName"] ?? "Astrologer",
-                              profile: body["profile"] ?? "",
-                              fireBasechatId: body["firebaseChatId"],
-                              chatId: int.parse(body["chatId"].toString()),
-                              astrologerId: body["astrologerId"],
-                              fcmToken: body["fcmToken"],
-                              duration: body['chat_duration'].toString(),
-                            ));
-                        break;
-
-                      case 4:
-                        Get.find<ReviewController>()
-                            .getReviewData(body["astrologerId"]);
-                        await Get.find<BottomNavigationController>()
-                            .getAstrologerbyId(body["astrologerId"]);
-                        Get.to(() => AstrologerProfile(index: 0));
-                        break;
-
-                      default:
-                        Get.find<BottomNavigationController>().setIndex(1, 0);
-                        Get.off(() => BottomNavigationBarScreen(index: 1));
-                        break;
-                    }
-                  } else {
-                    Get.find<BottomNavigationController>().setIndex(0, 0);
-                    Get.off(() => BottomNavigationBarScreen(index: 0));
-                  }
-                } else {
-                  await _resetToLogin();
-                }
-              });
-            }
-          });
-        } else {
-          PackageInfo.fromPlatform().then((info) {
-            version = info.version;
-            update();
-          });
-          Get.off(() => LoginScreen());
-        }
-      } catch (e) {
-        print('Exception in _inIt(): ${e.toString()}');
-        Get.off(() => LoginScreen()); // Ensure navigation on error
+      if (!hasSession) {
+        debugPrint("[SPLASH] ➡ Redirecting to Login");
+        Get.off(() => LoginScreen());
+        return;
       }
+
+      // ✅ SESSION EXISTS → GO HOME (NO VALIDATION)
+      debugPrint("[SPLASH] 🏠 Navigating to Home");
+
+      Get.find<BottomNavigationController>().setIndex(0, 0);
+      Get.off(() => BottomNavigationBarScreen(index: 0));
+
+      // Load flags AFTER navigation
+      getSystemFlag();
     });
   }
 
-  Future<void> _resetToLogin() async {
-    PackageInfo.fromPlatform().then((info) {
-      version = info.version;
-      update();
-    });
-
-    HomeController homeController = Get.find<HomeController>();
-    global.sp = await SharedPreferences.getInstance();
-    global.sp!.clear();
-
-    global.user = CurrentUserModel();
-    homeController.myOrders.clear();
-
-    Get.off(() => LoginScreen());
-  }
-
-  Future<void> _loadSavedData() async {
+  // =====================================================
+  // SESSION CHECK (FASTAPI ONLY)
+  // =====================================================
+  Future<bool> _hasFastApiSession() async {
     final prefs = await SharedPreferences.getInstance();
-    bool? isAccepted = await prefs.getBool('is_accepted');
-    if (isAccepted == true) {
-      String? acceptedData = await prefs.getString('is_accepted_data');
-      if (acceptedData != null && acceptedData.isNotEmpty) {
-        await prefs.setBool('is_accepted', false);
-        await prefs.setString('is_accepted_data', '');
-        callAccept(jsonDecode(acceptedData));
-      }
-    }
+    final token = prefs.getString("access_token");
+    final userId = prefs.getString("user_id");
 
-    bool? isRejected = await prefs.getBool('is_rejected');
-    if (isRejected == true) {
-      await prefs.setBool('is_accepted', false);
-      await prefs.setString('is_accepted_data', '');
-    }
+    debugPrint("[AUTH] access_token = $token");
+    debugPrint("[AUTH] user_id = $userId");
+
+    return token != null &&
+        token.isNotEmpty &&
+        userId != null &&
+        userId.isNotEmpty;
   }
 
-  void _loadsaveChatData() async {
-    final prefs = await SharedPreferences.getInstance();
-    bool? isChatDataAvailable = await prefs.getBool('is_chatdataAvailable');
-
-    if (isChatDataAvailable == true) {
-      await prefs.setBool('is_chatdataAvailable', false);
-      String? chatDataJson = await prefs.getString('chatdata');
-      if (chatDataJson != null) {
-        Map<String, dynamic> chatData = jsonDecode(chatDataJson);
-        _handleNotificationNavigation(chatData);
-      }
-    }
-  }
-
-  void _handleNotificationNavigation(Map<String, dynamic> chatData) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('chatdata', '');
-
-    if (chatData.containsKey('body')) {
-      Map<String, dynamic> body = jsonDecode(chatData['body']);
-      if (body["notificationType"] == 3) {
-        Get.to(() => IncomingChatRequest(
-              astrologerName: body["astrologerName"] ?? "Astrologer",
-              profile: body["profile"] ?? "",
-              fireBasechatId: body["firebaseChatId"],
-              chatId: int.parse(body["chatId"].toString()),
-              astrologerId: body["astrologerId"],
-              fcmToken: body["fcmToken"],
-              duration: body['chat_duration'].toString(),
-            ));
-      }
-    }
-  }
-
-  getCurrentUserData() async {
+  // =====================================================
+  // SYSTEM FLAGS (SAFE)
+  // =====================================================
+  Future<void> getSystemFlag() async {
     try {
-      await global.checkBody().then((result) async {
-        if (result) {
-          global.sp = await SharedPreferences.getInstance();
-          await apiHelper.getCurrentUser().then((result) {
-            if (result.status == "200") {
-              currentUser = result.recordList;
-              global.saveUser(currentUser!);
-              global.user = currentUser!;
-              update();
-            }
-          });
-        }
-      });
-    } catch (e) {
-      print('Exception in getCurrentUserData(): ${e.toString()}');
-    }
-  }
+      debugPrint("[SPLASH] 🌐 Loading system flags");
 
-  getSystemFlag() async {
-    try {
-      bool result = await global.checkBody();
-      if (result) {
-        global.sp = await SharedPreferences.getInstance();
-        var apiResult = await apiHelper.getSystemFlag();
-        if (apiResult != null && apiResult.status == "200") {
-          syatemFlag = apiResult.recordList;
-          update();
-        } else {
-          print("SystemFlag fetch failed or returned invalid data.");
-        }
+      final ok = await global.checkBody();
+      if (!ok) return;
+
+      final apiResult = await apiHelper.getSystemFlag();
+      if (apiResult != null && apiResult.status == "200") {
+        syatemFlag = apiResult.recordList;
+        update();
+        debugPrint("[SPLASH] ✅ System flags loaded");
       }
     } catch (e) {
-      print('Exception in getSystemFlag(): ${e.toString()}');
+      debugPrint("[SPLASH] ❌ getSystemFlag error: $e");
     }
-  }
-
-  Future<void> createAstrologerShareLink() async {
-    try {
-      await FlutterShare.share(
-        title:
-            'Hey! I am using ${global.getSystemFlagValue(global.systemFlagNameList.appName)}...',
-        text:
-            'Hey! I am using ${global.getSystemFlagValue(global.systemFlagNameList.appName)}...',
-        linkUrl: '$appShareLinkForLiveSreaming',
-      );
-    } catch (e) {
-      print("Exception - createAstrologerShareLink(): ${e.toString()}");
-    }
-  }
-}
-
-@pragma('vm:entry-point')
-void callAccept(Map<String, dynamic> extraData) async {
-  final callController = Get.find<CallController>();
-
-  if (extraData['call_type'] == 10) {
-    await callController.acceptedCall(extraData["callId"]);
-    Get.to(() => AcceptCallScreen(
-          astrologerId: extraData["astrologerId"],
-          astrologerName: extraData["astrologerName"] ?? "Astrologer",
-          astrologerProfile: extraData["profile"] ?? "",
-          token: extraData["token"],
-          callChannel: extraData["channelName"],
-          callId: extraData["callId"],
-          duration: extraData['call_duration'].toString(),
-        ));
-  } else if (extraData['call_type'] == 11) {
-    Get.to(() => OneToOneLiveScreen(
-          channelname: extraData["channelName"],
-          callId: extraData["callId"],
-          fcmToken: extraData["token"].toString(),
-          end_time: extraData['call_duration'].toString(),
-        ));
   }
 }

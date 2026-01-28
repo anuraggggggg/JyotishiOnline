@@ -52,7 +52,7 @@ class _PanchangScreenState extends State<PanchangScreen> {
           actions: [
             GestureDetector(
               onTap: () {
-                splashController.createAstrologerShareLink();
+                // splashController.createAstrologerShareLink();
               },
               child: Padding(
                 padding: const EdgeInsets.all(12.0),

@@ -186,7 +186,7 @@ class LoginController extends GetxController {
         developer.log("  🔒 Token Type: $tokenType");
 
         await global.saveCurrentUser(recordId["id"], token, tokenType);
-        await splashController.getCurrentUserData();
+        // await splashController.getCurrentUserData();
         await global.getCurrentUser();
 
         homeController.myOrders.clear();
@@ -409,7 +409,7 @@ class LoginController extends GetxController {
         final tokenType = result.recordList["token_type"];
 
         await global.saveCurrentUser(recordId["id"], token, tokenType);
-        await splashController.getCurrentUserData();
+        // await splashController.getCurrentUserData();
         await global.getCurrentUser();
 
         homeController.myOrders.clear();

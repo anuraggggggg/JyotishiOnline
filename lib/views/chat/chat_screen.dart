@@ -131,7 +131,7 @@ class _AcceptChatScreenState extends State<AcceptChatScreen> {
                         await timerController.endChatTime(
                             timerController.totalSeconds, widget.chatId);
                         timerController.secTimer!.cancel();
-                        await global.splashController.getCurrentUserData();
+                        // await global.splashController.getCurrentUserData();
                         // await historyController.getChatHistory(
                         //     global.currentUserId!, false);
                         timerController.endChat = true;
@@ -210,7 +210,7 @@ class _AcceptChatScreenState extends State<AcceptChatScreen> {
                       await timerController.endChatTime(
                           timerController.totalSeconds, widget.chatId);
 
-                      await global.splashController.getCurrentUserData();
+                      // await global.splashController.getCurrentUserData();
                       // await historyController.getChatHistory(
                       //     global.currentUserId!, false);
 
@@ -388,8 +388,8 @@ class _AcceptChatScreenState extends State<AcceptChatScreen> {
                                       .clear();
                                 }
                                 bottomNavigationController.applyFilter = false;
-                                await global.splashController
-                                    .getCurrentUserData();
+                                // await global.splashController
+                                //     .getCurrentUserData();
                                 // await historyController.getChatHistory(
                                 //     global.currentUserId!, false);
                                 bottomNavigationController.update();
@@ -475,8 +475,8 @@ class _AcceptChatScreenState extends State<AcceptChatScreen> {
                               bottomNavigationController.update();
                               await bottomNavigationController
                                   .getAstrologerList(isLazyLoading: false);
-                              await global.splashController
-                                  .getCurrentUserData();
+                              // await global.splashController
+                              //     .getCurrentUserData();
                               // await historyController.getChatHistory(
                               //     global.currentUserId!, false);
                               global.hideLoader();
@@ -604,8 +604,8 @@ class _AcceptChatScreenState extends State<AcceptChatScreen> {
                                   await bottomNavigationController
                                       .getAstrologerList(
                                       isLazyLoading: false);
-                                  await global.splashController
-                                      .getCurrentUserData();
+                                  // await global.splashController
+                                  //     .getCurrentUserData();
 
                                   global.hideLoader();
                                   bottomNavigationController.setIndex(
@@ -1886,7 +1886,7 @@ class _AcceptChatScreenState extends State<AcceptChatScreen> {
               chatController.update();
               await timerController.endChatTime(
                   timerController.totalSeconds, widget.chatId);
-              await global.splashController.getCurrentUserData();
+              // await global.splashController.getCurrentUserData();
               // await historyController.getChatHistory(
               //     global.currentUserId!, false);
               timerController.secTimer!.cancel();
@@ -2083,7 +2083,7 @@ class _AcceptChatScreenState extends State<AcceptChatScreen> {
       bottomNavigationController.applyFilter = false;
       bottomNavigationController.update();
       await bottomNavigationController.getAstrologerList(isLazyLoading: false);
-      await global.splashController.getCurrentUserData();
+      // await global.splashController.getCurrentUserData();
       await historyController.getChatHistory(global.currentUserId!, false);
       Get.back();
       isback

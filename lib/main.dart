@@ -55,6 +55,8 @@ import 'controllers/timer_controller.dart';
 import 'fastApi/fastApiServices.dart';
 import 'firebase_options.dart';
 import 'newglobal.dart';
+import 'package:facebook_app_events/facebook_app_events.dart';
+
 
 bool isWeb = false;
 
@@ -250,6 +252,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     });
   }
 }
+final facebookAppEvents = FacebookAppEvents();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -392,6 +395,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     WidgetsBinding.instance.addObserver(this);
     super.initState();
+    facebookAppEvents.logEvent(
+      name: 'fb_mobile_activate_app',
+    );
 
     // 🔥 Foreground Notifications
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {

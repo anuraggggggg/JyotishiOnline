@@ -416,7 +416,7 @@ class BottomNavigationController extends GetxController {
     await setBottomIndex(bottomNavIndex, historyIndex);
     int index = liveAstrologer.length;
     if (global.currentUserId != null) {
-      await splashController.getCurrentUserData();
+      // await splashController.getCurrentUserData();
     }
     if (index > 0) {
       liveToken = liveAstrologer[0].token;

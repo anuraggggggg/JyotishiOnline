@@ -57,7 +57,7 @@ class BlogScreen extends StatelessWidget {
           actions: [
             GestureDetector(
               onTap: () async {
-                splashController.createAstrologerShareLink();
+                // splashController.createAstrologerShareLink();
               },
               child: Padding(
                 padding: const EdgeInsets.all(12.0),

@@ -126,7 +126,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     try {
       log("Attempting to refresh user data from backend via SplashController...");
-      await global.splashController.getCurrentUserData();
+      // await global.splashController.getCurrentUserData();
       log("User data refreshed. New wallet amount: ${global.splashController.currentUser?.walletAmount}");
 
       // Optionally, refresh history if it's relevant to the wallet update

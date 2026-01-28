@@ -161,7 +161,7 @@ class AstromallController extends GetxController with GetSingleTickerProviderSta
         if (result) {
           await apiHelper.orderAdd(productCatId: catId, productId: prodId, addressId: addId, gst: gstPercent, paymentMethod: payMethod, amount: payAmount, totalPay: totalPayment).then((result) async {
             if (result.status == "200") {
-              await global.splashController.getCurrentUserData();
+              // await global.splashController.getCurrentUserData();
               global.splashController.currentUser?.walletAmount = global.splashController.currentUser?.walletAmount ?? 0 - (totalPayment ?? 0);
               update();
 

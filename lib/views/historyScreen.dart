@@ -181,7 +181,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           global.currentUserId!, false);
                       if (index == 0) {
                         global.showOnlyLoaderDialog(context);
-                        await global.splashController.getCurrentUserData();
+                        // await global.splashController.getCurrentUserData();
                         historyController.paymentAllDataLoaded = false;
                         historyController.update();
                         await historyController.getPaymentLogs(
@@ -196,7 +196,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       if (index == 1) {
                         // }
                         global.showOnlyLoaderDialog(context);
-                        await global.splashController.getCurrentUserData();
+                        // await global.splashController.getCurrentUserData();
                         global.hideLoader();
                       } else if (index == 3) {
                         if (historyController.chatHistoryList.isNotEmpty) {
