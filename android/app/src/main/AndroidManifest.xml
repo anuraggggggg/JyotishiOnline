@@ -35,6 +35,12 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
+
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"
+        tools:node="remove"/>
+
+
     <!-- Declare microphone usage (Play Store visibility) -->
     <uses-feature
         android:name="android.hardware.microphone"

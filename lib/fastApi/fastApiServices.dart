@@ -42,6 +42,15 @@ class FastAPIServices {
   String? get accessToken => _accessToken;
 
 
+  Future<bool> ensureAuthenticated() async {
+    await _loadCredentials();
+    return _accessToken != null &&
+        _accessToken!.isNotEmpty &&
+        _userId != null &&
+        _userId!.isNotEmpty;
+  }
+
+
   Future<List<dynamic>> getCosmicServices() async {
     try {
       final response = await http.get(
@@ -62,6 +71,89 @@ class FastAPIServices {
     }
   }
 
+  // ---------------- SEND OTP (NEW CUSTOMER API) ----------------
+  Future<bool> sendCustomerOtp({
+    required String contactNo,
+    required String countryCode,
+    required String username,
+    required String email,
+  }) async {
+    final Uri url = Uri.parse(
+      "${FastApiEndpoints.fastApiBaseUrl}/api/v1/customer/send-otp",
+    );
+
+    debugPrint("📲 [SEND CUSTOMER OTP]");
+    debugPrint("📞 contact_no=$contactNo");
+    debugPrint("🌍 country_code=$countryCode");
+    debugPrint("👤 username=$username");
+    debugPrint("📧 email=$email");
+    debugPrint("🔗 URL=$url");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "accept": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: {
+          "contact_no": contactNo,
+          "country_code": countryCode,
+          "username": username,
+          "email": email,
+        },
+      );
+
+      debugPrint("📡 Status: ${response.statusCode}");
+      debugPrint("📩 Body  : ${response.body}");
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+
+      // Try to parse error message from response
+      final responseBody = response.body;
+
+      // Check if response is JSON
+      try {
+        final jsonResponse = json.decode(responseBody);
+        if (jsonResponse.containsKey('detail')) {
+          // If it's a FastAPI error with 'detail' field
+          throw Exception(jsonResponse['detail'].toString());
+        } else if (jsonResponse.containsKey('message')) {
+          // If it has a 'message' field
+          throw Exception(jsonResponse['message'].toString());
+        } else if (jsonResponse.containsKey('error')) {
+          // If it has an 'error' field
+          throw Exception(jsonResponse['error'].toString());
+        }
+      } catch (e) {
+        // If parsing fails, throw raw response
+      }
+
+      // Throw raw response body if not JSON or no specific field found
+      throw Exception(responseBody);
+
+    } on http.ClientException catch (e) {
+      // Network or connection error
+      debugPrint("🌐 Network Error: $e");
+      throw Exception("Network error: ${e.message}");
+    } on FormatException catch (e) {
+      // Response format error
+      debugPrint("📄 Format Error: $e");
+      throw Exception("Invalid response format");
+    } on TimeoutException catch (e) {
+      // Request timeout
+      debugPrint("⏰ Timeout Error: $e");
+      throw Exception("Request timeout");
+    } catch (e) {
+      // Any other error
+      debugPrint("❌ Unexpected Error: $e");
+      rethrow;
+    }
+  }
+
+
 
 
   /// 🎟️ Apply Coupon (FREE SERVICE)
@@ -80,6 +172,7 @@ class FastAPIServices {
       "user_id": _userId,
       "coupon_code": couponCode,
     };
+
 
     try {
       final response = await http.post(
@@ -1040,16 +1133,22 @@ class FastAPIServices {
 
 
   // ---------------- SEND OTP ----------------
+  // ---------------- SEND OTP (CUSTOMER) ----------------
   Future<http.Response> sendOtp({
     required String contactNo,
     required String countryCode,
-    bool sendWhatsapp = true,
-    bool sendSms = true,
   }) async {
-    final url = Uri.parse(FastApiEndpoints.sendMobileOtp);
+    final Uri url = Uri.parse(
+      "https://fastapi.jyotishionline.com/api/v1/auth/send-otp",
 
-    print("🌐 Sending OTP to $contactNo ($countryCode)");
-    print("📦 send_whatsapp: $sendWhatsapp, send_sms: $sendSms");
+    );
+
+    debugPrint("────────────────────────────────────────");
+    debugPrint("📲 [LOGIN SEND OTP]");
+    debugPrint("📞 contactNo    : $contactNo");
+    debugPrint("🌍 countryCode : $countryCode");
+    debugPrint("🔗 URL         : $url");
+    debugPrint("────────────────────────────────────────");
 
     final response = await http.post(
       url,
@@ -1059,30 +1158,77 @@ class FastAPIServices {
       },
       body: {
         "contactNo": contactNo,
-        "countryCode": countryCode,
-        "send_whatsapp": sendWhatsapp.toString(),
-        "send_sms": sendSms.toString(),
+        "countryCode": countryCode.replaceAll("+", ""), // VERY IMPORTANT
+        "send_whatsapp": "true",
+        "send_sms": "true",
       },
     );
 
-    print("✅ Response Status: ${response.statusCode}");
-    print("📩 Response Body: ${response.body}");
+    debugPrint("📡 Status Code : ${response.statusCode}");
+    debugPrint("📩 Response   : ${response.body}");
 
     return response;
   }
 
 
+
+
   // ---------------- VERIFY OTP ----------------
+  // ---------------- VERIFY LOGIN OTP (CUSTOMER) ----------------
+  Future<http.Response> verifyLoginOtp({
+    required String contactNo,
+    required String countryCode,
+    required String otp,
+  }) async {
+    final url = Uri.parse(FastApiEndpoints.verifyLoginOtp);
+
+    debugPrint("🔐 VERIFY LOGIN OTP");
+    debugPrint("📞 contactNo   : $contactNo");
+    debugPrint("🌍 countryCode: $countryCode");
+    debugPrint("🔢 otp        : $otp");
+
+    return await http.post(
+      url,
+      headers: {
+        "accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: {
+        "contactNo": contactNo,
+        "countryCode": countryCode,
+        "otp": otp,
+      },
+    );
+  }
+
+
+
+
+
+
+
+
+
+
+
+  // ---------------- VERIFY SIGN IN OTP (CUSTOMER) ----------------
   Future<http.Response> verifyOtp({
     required String contactNo,
     required String countryCode,
     required String otp,
   }) async {
-    final url = Uri.parse(FastApiEndpoints.verifyMobileOtp);
+    final Uri url = Uri.parse(FastApiEndpoints.customerVerifyOtp);
 
-    print("🔍 Verifying OTP for $contactNo ($countryCode) - OTP: $otp");
+    // 🧪 Debug logs (INPUT)
+    debugPrint("────────────────────────────────────────");
+    debugPrint("🔐 [VERIFY OTP]");
+    debugPrint("📞 Contact No : $contactNo");
+    debugPrint("🌍 Country   : $countryCode");
+    debugPrint("🔢 OTP       : $otp");
+    debugPrint("🔗 URL       : $url");
+    debugPrint("────────────────────────────────────────");
 
-    final body = {
+    final payload = {
       "contactNo": contactNo,
       "countryCode": countryCode,
       "otp": otp,
@@ -1093,15 +1239,17 @@ class FastAPIServices {
     final response = await http.post(
       url,
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+        "accept": "application/json",
+        "Content-Type": "application/json", // ✅ IMPORTANT
       },
-      body: body,
+      body: jsonEncode(payload), // ✅ JSON BODY
     );
 
     global.hideLoader();
 
-    print("✅ Response Status: ${response.statusCode}");
-    print("📩 Response Body: ${response.body}");
+    // 📡 Debug logs (RESPONSE)
+    debugPrint("📡 [VERIFY OTP] Status Code : ${response.statusCode}");
+    debugPrint("📩 [VERIFY OTP] Response   : ${response.body}");
 
     if (response.statusCode == 200) {
       final jsonData = jsonDecode(response.body);
@@ -1109,41 +1257,53 @@ class FastAPIServices {
 
       final prefs = await SharedPreferences.getInstance();
 
+      // 🔐 Save token
       _accessToken = loginResponse.accessToken;
       if (_accessToken != null && _accessToken!.isNotEmpty) {
         await prefs.setString("access_token", _accessToken!);
       }
 
+      // 👤 Save user id
       _userId = loginResponse.user?.id;
       if (_userId != null && _userId!.isNotEmpty) {
         await prefs.setString("user_id", _userId!);
       } else {
-        print("⚠️ Warning: User ID is null or empty after parsing model.");
+        debugPrint("⚠️ [VERIFY OTP] User ID missing in response");
       }
 
+      // 🗂 Save minimal customer info
       await prefs.setString(
         "customer_details",
         jsonEncode({
           "id": loginResponse.user.id,
-          "email": loginResponse.user.email,
           "contactNo": loginResponse.user.contactNo,
+          "role": loginResponse.user.role,
         }),
       );
 
       await prefs.setBool("isLoggedIn", true);
 
-      print("💾 Saved: isLoggedIn=true, user_id=$_userId, token=$_accessToken");
+      debugPrint("💾 [VERIFY OTP] Saved session → userId=$_userId");
 
       final bottomNavController = Get.find<BottomNavigationController>();
       bottomNavController.setBottomIndex(0, 0);
       Get.offAll(() => BottomNavigationBarScreen(index: 0));
     } else {
-      final errorMessage = jsonDecode(response.body)['detail'] ?? 'Invalid OTP';
+      String errorMessage = "Invalid OTP";
+
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded["detail"] != null) {
+          errorMessage = decoded["detail"].toString();
+        }
+      } catch (_) {}
+
       global.showToast(
         message: errorMessage,
         textColor: Colors.white,
         bgColor: Colors.red,
       );
+
       Get.defaultDialog(
         title: 'OTP Verification Failed',
         middleText: errorMessage,
@@ -1154,6 +1314,77 @@ class FastAPIServices {
 
     return response;
   }
+
+
+
+  // ---------------- VERIFY OTP (NEW CUSTOMER API) ----------------
+  Future<void> verifyCustomerOtp({
+    required String contactNo,
+    required String otp,
+  }) async {
+    final Uri url = Uri.parse(
+      "${FastApiEndpoints.fastApiBaseUrl}/api/v1/customer/verify-otp",
+    );
+
+    debugPrint("🔐 [VERIFY CUSTOMER OTP]");
+    debugPrint("📞 contact_no=$contactNo");
+    debugPrint("🔢 otp=$otp");
+    debugPrint("🔗 URL=$url");
+
+    final response = await http.post(
+      url,
+      headers: {
+        "accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: {
+        "contact_no": contactNo,
+        "otp": otp,
+      },
+    );
+
+    debugPrint("📡 Status: ${response.statusCode}");
+    debugPrint("📩 Body  : ${response.body}");
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      /// Expected login-style response
+      final loginResponse = LoginResponse.fromJson(data);
+
+      final prefs = await SharedPreferences.getInstance();
+
+      _accessToken = loginResponse.accessToken;
+      _userId = loginResponse.user?.id;
+
+      if (_accessToken != null) {
+        await prefs.setString("access_token", _accessToken!);
+      }
+      if (_userId != null) {
+        await prefs.setString("user_id", _userId!);
+      }
+
+      await prefs.setBool("isLoggedIn", true);
+
+      debugPrint("✅ OTP verified → userId=$_userId");
+
+      final bottomNavController = Get.find<BottomNavigationController>();
+      bottomNavController.setBottomIndex(0, 0);
+      // Get.offAll(() => BottomNavigationBarScreen(index: 0));
+      Get.offAll(() => LoginScreen());
+      return;
+    }
+
+    if (response.statusCode == 422) {
+      final decoded = jsonDecode(response.body);
+      throw Exception(decoded["detail"]?.toString() ?? "Invalid OTP");
+    }
+
+    throw Exception("Verify OTP failed (${response.statusCode})");
+  }
+
+
+
 
   // ---------------- FETCH CUSTOMER DETAILS ----------------
   Future<List<CustomerDetail>> fetchCustomerDetails() async {
@@ -1198,6 +1429,8 @@ class FastAPIServices {
       rethrow;
     }
   }
+
+
 
 
   // ---------------- FETCH CURRENT USER DETAILS ----------------

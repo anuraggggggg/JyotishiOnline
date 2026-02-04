@@ -3,7 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import 'package:timelines/timelines.dart';
+// import 'package:timelines/timelines.dart';
 
 import '../../widget/commonAppbar.dart';
 
@@ -46,17 +46,17 @@ class AvailabilityScreen extends StatelessWidget {
                             ),
                           ),
                           Column(
-                            children: [
-                              DotIndicator(color: Colors.black),
-                              SizedBox(
-                                height: bottombarController.astrologerAvailavility[index].time!.isNotEmpty
-                                    ? bottombarController.astrologerAvailavility[index].time!.length > 2
-                                        ? 200.0
-                                        : 100
-                                    : 100,
-                                child: SolidLineConnector(color: Colors.black),
-                              )
-                            ],
+                            // children: [
+                            //   DotIndicator(color: Colors.black),
+                            //   SizedBox(
+                            //     height: bottombarController.astrologerAvailavility[index].time!.isNotEmpty
+                            //         ? bottombarController.astrologerAvailavility[index].time!.length > 2
+                            //             ? 200.0
+                            //             : 100
+                            //         : 100,
+                            //     child: SolidLineConnector(color: Colors.black),
+                            //   )
+                            // ],
                           ),
                           bottombarController.astrologerAvailavility[index].time!.isEmpty
                               ? Container(

@@ -4,6 +4,8 @@ class FastApiEndpoints {
 
 
 
+  static const String verifyLoginOtp =
+      "$fastApiBaseUrl/api/v1/auth/verify-otp";
   // Base URL
   static const String fastApiBaseUrl = "https://fastapi.jyotishionline.com";
 
@@ -18,6 +20,10 @@ class FastApiEndpoints {
   static const String loginOtp = "$fastApiBaseUrl/api/v1/auth/login-otp";
 
   static const String sendMobileOtp = "$fastApiBaseUrl/api/v1/auth/send-otp";
+  // static const String customerSendOtp =
+  //     "$fastApiBaseUrl/api/v1/customer-send-otp";
+  // static const String customerVerifyOtp =
+  //     "$fastApiBaseUrl/api/v1/customer-verify-otp";
   static const String verifyMobileOtp =
       "$fastApiBaseUrl/api/v1/auth/verify-otp";
 
@@ -193,4 +199,20 @@ class FastApiEndpoints {
 
   // ---------------- COSMIC SERVICES ----------------
   static const String cosmicServices = "$fastApiBaseUrl/api/v1/cosmic-services";
+
+  // ---------------- CUSTOMER OTP (NEW FLOW) ----------------
+
+// Send OTP to customer (Signup + Login)
+  static const String customerSendOtp =
+      "$fastApiBaseUrl/api/v1/auth/send-otp";
+
+// Verify OTP for customer
+  static const String customerVerifyOtp =
+      "$fastApiBaseUrl/api/v1/customer/verify-otp";
+
+  // Verify OTP for customer login (form-urlencoded)
+  static const String verifyLoginOTP =
+      "$fastApiBaseUrl/api/v1/customer/verify-otp";
 }
+
+

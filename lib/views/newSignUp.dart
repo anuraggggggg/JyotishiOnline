@@ -10,12 +10,6 @@ import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/views/loginWithEmailScreen.dart';
 import 'package:AstrowayCustomer/views/settings/termsAndConditionScreen.dart';
 
-class SignupWithEmailScreen extends StatefulWidget {
-  const SignupWithEmailScreen({super.key});
-
-  @override
-  State<SignupWithEmailScreen> createState() => _SignupWithEmailScreenState();
-}
 
 class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -83,7 +77,7 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
 
     if (res != null && res["error"] != true) {
       Get.snackbar("Success", "Account created successfully");
-      Get.offAll(() => const LoginWithEmailScreen());
+      // Get.offAll(() => const LoginWithEmailScreen());
     } else {
       Get.snackbar("Error", res?["message"]?.toString() ?? "Signup failed");
     }
@@ -344,4 +338,12 @@ class _SignupWithEmailScreenState extends State<SignupWithEmailScreen> {
       ),
     );
   }
+}
+
+
+class SignupWithEmailScreen extends StatefulWidget {
+  const SignupWithEmailScreen({super.key});
+
+  @override
+  State<SignupWithEmailScreen> createState() => _SignupWithEmailScreenState();
 }

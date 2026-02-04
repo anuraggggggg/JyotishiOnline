@@ -26,6 +26,10 @@ android {
     namespace 'com.jyotishi2025.user'
     compileSdkVersion 35
 
+
+//    Added this
+    ndkVersion "26.1.10909125"
+
     defaultConfig {
         applicationId "com.jyotishi2025.user"
         minSdkVersion 23

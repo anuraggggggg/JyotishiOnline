@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart'; // <--- Ensure this import is present for Rx and GetxController
 import 'package:http/http.dart' as http;
 import 'package:AstrowayCustomer/utils/global.dart' as global;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../views/verifyPhoneScreen.dart';
 import '../views/bottomNavigationBarScreen.dart';
 import 'package:AstrowayCustomer/utils/AppColors.dart';
@@ -330,6 +331,26 @@ class LoginController extends GetxController {
           countryCode: '+91',
         ));
   }
+
+  /// ✅ SAVE LOGIN SESSION (FastAPI OTP)
+  Future<void> saveLoginSession({
+    required String accessToken,
+    required String userId,
+    required String role,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString("access_token", accessToken);
+    await prefs.setString("user_id", userId);
+    await prefs.setString("user_role", role);
+    await prefs.setBool("isLoggedIn", true);
+
+    developer.log("💾 Login session saved");
+    developer.log("🔐 accessToken: ${accessToken.substring(0, 10)}...");
+    developer.log("🆔 userId: $userId");
+    developer.log("👤 role: $role");
+  }
+
 
   Future<void> verifyOtp({
     required String phone,

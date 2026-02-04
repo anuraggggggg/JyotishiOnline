@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:AstrowayCustomer/controllers/loginController.dart';
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 import '../theme/appTheme.dart';
+import 'bottomNavigationBarScreen.dart';
 
 class VerifyPhoneScreen extends StatefulWidget {
   final String phoneNumber;
@@ -76,36 +78,77 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
   Future<void> _verifyOtp() async {
     try {
       global.showOnlyLoaderDialog(context);
-      final response = await FastAPIServices().verifyOtp(
-        contactNo: widget.phoneNumber,
-        countryCode: widget.countryCode,
-        otp: loginController.smsCode,
+
+      debugPrint("🔐 VERIFY OTP START");
+      debugPrint("📞 Phone: ${widget.phoneNumber}");
+      debugPrint("🌍 Country: ${widget.countryCode}");
+      debugPrint("🔢 OTP: ${loginController.smsCode}");
+
+      final response = await FastAPIServices().verifyLoginOtp(
+        contactNo: widget.phoneNumber.trim(),
+        otp: loginController.smsCode.trim(),
+        countryCode: widget.countryCode.replaceAll("+", ""),
       );
+
+      debugPrint("📡 OTP VERIFY STATUS: ${response.statusCode}");
+      debugPrint("📩 OTP VERIFY BODY: ${response.body}");
+
       global.hideLoader();
 
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        final accessToken = data["access_token"];
+        final userId = data["user"]?["id"];
+        final role = data["user"]?["role"];
+
+        debugPrint("✅ LOGIN SUCCESS");
+        debugPrint("🔑 AccessToken length: ${accessToken?.length}");
+        debugPrint("👤 UserId: $userId");
+        debugPrint("🎭 Role: $role");
+
+        /// ✅ SAVE SESSION PROPERLY
+        await loginController.saveLoginSession(
+          accessToken: accessToken,
+          userId: userId,
+          role: role,
+        );
+
+        /// 🔄 FORCE LOAD INTO FastAPIServices
+        await FastAPIServices().loadFromStorage();
+
         global.showToast(
-          message: "OTP verified successfully!",
-          textColor: global.textColor,
+          message: "Login successful!",
+          textColor: Colors.white,
           bgColor: Colors.green,
         );
-        // TODO: Navigate to dashboard or home page
+
+        debugPrint("➡️ Navigating to Home");
+
+        Get.offAll(() => BottomNavigationBarScreen(index: 0));
       } else {
+        debugPrint("❌ OTP FAILED");
+
         global.showToast(
           message: "OTP verification failed!",
           textColor: Colors.white,
           bgColor: Colors.red,
         );
       }
-    } catch (e) {
+    } catch (e, st) {
       global.hideLoader();
+      debugPrint("💥 OTP VERIFY EXCEPTION: $e");
+      debugPrint("📄 STACKTRACE: $st");
+
       global.showToast(
-        message: "Error verifying OTP. Please try again.",
+        message: "Error verifying OTP",
         textColor: Colors.white,
         bgColor: Colors.red,
       );
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {

@@ -20,20 +20,26 @@ class LoginResponse {
 
 class User {
   final String id;
-  final String email;
   final String contactNo;
+  final String role;
+
+  // email is OPTIONAL because OTP API does NOT return it
+  final String? email;
 
   User({
     required this.id,
-    required this.email,
     required this.contactNo,
+    required this.role,
+    this.email,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] ?? '',
-      email: json['email'] ?? '',
       contactNo: json['contactNo'] ?? '',
+      role: json['role'] ?? 'user', // default fallback
+      email: json['email'],         // may be null
     );
   }
 }
+
