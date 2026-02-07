@@ -109,6 +109,11 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
   // INIT AGORA RTC
   // ==========================================================
   Future<void> _initRTC() async {
+    _d("🚨 AGORA JOIN DATA");
+    _d("AppId: $_agoraAppId");
+    _d("Channel: ${widget.channelName}");
+    _d("UID: $_myUid");
+    _d("Token: ${widget.token}");
     _engine = createAgoraRtcEngine();
     await _engine.initialize(RtcEngineContext(appId: _agoraAppId));
 
@@ -148,7 +153,8 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
     await _engine.joinChannel(
       token: widget.token,
       channelId: widget.channelName,
-      uid: _myUid,
+      // uid: _myUid,
+      uid: 0,
       options: const ChannelMediaOptions(
         clientRoleType: ClientRoleType.clientRoleAudience,
         autoSubscribeAudio: true,

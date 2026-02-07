@@ -1182,12 +1182,13 @@ class FastAPIServices {
   }) async {
     final url = Uri.parse(FastApiEndpoints.verifyLoginOtp);
 
-    debugPrint("🔐 VERIFY LOGIN OTP");
+    debugPrint("🔐 [VERIFY LOGIN OTP]");
     debugPrint("📞 contactNo   : $contactNo");
     debugPrint("🌍 countryCode: $countryCode");
     debugPrint("🔢 otp        : $otp");
+    debugPrint("🔗 URL        : $url");
 
-    return await http.post(
+    final response = await http.post(
       url,
       headers: {
         "accept": "application/json",
@@ -1199,7 +1200,70 @@ class FastAPIServices {
         "otp": otp,
       },
     );
+
+    debugPrint("📡 OTP VERIFY STATUS → ${response.statusCode}");
+    debugPrint("📩 OTP VERIFY BODY   → ${response.body}");
+
+    // --------------------------------------------------
+    // ✅ HANDLE SUCCESS + SAVE SESSION + FCM
+    // --------------------------------------------------
+    if (response.statusCode == 200) {
+      try {
+        final decoded = jsonDecode(response.body);
+        final loginResponse = LoginResponse.fromJson(decoded);
+
+        final prefs = await SharedPreferences.getInstance();
+
+        _accessToken = loginResponse.accessToken;
+        _userId = loginResponse.user?.id;
+
+        if (_accessToken != null && _accessToken!.isNotEmpty) {
+          await prefs.setString("access_token", _accessToken!);
+          debugPrint("🔐 Access token saved");
+        } else {
+          debugPrint("⚠️ Access token missing in response");
+        }
+
+        if (_userId != null && _userId!.isNotEmpty) {
+          await prefs.setString("user_id", _userId!);
+          debugPrint("👤 User ID saved → $_userId");
+        } else {
+          debugPrint("⚠️ User ID missing in response");
+        }
+
+        await prefs.setBool("isLoggedIn", true);
+        debugPrint("✅ Login flag saved");
+
+        // --------------------------------------------------
+        // 🔔 FCM TOKEN REGISTRATION
+        // --------------------------------------------------
+        try {
+          debugPrint("📲 Fetching FCM token...");
+          final fcmToken = await FirebaseMessaging.instance.getToken();
+
+          debugPrint("📲 FCM Token → $fcmToken");
+
+          if (fcmToken != null && fcmToken.isNotEmpty && _userId != null) {
+            debugPrint("🚀 Registering FCM token with backend...");
+            await registerCustomerFcmToken(_userId!);
+            debugPrint("✅ FCM token registered successfully");
+          } else {
+            debugPrint("⚠️ FCM token NULL / EMPTY or userId missing");
+          }
+        } catch (e) {
+          debugPrint("❌ FCM registration failed: $e");
+        }
+        // --------------------------------------------------
+
+      } catch (e, st) {
+        debugPrint("❌ OTP post-login processing failed: $e");
+        debugPrint("📄 StackTrace: $st");
+      }
+    }
+
+    return response;
   }
+
 
 
 
@@ -1348,8 +1412,6 @@ class FastAPIServices {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-
-      /// Expected login-style response
       final loginResponse = LoginResponse.fromJson(data);
 
       final prefs = await SharedPreferences.getInstance();
@@ -1359,18 +1421,43 @@ class FastAPIServices {
 
       if (_accessToken != null) {
         await prefs.setString("access_token", _accessToken!);
+        debugPrint("🔐 Access token saved");
       }
+
       if (_userId != null) {
         await prefs.setString("user_id", _userId!);
+        debugPrint("👤 User ID saved → $_userId");
       }
 
       await prefs.setBool("isLoggedIn", true);
+      debugPrint("✅ Login flag saved");
 
-      debugPrint("✅ OTP verified → userId=$_userId");
+      // --------------------------------------------------
+      // 🔔 FCM TOKEN REGISTRATION (🔥 THIS WAS MISSING)
+      // --------------------------------------------------
+      try {
+        debugPrint("📲 Fetching FCM token...");
+        final fcmToken = await FirebaseMessaging.instance.getToken();
+
+        debugPrint("📲 FCM Token received → $fcmToken");
+
+        if (fcmToken != null && fcmToken.isNotEmpty && _userId != null) {
+          debugPrint("🚀 Registering FCM token with backend...");
+          await registerCustomerFcmToken(_userId!);
+          debugPrint("✅ FCM token registered successfully");
+        } else {
+          debugPrint("⚠️ FCM token is NULL or EMPTY");
+        }
+      } catch (e) {
+        debugPrint("❌ FCM registration failed: $e");
+      }
+      // --------------------------------------------------
+
+      debugPrint("🎉 OTP verified completely → navigating user");
 
       final bottomNavController = Get.find<BottomNavigationController>();
       bottomNavController.setBottomIndex(0, 0);
-      // Get.offAll(() => BottomNavigationBarScreen(index: 0));
+
       Get.offAll(() => LoginScreen());
       return;
     }
@@ -1382,6 +1469,7 @@ class FastAPIServices {
 
     throw Exception("Verify OTP failed (${response.statusCode})");
   }
+
 
 
 

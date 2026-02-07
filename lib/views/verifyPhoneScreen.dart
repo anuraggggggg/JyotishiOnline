@@ -199,14 +199,19 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
                 ),
                 SizedBox(height: 10),
                 RichText(
+                  textAlign: TextAlign.center,
                   text: TextSpan(
-                    text: "We've sent a 6-digit code to ",
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey[600],
                       height: 1.5,
                     ),
                     children: [
+                      const TextSpan(
+                        text:
+                        "We've sent a 6-digit verification code to your mobile number and email.\n"
+                            "Please check your inbox or spam folder to continue.\n\n",
+                      ),
                       TextSpan(
                         text: "${widget.countryCode} ${widget.phoneNumber}",
                         style: TextStyle(
@@ -217,6 +222,8 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen>
                     ],
                   ),
                 ),
+
+
                 SizedBox(height: 40),
                 PinFieldAutoFill(
                   codeLength: 6,

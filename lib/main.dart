@@ -276,6 +276,7 @@ void main() async {
   // Store token in global
   updateFcmToken(token ?? "");
 
+
   global.sp = await SharedPreferences.getInstance();
   await EasyLocalization.ensureInitialized();
 

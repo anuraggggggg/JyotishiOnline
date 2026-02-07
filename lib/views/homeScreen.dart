@@ -351,6 +351,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               //LANGUAGE DIALOG
                               print(homeController.lan);
                               global.checkBody().then((result) {
+                                print("🧪 checkBody result = $result");
                                 if (result) {
                                   // This is the updated showDialog block
                                   showDialog(
@@ -612,6 +613,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                       );
                                     },
                                   );
+                                }else {
+                                  print("❌ Language dialog blocked by checkBody()");
                                 }
                               });
                             },
@@ -784,346 +787,202 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(width: 1),
-                  InkWell(
-                    onTap: () async {
-                      homeController.lan = [];
-                      await Future.wait([
-                        homeController.getLanguages(),
-                        homeController.updateLanIndex()
-                      ]);
-                      //LANGUAGE DIALOG
-                      print(homeController.lan);
-                      global.checkBody().then((result) {
-                        if (result) {
-                          showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return GetBuilder<HomeController>(builder: (h) {
-                                  return AlertDialog(
-                                    backgroundColor: Colors.white,
-                                    contentPadding: EdgeInsets.zero,
-                                    content: GetBuilder<HomeController>(
-                                        builder: (h) {
-                                      return Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          InkWell(
-                                            onTap: () => Get.back(),
-                                            child: Padding(
-                                              padding: EdgeInsets.only(
-                                                right: 2.w,
-                                                top: 2.w,
-                                              ),
-                                              child: Align(
-                                                alignment: Alignment.topRight,
-                                                child: const Icon(Icons.close),
-                                              ),
-                                            ),
-                                          ),
-                                          Container(
-                                              padding: EdgeInsets.all(6),
-                                              child: Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.start,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
-                                                  children: [
-                                                    Text(
-                                                      'Choose your app language',
-                                                      style: Get.textTheme
-                                                          .titleMedium!
-                                                          .copyWith(
-                                                        fontWeight:
-                                                            FontWeight.bold,
+            InkWell(
+              onTap: () async {
+                debugPrint("👆 Language icon tapped");
+
+                // Clear & reload languages
+                homeController.lan = [];
+                await homeController.getLanguages();
+                await homeController.updateLanIndex();
+
+                debugPrint("🌐 Languages loaded → ${homeController.lan.length}");
+                debugPrint("🌐 Languages → ${homeController.lan}");
+
+                // 🚀 DIRECTLY SHOW DIALOG (NO CONDITIONS)
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return GetBuilder<HomeController>(
+                      builder: (h) {
+                        return AlertDialog(
+                          backgroundColor: Colors.white,
+                          contentPadding: EdgeInsets.zero,
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // ❌ Close button
+                              InkWell(
+                                onTap: () => Get.back(),
+                                child: Padding(
+                                  padding: EdgeInsets.only(
+                                    right: 2.w,
+                                    top: 2.w,
+                                  ),
+                                  child: const Align(
+                                    alignment: Alignment.topRight,
+                                    child: Icon(Icons.close),
+                                  ),
+                                ),
+                              ),
+
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'Choose your app language',
+                                      style: Get.textTheme.titleMedium!.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ).tr(),
+
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 15),
+                                      child: Wrap(
+                                        children: List.generate(
+                                          homeController.lan.length,
+                                              (index) {
+                                            return InkWell(
+                                              onTap: () {
+                                                debugPrint("🌍 Language selected → index=$index");
+
+                                                homeController.updateLan(index);
+
+                                                switch (index) {
+                                                  case 0:
+                                                    context.setLocale(const Locale('en', 'US'));
+                                                    Get.updateLocale(const Locale('en', 'US'));
+                                                    break;
+                                                  case 1:
+                                                    context.setLocale(const Locale('ml', 'IN'));
+                                                    Get.updateLocale(const Locale('ml', 'IN'));
+                                                    break;
+                                                  case 2:
+                                                    context.setLocale(const Locale('hi', 'IN'));
+                                                    Get.updateLocale(const Locale('hi', 'IN'));
+                                                    break;
+                                                  case 3:
+                                                    context.setLocale(const Locale('es', 'ES'));
+                                                    Get.updateLocale(const Locale('es', 'ES'));
+                                                    break;
+                                                  case 4:
+                                                    context.setLocale(const Locale('mr', 'IN'));
+                                                    Get.updateLocale(const Locale('mr', 'IN'));
+                                                    break;
+                                                  case 5:
+                                                    context.setLocale(const Locale('bn', 'IN'));
+                                                    Get.updateLocale(const Locale('bn', 'IN'));
+                                                    break;
+                                                  case 6:
+                                                    context.setLocale(const Locale('kn', 'IN'));
+                                                    Get.updateLocale(const Locale('kn', 'IN'));
+                                                    break;
+                                                  case 7:
+                                                    context.setLocale(const Locale('ml', 'IN'));
+                                                    Get.updateLocale(const Locale('ml', 'IN'));
+                                                    break;
+                                                  case 8:
+                                                    context.setLocale(const Locale('ta', 'IN'));
+                                                    Get.updateLocale(const Locale('ta', 'IN'));
+                                                    break;
+                                                }
+
+                                                refreshIt();
+                                                Get.back();
+                                              },
+                                              child: GetBuilder<HomeController>(
+                                                builder: (h) {
+                                                  bool isSelected =
+                                                      homeController.lan[index].isSelected;
+
+                                                  return AnimatedContainer(
+                                                    duration: const Duration(milliseconds: 250),
+                                                    width: 120,
+                                                    margin: const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 8,
+                                                    ),
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 12,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      border: Border.all(
+                                                        color: isSelected
+                                                            ? appYellow
+                                                            : Colors.grey.shade300,
+                                                        width: isSelected ? 2.5 : 1,
                                                       ),
-                                                    ).tr(),
-                                                    GetBuilder<HomeController>(
-                                                        builder: (home) {
-                                                      return Padding(
-                                                        padding:
-                                                            EdgeInsets.only(
-                                                                top: 15),
-                                                        child: Wrap(
-                                                            children:
-                                                                List.generate(
-                                                                    homeController
-                                                                        .lan
-                                                                        .length,
-                                                                    (index) {
-                                                          return InkWell(onTap:
-                                                              () {
-                                                            //! LANGUAGE SET DILAOG
-                                                            homeController
-                                                                .updateLan(
-                                                                    index);
-                                                            switch (index) {
-                                                              case 0:
-                                                                var newLocale =
-                                                                    const Locale(
-                                                                        'en',
-                                                                        'US'); //ENGLISH
+                                                      borderRadius: BorderRadius.circular(15),
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: isSelected
+                                                              ? Colors.deepPurple.withOpacity(0.25)
+                                                              : Colors.grey.withOpacity(0.1),
+                                                          blurRadius: isSelected ? 10 : 4,
+                                                          offset: const Offset(0, 2),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    child: Column(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Text(
+                                                          homeController.lan[index].title,
+                                                          textAlign: TextAlign.center,
+                                                          style: Get.textTheme.titleMedium!.copyWith(
+                                                            fontWeight: isSelected
+                                                                ? FontWeight.bold
+                                                                : FontWeight.w600,
+                                                            color: isSelected
+                                                                ? appYellow
+                                                                : Colors.black87,
+                                                            fontSize: 15,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(height: 6),
+                                                        Text(
+                                                          homeController.lan[index].subTitle,
+                                                          textAlign: TextAlign.center,
+                                                          style: Get.textTheme.bodySmall!.copyWith(
+                                                            fontSize: 12,
+                                                            color: isSelected
+                                                                ? Colors.deepPurple.shade600
+                                                                : Colors.grey.shade600,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 15),
+                child: Icon(
+                  Icons.translate,
+                  color: Colors.black,
+                ),
+              ),
+            ),
 
-                                                                context.setLocale(
-                                                                    newLocale);
-                                                                Get.updateLocale(
-                                                                    newLocale);
-                                                                refreshIt();
-
-                                                                break;
-                                                              case 1:
-                                                                var newLocale =
-                                                                    const Locale(
-                                                                        'ml',
-                                                                        'IN');
-                                                                context.setLocale(
-                                                                    newLocale);
-                                                                Get.updateLocale(
-                                                                    newLocale);
-                                                                refreshIt();
-
-                                                                break;
-                                                              case 2:
-                                                                var newLocale =
-                                                                    const Locale(
-                                                                        'hi',
-                                                                        'IN'); //HINDI
-                                                                context.setLocale(
-                                                                    newLocale);
-                                                                Get.updateLocale(
-                                                                    newLocale);
-                                                                refreshIt();
-
-                                                                break;
-                                                              case 3:
-                                                                var newLocale =
-                                                                    const Locale(
-                                                                        'es',
-                                                                        'ES'); //Spanish
-                                                                context.setLocale(
-                                                                    newLocale);
-                                                                Get.updateLocale(
-                                                                    newLocale);
-                                                                refreshIt();
-
-                                                                break;
-                                                              case 4:
-                                                                var newLocale =
-                                                                    const Locale(
-                                                                        'mr',
-                                                                        'IN'); //marathi
-                                                                context.setLocale(
-                                                                    newLocale);
-                                                                Get.updateLocale(
-                                                                    newLocale);
-                                                                refreshIt();
-
-                                                                break;
-                                                              case 5:
-                                                                var newLocale =
-                                                                    const Locale(
-                                                                        'bn',
-                                                                        'IN'); //bengali
-                                                                context.setLocale(
-                                                                    newLocale);
-                                                                Get.updateLocale(
-                                                                    newLocale);
-                                                                refreshIt();
-
-                                                                break;
-
-                                                              case 6:
-                                                                var newLocale =
-                                                                    const Locale(
-                                                                        'kn',
-                                                                        'IN'); //kannad
-                                                                context.setLocale(
-                                                                    newLocale);
-                                                                Get.updateLocale(
-                                                                    newLocale);
-                                                                refreshIt();
-
-                                                                break;
-
-                                                              case 7:
-                                                                var newLocale =
-                                                                    const Locale(
-                                                                        'ml',
-                                                                        'IN'); //malayalam
-                                                                context.setLocale(
-                                                                    newLocale);
-                                                                Get.updateLocale(
-                                                                    newLocale);
-                                                                refreshIt();
-
-                                                                break;
-
-                                                              case 8:
-                                                                var newLocale =
-                                                                    const Locale(
-                                                                        'ta',
-                                                                        'IN'); //tamil
-                                                                context.setLocale(
-                                                                    newLocale);
-                                                                Get.updateLocale(
-                                                                    newLocale);
-                                                                refreshIt();
-
-                                                                break;
-                                                            }
-                                                          }, child: GetBuilder<
-                                                              HomeController>(
-                                                            builder: (h) {
-                                                              // Determine if the current language tile is selected
-                                                              bool isSelected =
-                                                                  homeController
-                                                                      .lan[
-                                                                          index]
-                                                                      .isSelected;
-
-                                                              return AnimatedContainer(
-                                                                // Use AnimatedContainer for smooth visual transitions
-                                                                duration: const Duration(
-                                                                    milliseconds:
-                                                                        250), // Duration of the animation
-                                                                curve: Curves
-                                                                    .easeInOut, // Easing curve for a smoother effect
-                                                                // height: 120, // Increased height for better visual presence
-                                                                width:
-                                                                    120, // Increased width for better proportions
-                                                                alignment: Alignment
-                                                                    .center, // Center content within the container
-                                                                // Adjust margin for overall spacing between the tiles in the Wrap widget
-                                                                margin: EdgeInsets
-                                                                    .symmetric(
-                                                                        horizontal:
-                                                                            8,
-                                                                        vertical:
-                                                                            8),
-                                                                padding: EdgeInsets
-                                                                    .symmetric(
-                                                                        horizontal:
-                                                                            10,
-                                                                        vertical:
-                                                                            12), // Inner padding for text content
-                                                                decoration:
-                                                                    BoxDecoration(
-                                                                  // Conditional background color based on selection state
-                                                                  color: isSelected
-                                                                      ? Colors.white // Light purple background for selected
-                                                                      : Colors.white, // White background for unselected
-                                                                  // Conditional border styling based on selection state
-                                                                  border: Border
-                                                                      .all(
-                                                                    color: isSelected
-                                                                        ? appYellow // Use primary color for selected border
-                                                                        : Colors.grey.shade300, // Light grey for unselected border
-                                                                    width: isSelected
-                                                                        ? 2.5
-                                                                        : 1.0, // Thicker border when selected
-                                                                  ),
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
-                                                                              15), // More rounded corners for a modern look
-                                                                  // Conditional box shadow for visual depth and emphasis when selected
-                                                                  boxShadow:
-                                                                      isSelected
-                                                                          ? [
-                                                                              BoxShadow(
-                                                                                color: Colors.deepPurple.withOpacity(0.25), // Softer, more transparent shadow
-                                                                                spreadRadius: 2,
-                                                                                blurRadius: 10, // Increased blur for a smoother shadow
-                                                                                offset: Offset(0, 5), // Offset for a "lifted" effect
-                                                                              ),
-                                                                            ]
-                                                                          : [
-                                                                              // Subtle shadow for unselected tiles to give them some depth
-                                                                              BoxShadow(
-                                                                                color: Colors.grey.withOpacity(0.1),
-                                                                                spreadRadius: 1,
-                                                                                blurRadius: 4,
-                                                                                offset: Offset(0, 2),
-                                                                              ),
-                                                                            ],
-                                                                ),
-                                                                child: Column(
-                                                                  mainAxisSize:
-                                                                      MainAxisSize
-                                                                          .min, // Column takes minimum space required by its children
-                                                                  children: [
-                                                                    // Language Title (e.g., "English", "മലയാളം")
-                                                                    Text(
-                                                                      homeController
-                                                                          .lan[
-                                                                              index]
-                                                                          .title,
-                                                                      textAlign:
-                                                                          TextAlign
-                                                                              .center, // Center align the text
-                                                                      style: Get
-                                                                          .textTheme
-                                                                          .titleMedium!
-                                                                          .copyWith(
-                                                                        // Use a slightly larger title style
-                                                                        fontWeight: isSelected
-                                                                            ? FontWeight.bold
-                                                                            : FontWeight.w600, // Bold when selected, slightly bold when unselected
-                                                                        color: isSelected
-                                                                            ? appYellow
-                                                                            : Colors.black87, // Primary color when selected, dark grey otherwise
-                                                                        fontSize:
-                                                                            15.0, // Slightly increased font size
-                                                                      ),
-                                                                    ),
-                                                                    SizedBox(
-                                                                        height:
-                                                                            6), // Spacing between title and subtitle
-                                                                    // Language Subtitle (e.g., "ENGLISH", "MALAYALAM")
-                                                                    Text(
-                                                                      homeController
-                                                                          .lan[
-                                                                              index]
-                                                                          .subTitle,
-                                                                      textAlign:
-                                                                          TextAlign
-                                                                              .center, // Center align the text
-                                                                      style: Get
-                                                                          .textTheme
-                                                                          .bodySmall!
-                                                                          .copyWith(
-                                                                        // Use a smaller body style for subtitle
-                                                                        fontSize:
-                                                                            12.0, // Appropriate font size for a subtitle
-                                                                        color: isSelected
-                                                                            ? Colors.deepPurple.shade600
-                                                                            : Colors.grey.shade600, // Softer color for subtitle
-                                                                      ),
-                                                                    )
-                                                                  ],
-                                                                ),
-                                                              );
-                                                            },
-                                                          ));
-                                                        })),
-                                                      );
-                                                    }),
-                                                  ]))
-                                        ],
-                                      );
-                                    }),
-                                  );
-                                });
-                              });
-                        }
-                      });
-                    },
-                    child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 15),
-                        child: Icon(
-                          Icons.translate,
-                          color: Colors.black,
-                        )),
-                  ),
             // GestureDetector(
             //   onTap: () {
             //     Get.to(() => NotificationPage());
