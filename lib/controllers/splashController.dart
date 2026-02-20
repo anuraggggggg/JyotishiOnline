@@ -13,6 +13,9 @@ import 'package:AstrowayCustomer/utils/services/api_helper.dart';
 import 'package:AstrowayCustomer/views/loginScreen.dart';
 import 'package:AstrowayCustomer/views/bottomNavigationBarScreen.dart';
 
+import '../services/location_services.dart';
+import '../views/loginWithEmail.dart';
+
 class SplashController extends GetxController {
   // =====================================================
   // STATE (KEEPED)
@@ -96,7 +99,7 @@ class SplashController extends GetxController {
     global.sp!.setString('currentLanguage', currentLanguageCode);
     debugPrint("[SPLASH] 🌐 Language = $currentLanguageCode");
 
-    Timer(const Duration(seconds: 3), () async {
+    Timer(const Duration(seconds: 4), () async {
       debugPrint("[SPLASH] ⏱ Splash delay completed");
 
       final hasSession = await _hasFastApiSession();
@@ -104,7 +107,10 @@ class SplashController extends GetxController {
 
       if (!hasSession) {
         debugPrint("[SPLASH] ➡ Redirecting to Login");
-        Get.off(() => LoginScreen());
+        // Get.off(() => LoginScreen());
+        LocationService.isIndianUser ?
+        Get.offAll(() => LoginScreen()) :
+        Get.offAll(() => LoginWithEmailScreen());
         return;
       }
 

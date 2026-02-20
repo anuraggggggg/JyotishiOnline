@@ -92,12 +92,19 @@
             android:theme="@style/LaunchTheme"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode">
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true">
 
             <!-- Flutter normal theme -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme"/>
+
+            <!-- PiP configuration (add this) -->
+            <meta-data
+                android:name="android.support.PIP"
+                android:value="true" />
 
             <!-- App launcher -->
             <intent-filter>

@@ -27,6 +27,17 @@ import '../views/proKerela/services.dart';
 //views
 
 class BottomNavigationController extends GetxController {
+
+  /// ================= FLOAT SESSION STATE =================
+
+  bool isSessionActive = false;
+  String sessionType = ""; // chat / audio / video
+  String sessionRoomId = "";
+  String sessionAstrologerName = "";
+  String sessionAstroProfile = "";
+  bool isMiniVisible = false;
+
+
   int bottomNavIndex = 0;
   int historyIndex = 3;
   APIHelper apiHelper = APIHelper();
@@ -80,6 +91,44 @@ class BottomNavigationController extends GetxController {
   int? selectedCatId;
   bool isCallAstroDataLoadedOnce = false;
   bool isChatAstroDataLoadedOnce = false;
+
+  /// START SESSION
+  void startSession({
+    required String type,
+    required String roomId,
+    required String name,
+    required String profile,
+  }) {
+    isSessionActive = true;
+    sessionType = type;
+    sessionRoomId = roomId;
+    sessionAstrologerName = name;
+    sessionAstroProfile = profile;
+    isMiniVisible = true;
+    update();
+  }
+
+  /// MINIMIZE SESSION
+  void minimizeSession() {
+    isMiniVisible = true;
+    update();
+  }
+
+  /// OPEN FULL SESSION
+  void openSession() {
+    isMiniVisible = false;
+    update();
+  }
+
+  /// END SESSION
+  void endSession() {
+    isSessionActive = false;
+    isMiniVisible = false;
+    sessionType = "";
+    sessionRoomId = "";
+    update();
+  }
+
   List<Widget> screens() => [
         HomeScreen(),
     ChatAstrologerScreen(),

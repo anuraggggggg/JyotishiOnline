@@ -83,27 +83,29 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
   Future<void> _loadNamesAndAstrologer() async {
     try {
       final svc = FastAPIServices();
-      await svc.loadFromStorage();
 
-      // LOAD VIEWER NAME from prefs
-      myName = await svc.getUserName() ?? "You";
+      /// ✅ SAME API AS HOME SCREEN
+      final user = await svc.fetchCurrentUserDetails();
+      print(user.name);
 
-      // LOAD ASTROLOGER DETAIL (name + charges)
+      myName = (user.name != null && user.name!.trim().isNotEmpty)
+          ? user.name!.trim()
+          : "Guest";
+
+      /// ASTROLOGER
       final astro = await svc.fetchAstrologerDetail(widget.astroId);
       _astrologer = astro;
       astrologerName = astro.name.trim();
-
-      _d("Loaded astrologer: id=${astro.astroId}, name=${astro.name}, "
-          "audio=${astro.audioCallCharge}, video=${astro.videoCallCharge}, chat=${astro.chatCharge}");
 
       if (mounted) setState(() {});
     } catch (e, st) {
       _d("Error loading names/astrologer: $e\n$st");
       astrologerName = "Astrologer";
-      myName = "You";
+      myName = "Guest";
       if (mounted) setState(() {});
     }
   }
+
 
   // ==========================================================
   // INIT AGORA RTC

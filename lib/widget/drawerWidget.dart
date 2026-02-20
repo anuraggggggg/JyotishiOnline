@@ -12,9 +12,11 @@ import 'package:AstrowayCustomer/controllers/splashController.dart';
 import 'package:AstrowayCustomer/controllers/themeController.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/CustomerDetailModel.dart';
+import 'package:AstrowayCustomer/services/location_services.dart';
 import 'package:AstrowayCustomer/views/freeServicesScreen.dart';
 import 'package:AstrowayCustomer/views/getReportScreen.dart';
 import 'package:AstrowayCustomer/views/loginScreen.dart';
+import 'package:AstrowayCustomer/views/loginWithEmail.dart';
 import 'package:AstrowayCustomer/views/myFollowingScreen.dart';
 import 'package:AstrowayCustomer/views/profile/editUserProfileScreen.dart';
 import 'package:AstrowayCustomer/views/settings/colorPicker.dart';
@@ -23,10 +25,12 @@ import 'package:AstrowayCustomer/views/wallet/paymentLogScreen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:get/get.dart';
 import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:store_redirect/store_redirect.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../controllers/astrologer_assistant_controller.dart';
 import '../controllers/customer_support_controller.dart';
@@ -188,15 +192,127 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                         Get.to(() => PaymentLogScreen());
                       },
                     ),
+                _buildMenuItem(
+                  icon: Icons.person_add_alt_1_outlined,
+                  title: 'Sign Up as Astrologer',
+                  onTap: () async {
+                    const String packageName = "com.jyotishi.astro";
+
+                    // Try opening app using package name (Android)
+                    final Uri appUri = Uri.parse("android-app://$packageName");
+
+                    if (Platform.isAndroid) {
+                      final Uri playStoreUri = Uri.parse(
+                        "https://play.google.com/store/apps/details?id=$packageName",
+                      );
+
+                      try {
+                        await launchUrl(
+                          Uri.parse("market://details?id=$packageName"),
+                          mode: LaunchMode.externalApplication,
+                        );
+                      } catch (e) {
+                        await launchUrl(
+                          playStoreUri,
+                          mode: LaunchMode.externalApplication,
+                        );
+                      }
+                    }
+                  },
+                ),
+
                     _buildMenuItem(
-                      icon: Icons.person_add_alt_1_outlined,
-                      title: 'Sign Up as Astrologer',
+                      icon: Icons.support_agent,
+                      title: 'Helpline',
                       onTap: () {
-                        if (Platform.isAndroid) {
-                          StoreRedirect.redirect(
-                            androidAppId: "com.jyotishi.user",
-                          );
-                        }
+                        showModalBottomSheet(
+                          context: Get.context!,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          builder: (context) {
+                            return Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+
+                                  const Text(
+                                    "Contact Support",
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 20),
+
+                                  // 📞 Call Support
+                                  ListTile(
+                                    leading: const Icon(Icons.call, color: Colors.green),
+                                    title: const Text("Customer Care"),
+                                    subtitle: const Text("+91 94227 99414"),
+                                    onTap: () async {
+                                      final Uri callUri =
+                                      Uri.parse("tel:+919422799414");
+
+                                      if (await canLaunchUrl(callUri)) {
+                                        await launchUrl(
+                                          callUri,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      }
+                                    },
+                                  ),
+
+                                  // 💬 WhatsApp
+                                  ListTile(
+                                    leading: const Icon(Icons.chat, color: Colors.green),
+                                    title: const Text("Chat on WhatsApp"),
+                                    subtitle: const Text("+91 98190 9819"),
+                                    onTap: () async {
+                                      final Uri whatsappUri =
+                                      Uri.parse("https://wa.me/9819089819");
+
+                                      if (await canLaunchUrl(whatsappUri)) {
+                                        await launchUrl(
+                                          whatsappUri,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      }
+                                    },
+                                  ),
+
+                                  // 📧 Email
+                                  ListTile(
+                                    leading:
+                                    const Icon(Icons.email_outlined, color: Colors.blue),
+                                    title: const Text("Email Support"),
+                                    subtitle: const Text(
+                                        "jyotishionlinekerala@gmail.com"),
+                                    onTap: () async {
+                                      final Uri emailUri = Uri(
+                                        scheme: 'mailto',
+                                        path: 'jyotishionlinekerala@gmail.com',
+                                        query:
+                                        'subject=Support Request&body=Hello Jyotishi Online Support Team,',
+                                      );
+
+                                      if (await canLaunchUrl(emailUri)) {
+                                        await launchUrl(
+                                          emailUri,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      }
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 10),
+                                ],
+                              ),
+                            );
+                          },
+                        );
                       },
                     ),
           _buildMenuItem(
@@ -223,12 +339,17 @@ class _DrawerWidgetState extends State<DrawerWidget> {
           }
 
           // ⬅️ Navigate to Login Screen
-          Get.offAll(() => LoginScreen());
+         LocationService.isIndianUser ?
+         Get.offAll(() => LoginScreen()) :
+         Get.offAll(() => LoginWithEmailScreen());
           }
           },
           ),
 
-          ],
+
+
+
+                  ],
                 ),
               ),
 

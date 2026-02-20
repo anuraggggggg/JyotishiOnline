@@ -58,6 +58,7 @@ import '../controllers/walletController.dart';
 import '../model/fastApiModel/CustomerDetailModel.dart';
 import '../model/fastApiModel/LiveAstrologerModel.dart';
 import '../model/fastApiModel/OnlineAstrologerModel.dart';
+import '../services/location_services.dart';
 import '../theme/appTheme.dart';
 import '../utils/fonts.dart';
 import 'CustomText.dart';
@@ -94,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
   CustomerDetail? _customerDetail;
   String? userName;
   String? profileImageUrl;
+  double? usdRate;
   bool _isLoadingUser = true;
   List<Map<String, dynamic>> banners = [];
 
@@ -766,15 +768,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                     fontWeight: FontWeight.w600)),
                             Text(
                               _wallet != null
+                                  ? LocationService.isIndianUser
                                   ? "₹${_wallet!.amount}"
+                                  : "\$${(_wallet!.amount * (usdRate ?? 0.012)).toStringAsFixed(2)}"
                                   : "Loading...",
-
-                              //  "${splashController.currentUser!.walletAmount ?? "00"}",
                               style: TextStyle(
-                                  fontSize: 16.sp,
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w600),
+                                fontSize: 16.sp,
+                                color: Colors.black,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
+
                             SizedBox(width: 8),
                             Icon(
                               Icons.add_circle,

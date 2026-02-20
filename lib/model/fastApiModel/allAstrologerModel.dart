@@ -29,23 +29,27 @@ class GetAllAstrologerModel {
 
   factory GetAllAstrologerModel.fromJson(Map<String, dynamic> json) {
     return GetAllAstrologerModel(
-      astroId: json['astro_id'] ?? '',
-      name: json['name'] ?? 'Unknown',
-      profileImage: json['profileImage'],
-      primarySkill: json['primarySkill'],
-      languageKnown: json['languageKnown'],
-      experienceInYears: json['experienceInYears'] ?? 0,
+      astroId: json['astro_id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Unknown',
+      profileImage: json['profileImage']?.toString(),
+      primarySkill: json['primarySkill']?.toString(),
 
-      // ✅ FIXED FIELD NAMES
+      // ✅ Flexible language mapping
+      languageKnown: json['languageKnown']?.toString() ??
+          json['language_known']?.toString() ??
+          json['languages']?.toString(),
+
+      experienceInYears: int.tryParse(json['experienceInYears'].toString()) ?? 0,
+
       chatCharge: (json['chatCharge'] ?? 0).toDouble(),
       audioCallCharge: (json['audioCallCharge'] ?? 0).toDouble(),
       videoCallCharge: (json['videoCallCharge'] ?? 0).toDouble(),
 
-      // ✅ NEW FIELDS
       overallRating: (json['overallRating'] ?? 0).toDouble(),
       totalReviews: json['totalReviews'] ?? 0,
 
-      currentCity: json['currentCity'],
+      currentCity: json['currentCity']?.toString(),
     );
   }
+
 }

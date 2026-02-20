@@ -344,7 +344,7 @@ class _DailyPredictionInputScreenState
                       label: Text(
                         isFreeAccess.value
                             ? 'Get ${widget.serviceName} • FREE'
-                            : 'Get ${widget.serviceName} • ₹${widget.servicePrice.toStringAsFixed(0)}',
+                            : 'Get ${widget.serviceName} • ₹${widget.servicePrice}',
                         style: const TextStyle(
                             fontWeight: FontWeight.bold),
                       ),

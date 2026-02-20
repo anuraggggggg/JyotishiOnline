@@ -171,30 +171,30 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
                             ? Icon(Icons.person, size: 36, color: Colors.grey.shade400)
                             : null,
                       ),
-                      Container(
-                        width: 16,
-                        height: 16,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 10,
-                            height: 10,
-                            decoration: const BoxDecoration(
-                              color: Colors.green,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ),
+                      // Container(
+                      //   width: 16,
+                      //   height: 16,
+                      //   decoration: BoxDecoration(
+                      //     color: Colors.white,
+                      //     shape: BoxShape.circle,
+                      //     boxShadow: [
+                      //       BoxShadow(
+                      //         color: Colors.black.withOpacity(0.1),
+                      //         blurRadius: 4,
+                      //       ),
+                      //     ],
+                      //   ),
+                      //   child: Center(
+                      //     child: Container(
+                      //       width: 10,
+                      //       height: 10,
+                      //       decoration: const BoxDecoration(
+                      //         color: Colors.green,
+                      //         shape: BoxShape.circle,
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
                     ],
                   ),
                   const SizedBox(height: 8),

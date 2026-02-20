@@ -25,6 +25,8 @@ import '../model/fastApiModel/astrologerProfileModel.dart';
 import '../model/fastApiModel/newChatModel.dart';
 import '../model/fastApiModel/sendMoneyModel.dart';
 import '../model/fastApiModel/wallet_tx_model.dart';
+import '../services/location_services.dart';
+import '../views/loginWithEmail.dart';
 
 extension MultipartFieldHelper on http.MultipartRequest {
   void addIfPresent(String key, String? value) {
@@ -71,23 +73,35 @@ class FastAPIServices {
     }
   }
 
-  // ---------------- SEND OTP (NEW CUSTOMER API) ----------------
+  // ---------------- SEND SIGN UP OTP (NEW CUSTOMER API) ----------------
+  // ---------------- SEND SIGN UP OTP (UPDATED FLEXIBLE API) ----------------
   Future<bool> sendCustomerOtp({
-    required String contactNo,
-    required String countryCode,
-    required String username,
-    required String email,
+    String? contactNo,
+    String? countryCode,
+    String? username,
+    String? email,
   }) async {
     final Uri url = Uri.parse(
       "${FastApiEndpoints.fastApiBaseUrl}/api/v1/customer/send-otp",
     );
 
+    final bool hasPhone = contactNo != null && contactNo.trim().isNotEmpty;
+    final bool hasEmail = email != null && email.trim().isNotEmpty;
+
+    debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     debugPrint("📲 [SEND CUSTOMER OTP]");
-    debugPrint("📞 contact_no=$contactNo");
-    debugPrint("🌍 country_code=$countryCode");
-    debugPrint("👤 username=$username");
-    debugPrint("📧 email=$email");
-    debugPrint("🔗 URL=$url");
+    debugPrint("📞 Phone      : $contactNo");
+    debugPrint("🌍 CountryCode: $countryCode");
+    debugPrint("📧 Email      : $email");
+    debugPrint("👤 Username   : $username");
+    debugPrint("🔗 URL        : $url");
+    debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+    // ❌ VALIDATION
+    if (!hasPhone && !hasEmail) {
+      debugPrint("❌ ERROR: Both phone & email are empty");
+      throw Exception("Please enter phone number or email");
+    }
 
     try {
       final response = await http.post(
@@ -97,58 +111,79 @@ class FastAPIServices {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: {
-          "contact_no": contactNo,
-          "country_code": countryCode,
-          "username": username,
-          "email": email,
+          if (hasPhone) "contact_no": contactNo!.trim(),
+          if (hasPhone && countryCode != null)
+            "country_code": countryCode.trim(),
+
+          if (username != null && username.trim().isNotEmpty)
+            "username": username.trim(),
+
+          if (hasEmail) "email": email!.trim(),
         },
       );
 
-      debugPrint("📡 Status: ${response.statusCode}");
-      debugPrint("📩 Body  : ${response.body}");
+      debugPrint("📡 Status Code: ${response.statusCode}");
+      debugPrint("📩 Response  : ${response.body}");
 
+      // ✅ SUCCESS
       if (response.statusCode == 200) {
+        debugPrint("✅ OTP SENT SUCCESSFULLY");
         return true;
       }
 
-      // Try to parse error message from response
-      final responseBody = response.body;
-
-      // Check if response is JSON
+      // --------------------------------------------------
+      // ❌ HANDLE API ERRORS
+      // --------------------------------------------------
       try {
-        final jsonResponse = json.decode(responseBody);
-        if (jsonResponse.containsKey('detail')) {
-          // If it's a FastAPI error with 'detail' field
-          throw Exception(jsonResponse['detail'].toString());
-        } else if (jsonResponse.containsKey('message')) {
-          // If it has a 'message' field
-          throw Exception(jsonResponse['message'].toString());
-        } else if (jsonResponse.containsKey('error')) {
-          // If it has an 'error' field
-          throw Exception(jsonResponse['error'].toString());
+        final decoded = jsonDecode(response.body);
+
+        if (decoded["detail"] != null) {
+          throw Exception(decoded["detail"].toString());
         }
-      } catch (e) {
-        // If parsing fails, throw raw response
+
+        if (decoded["message"] != null) {
+          throw Exception(decoded["message"].toString());
+        }
+
+        if (decoded["error"] != null) {
+          throw Exception(decoded["error"].toString());
+        }
+      } catch (_) {
+        // If parsing fails → throw raw response
       }
 
-      // Throw raw response body if not JSON or no specific field found
-      throw Exception(responseBody);
+      throw Exception("Server Error: ${response.body}");
+    }
 
-    } on http.ClientException catch (e) {
-      // Network or connection error
+    // --------------------------------------------------
+    // 🌐 NETWORK ERRORS
+    // --------------------------------------------------
+    on http.ClientException catch (e) {
       debugPrint("🌐 Network Error: $e");
       throw Exception("Network error: ${e.message}");
-    } on FormatException catch (e) {
-      // Response format error
-      debugPrint("📄 Format Error: $e");
-      throw Exception("Invalid response format");
-    } on TimeoutException catch (e) {
-      // Request timeout
+    }
+
+    // --------------------------------------------------
+    // ⏰ TIMEOUT
+    // --------------------------------------------------
+    on TimeoutException catch (e) {
       debugPrint("⏰ Timeout Error: $e");
       throw Exception("Request timeout");
-    } catch (e) {
-      // Any other error
-      debugPrint("❌ Unexpected Error: $e");
+    }
+
+    // --------------------------------------------------
+    // 📄 FORMAT ERROR
+    // --------------------------------------------------
+    on FormatException catch (e) {
+      debugPrint("📄 Format Error: $e");
+      throw Exception("Invalid response format");
+    }
+
+    // --------------------------------------------------
+    // ❌ UNKNOWN ERROR
+    // --------------------------------------------------
+    catch (e) {
+      debugPrint("🔥 Unexpected Error: $e");
       rethrow;
     }
   }
@@ -1125,7 +1160,9 @@ class FastAPIServices {
 
       print("✅ User logged out successfully.");
 
-      Get.offAll(() => LoginScreen());
+      LocationService.isIndianUser ?
+      Get.offAll(() => LoginScreen()) :
+      Get.offAll(() => LoginWithEmailScreen());
     } catch (e) {
       print("❌ Failed to log out: $e");
     }
@@ -1169,6 +1206,121 @@ class FastAPIServices {
 
     return response;
   }
+
+  Future<double> fetchUsdRate() async {
+    final response = await http.get(
+      Uri.parse("https://api.exchangerate.host/latest?base=INR&symbols=USD"),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data["rates"]["USD"].toDouble();
+    } else {
+      throw Exception("Failed to fetch exchange rate");
+    }
+  }
+
+
+  Future<http.Response> customerLoginOtp({
+    required String contactNo,
+    required String countryCode,
+    required String email,
+    bool sendSms = true,
+    bool sendEmail = false,
+  }) async {
+    final Uri url = Uri.parse(
+      "https://fastapi.jyotishionline.com/api/v1/auth/customer-login1",
+    );
+
+    debugPrint("────────────────────────────");
+    debugPrint("📲 [CUSTOMER LOGIN OTP]");
+    debugPrint("📞 contactNo   : $contactNo");
+    debugPrint("🌍 countryCode : $countryCode");
+    debugPrint("📧 email       : $email");
+    debugPrint("────────────────────────────");
+
+    final response = await http.post(
+      url,
+      headers: {
+        "accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: {
+        "contactNo": contactNo,
+        "countryCode": countryCode.replaceAll("+", ""),
+        "email": email,
+        "send_sms": sendSms.toString(),
+        "send_email": sendEmail.toString(),
+      },
+    );
+
+    debugPrint("📡 Status Code: ${response.statusCode}");
+    debugPrint("📩 Response: ${response.body}");
+
+    return response;
+  }
+
+  Future<http.Response> customerVerifyOtp({
+    required String contactNo,
+    required String countryCode,
+    required String email,
+    required String otp,
+  }) async {
+    final Uri url = Uri.parse(
+      "https://fastapi.jyotishionline.com/api/v1/auth/customer-verify2",
+    );
+
+    debugPrint("────────────────────────────");
+    debugPrint("🔐 [CUSTOMER VERIFY OTP]");
+    debugPrint("📞 contactNo   : $contactNo");
+    debugPrint("🌍 countryCode : $countryCode");
+    debugPrint("📧 email       : $email");
+    debugPrint("🔢 otp         : $otp");
+    debugPrint("────────────────────────────");
+
+    final response = await http.post(
+      url,
+      headers: {
+        "accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: {
+        "contactNo": contactNo,
+        "countryCode": countryCode.replaceAll("+", ""),
+        "email": email,
+        "otp": otp,
+      },
+    );
+
+    debugPrint("📡 Verify Status: ${response.statusCode}");
+    debugPrint("📩 Verify Response: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+
+      final prefs = await SharedPreferences.getInstance();
+
+      final accessToken = decoded["access_token"];
+      final user = decoded["user"];
+
+      if (accessToken != null) {
+        await prefs.setString("access_token", accessToken);
+        _accessToken = accessToken;
+      }
+
+      if (user != null && user["id"] != null) {
+        await prefs.setString("user_id", user["id"]);
+        _userId = user["id"];
+      }
+
+      await prefs.setBool("isLoggedIn", true);
+
+      debugPrint("✅ Customer Login Success");
+    }
+
+    return response;
+  }
+
 
 
 
@@ -1382,92 +1534,126 @@ class FastAPIServices {
 
 
   // ---------------- VERIFY OTP (NEW CUSTOMER API) ----------------
+  // ---------------- VERIFY CUSTOMER OTP (FINAL CORRECT VERSION) ----------------
   Future<void> verifyCustomerOtp({
-    required String contactNo,
     required String otp,
+    String? contactNo,
+    String? email,
   }) async {
     final Uri url = Uri.parse(
       "${FastApiEndpoints.fastApiBaseUrl}/api/v1/customer/verify-otp",
     );
 
-    debugPrint("🔐 [VERIFY CUSTOMER OTP]");
-    debugPrint("📞 contact_no=$contactNo");
-    debugPrint("🔢 otp=$otp");
-    debugPrint("🔗 URL=$url");
+    final bool hasPhone = contactNo != null && contactNo.trim().isNotEmpty;
+    final bool hasEmail = email != null && email.trim().isNotEmpty;
 
-    final response = await http.post(
-      url,
-      headers: {
-        "accept": "application/json",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: {
-        "contact_no": contactNo,
-        "otp": otp,
-      },
-    );
+    debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    debugPrint("🔐 [VERIFY OTP]");
+    debugPrint("📞 Phone : $contactNo");
+    debugPrint("📧 Email : $email");
+    debugPrint("🔢 OTP   : $otp");
+    debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-    debugPrint("📡 Status: ${response.statusCode}");
-    debugPrint("📩 Body  : ${response.body}");
+    // ❌ validation
+    if (hasPhone && hasEmail) {
+      throw Exception("Enter either phone OR email — not both");
+    }
+    if (!hasPhone && !hasEmail) {
+      throw Exception("Provide phone or email");
+    }
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final loginResponse = LoginResponse.fromJson(data);
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "accept": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: {
+          "otp": otp.trim(),
+          if (hasPhone) "contact_no": contactNo!.trim(),
+          if (hasEmail) "email": email!.trim(),
+        },
+      ).timeout(const Duration(seconds: 15));
 
-      final prefs = await SharedPreferences.getInstance();
+      debugPrint("📡 Status: ${response.statusCode}");
+      debugPrint("📩 Body  : ${response.body}");
 
-      _accessToken = loginResponse.accessToken;
-      _userId = loginResponse.user?.id;
+      // ✅ SUCCESS
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final loginResponse = LoginResponse.fromJson(data);
 
-      if (_accessToken != null) {
-        await prefs.setString("access_token", _accessToken!);
-        debugPrint("🔐 Access token saved");
-      }
+        final prefs = await SharedPreferences.getInstance();
 
-      if (_userId != null) {
-        await prefs.setString("user_id", _userId!);
-        debugPrint("👤 User ID saved → $_userId");
-      }
+        _accessToken = loginResponse.accessToken;
+        _userId = loginResponse.user?.id;
 
-      await prefs.setBool("isLoggedIn", true);
-      debugPrint("✅ Login flag saved");
-
-      // --------------------------------------------------
-      // 🔔 FCM TOKEN REGISTRATION (🔥 THIS WAS MISSING)
-      // --------------------------------------------------
-      try {
-        debugPrint("📲 Fetching FCM token...");
-        final fcmToken = await FirebaseMessaging.instance.getToken();
-
-        debugPrint("📲 FCM Token received → $fcmToken");
-
-        if (fcmToken != null && fcmToken.isNotEmpty && _userId != null) {
-          debugPrint("🚀 Registering FCM token with backend...");
-          await registerCustomerFcmToken(_userId!);
-          debugPrint("✅ FCM token registered successfully");
-        } else {
-          debugPrint("⚠️ FCM token is NULL or EMPTY");
+        if (_accessToken != null) {
+          await prefs.setString("access_token", _accessToken!);
+          debugPrint("🔐 Token saved");
         }
-      } catch (e) {
-        debugPrint("❌ FCM registration failed: $e");
+
+        if (_userId != null) {
+          await prefs.setString("user_id", _userId!);
+          debugPrint("👤 User ID saved → $_userId");
+        }
+
+        await prefs.setBool("isLoggedIn", true);
+
+        // ---------- REGISTER FCM ----------
+        try {
+          final fcmToken = await FirebaseMessaging.instance.getToken();
+          debugPrint("📲 FCM Token → $fcmToken");
+
+          if (fcmToken != null && fcmToken.isNotEmpty && _userId != null) {
+            await registerCustomerFcmToken(_userId!);
+            debugPrint("✅ FCM registered");
+          }
+        } catch (e) {
+          debugPrint("❌ FCM error: $e");
+        }
+        // -----------------------------------
+
+        debugPrint("🎉 OTP VERIFIED SUCCESS");
+
+        final bottomNavController = Get.find<BottomNavigationController>();
+        bottomNavController.setBottomIndex(0, 0);
+
+        Get.offAll(() => LoginScreen());
+        return;
       }
-      // --------------------------------------------------
 
-      debugPrint("🎉 OTP verified completely → navigating user");
+      // ❌ SERVER ERROR HANDLING
+      try {
+        final decoded = jsonDecode(response.body);
 
-      final bottomNavController = Get.find<BottomNavigationController>();
-      bottomNavController.setBottomIndex(0, 0);
+        if (decoded["detail"] != null) {
+          throw Exception(decoded["detail"].toString());
+        }
+        if (decoded["message"] != null) {
+          throw Exception(decoded["message"].toString());
+        }
+      } catch (_) {}
 
-      Get.offAll(() => LoginScreen());
-      return;
+      throw Exception("Verify OTP failed (${response.statusCode})");
     }
 
-    if (response.statusCode == 422) {
-      final decoded = jsonDecode(response.body);
-      throw Exception(decoded["detail"]?.toString() ?? "Invalid OTP");
+    // 🌐 NETWORK ERROR
+    on http.ClientException catch (e) {
+      throw Exception("Network error: ${e.message}");
     }
 
-    throw Exception("Verify OTP failed (${response.statusCode})");
+    // ⏰ TIMEOUT
+    on TimeoutException {
+      throw Exception("Request timeout");
+    }
+
+    // UNKNOWN
+    catch (e) {
+      debugPrint("🔥 VERIFY OTP ERROR: $e");
+      rethrow;
+    }
   }
 
 

@@ -33,7 +33,9 @@ import '../controllers/networkController.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../services/location_services.dart';
 import '../views/loginScreen.dart';
+import '../views/loginWithEmail.dart';
 
 String currentLocation = '';
 SharedPreferences? sp;
@@ -441,7 +443,9 @@ logoutUser() async {
   log("current user logout:- ${sp!.getString('currentUserId')}");
   currentUserId = null;
   splashController.currentUser = null;
-  Get.off(() => LoginScreen());
+  LocationService.isIndianUser ?
+  Get.offAll(() => LoginScreen()) :
+  Get.offAll(() => LoginWithEmailScreen());
 }
 
 //save current user

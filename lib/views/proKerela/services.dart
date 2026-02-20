@@ -47,7 +47,7 @@ class AstrologyServicesPage extends StatelessWidget {
     if (service.name == "Daily Horoscope") {
       return DailyPredictionInputScreen(
         serviceName: service.name,
-        servicePrice: service.finalPrice.toDouble(),
+        servicePrice: service.price.toDouble(),
 
       );
     }
@@ -56,42 +56,42 @@ class AstrologyServicesPage extends StatelessWidget {
     if (service.name == "Detailed Kundli") {
       return KundliInputScreen(
         serviceName : service.name,
-        servicePrice : service.finalPrice.toDouble(),
+        servicePrice : service.price.toDouble(),
       );
     }
 
     if (service.name == "Daily Prediction") {
       return PanchangInputScreen(
         serviceName : service.name,
-        servicePrice : service.finalPrice.toDouble(),
+        servicePrice : service.price.toDouble(),
       );
     }
 
     if (service.name == "Planet Position") {
       return PlanetInputScreen(
         serviceName : service.name,
-        servicePrice : service.finalPrice.toDouble(),
+        servicePrice : service.price.toDouble(),
       );
     }
 
     if (service.name == "Love Compatibility") {
       return LoveCompatibilityInputScreen(
         serviceName : service.name,
-        servicePrice : service.finalPrice.toDouble(),
+        servicePrice : service.price.toDouble(),
       );
     }
 
     if (service.name == "Birthday Number") {
       return BirthdayNumberInputScreen(
         serviceName : service.name,
-        servicePrice : service.finalPrice.toDouble(),
+        servicePrice : service.price.toDouble(),
       );
     }
 
     // fallback (safe)
     return DailyPredictionInputScreen(
       serviceName: service.name,
-      servicePrice: service.finalPrice.toDouble(),
+      servicePrice: service.price.toDouble(),
     );
   }
 
@@ -223,14 +223,14 @@ class AstrologyServicesPage extends StatelessWidget {
                                       color: celestialGold,
                                     ),
                                   ),
-                                  Text(
-                                    "GST ${service.gst}" ,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: lunarSilver,
-                                    ),
-                                  ),
+                                  // Text(
+                                  //   "GST ${service.gst}" ,
+                                  //   style: GoogleFonts.poppins(
+                                  //     fontSize: 10,
+                                  //     fontWeight: FontWeight.w600,
+                                  //     color: lunarSilver,
+                                  //   ),
+                                  // ),
                                 ],
                               ),
                             ),

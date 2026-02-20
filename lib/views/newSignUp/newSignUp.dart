@@ -1,12 +1,15 @@
 import 'dart:convert';
-
 import 'package:AstrowayCustomer/views/newSignUp/verifySignupOtp.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+
+import '../../services/location_services.dart';
 import '../../theme/appTheme.dart';
+import '../loginScreen.dart';
+import '../loginWithEmail.dart';
 import '../settings/termsAndConditionScreen.dart';
 import '../../fastApi/fastApiServices.dart';
 
@@ -17,7 +20,8 @@ class SignupWithOtpScreen extends StatefulWidget {
   State<SignupWithOtpScreen> createState() => _SignupWithOtpScreenState();
 }
 
-class _SignupWithOtpScreenState extends State<SignupWithOtpScreen> {
+class _SignupWithOtpScreenState extends State<SignupWithOtpScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final FastAPIServices _api = FastAPIServices();
 
@@ -26,345 +30,471 @@ class _SignupWithOtpScreenState extends State<SignupWithOtpScreen> {
   final _contactController = TextEditingController();
   final _emailController = TextEditingController();
 
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
   bool _isLoading = false;
   bool _isTermsAccepted = false;
 
-  // ---------------- SEND OTP ----------------
+  bool get isIndian => LocationService.isIndianUser;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize animations
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.2),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _nameController.dispose();
+    _countryCodeController.dispose();
+    _contactController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  // ------------------------------------------------
+  // SEND OTP
+  // ------------------------------------------------
   Future<void> _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (!_isTermsAccepted) {
-      Get.snackbar("Required", "Please accept Terms & Conditions");
+      _showCustomSnackbar(
+        "Terms & Conditions Required",
+        "Please accept the Terms & Conditions to continue",
+        isError: true,
+      );
       return;
     }
-
-    final countryCode = _countryCodeController.text.replaceAll('+', '').trim();
 
     setState(() => _isLoading = true);
 
     try {
       final success = await _api.sendCustomerOtp(
-        contactNo: _contactController.text.trim(),
-        countryCode: countryCode,
+        contactNo: isIndian ? _contactController.text.trim() : null,
+        countryCode: isIndian
+            ? _countryCodeController.text.replaceAll("+", "").trim()
+            : null,
         username: _nameController.text.trim(),
-        email: _emailController.text.trim(),
+        email: !isIndian ? _emailController.text.trim() : null,
       );
 
       if (success) {
+        debugPrint("✅ OTP SENT SUCCESS");
+
+        _showCustomSnackbar(
+          "OTP Sent Successfully",
+          "Please check your ${isIndian ? 'phone' : 'email'} for the verification code",
+        );
+
+        await Future.delayed(const Duration(milliseconds: 500));
+
         Get.to(() => VerifyOtpScreen(
-          contactNo: _contactController.text.trim(),
-        ));
+          contactNo: isIndian ? _contactController.text.trim() : "",
+          email: !isIndian ? _emailController.text.trim() : "",
+        ), transition: Transition.rightToLeft);
       }
     } catch (e) {
-      // Extract just the message from JSON string if it's in JSON format
-      String errorMessage = e.toString();
+      String msg = e.toString().replaceAll("Exception:", "").trim();
 
-      // Check if it's a JSON string
-      if (errorMessage.contains('{"detail":')) {
-        try {
-          // Try to parse it as JSON
-          final errorJson = json.decode(errorMessage);
-          if (errorJson['detail'] != null) {
-            errorMessage = errorJson['detail'].toString();
-          }
-        } catch (_) {
-          // If parsing fails, keep original message
-        }
-      }
-
-      // Remove any quotes and brackets
-      errorMessage = errorMessage.replaceAll('{"detail":"', '');
-      errorMessage = errorMessage.replaceAll('"}', '');
-      errorMessage = errorMessage.replaceAll('"', '');
-
-      Get.snackbar(
+      _showCustomSnackbar(
         "Error",
-        errorMessage,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
+        msg,
+        isError: true,
       );
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
+  void _showCustomSnackbar(String title, String message, {bool isError = false}) {
+    Get.snackbar(
+      title,
+      message,
+      backgroundColor: isError ? Colors.red.shade600 : Colors.green.shade600,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+      duration: const Duration(seconds: 3),
+      icon: Icon(
+        isError ? Icons.error_outline : Icons.check_circle_outline,
+        color: Colors.white,
+      ),
+      shouldIconPulse: true,
+      barBlur: 10,
+    );
+  }
+
+  // ------------------------------------------------
+  // UI
+  // ------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
         child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Logo
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: Image.asset(
-                      "assets/images/newLogo.png",
-                      height: 60,
-                      width: 60,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-
-                // Welcome heading
-                const Center(
-                  child: Text(
-                    "Welcome to",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Center(
-                  child: Text(
-                    "Jyotishi Online",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black87,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-
-                // Subtitle
-                const Center(
-                  child: Text(
-                    "Sign up to get started",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Name field
-                _field(
-                  _nameController,
-                  "Full Name",
-                  Icons.person_outline,
-                  validator: (v) =>
-                  v == null || v.isEmpty ? "Required" : null,
-                ),
-                const SizedBox(height: 14),
-
-                // Mobile number row
-                Row(
-                  children: [
-                    // Country code
-                    Container(
-                      width: 90,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: TextFormField(
-                        controller: _countryCodeController,
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
-                          LengthLimitingTextInputFormatter(4),
-                        ],
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: "+91",
-                          prefixIcon: Icon(
-                            Icons.flag,
-                            color: Colors.blue[700],
-                            size: 18,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _field(
-                        _contactController,
-                        "Mobile Number",
-                        Icons.phone_iphone_outlined,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(10),
-                        ],
-                        validator: (v) =>
-                        v == null || v.length != 10
-                            ? "10 digits required"
-                            : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // Email field
-                _field(
-                  _emailController,
-                  "Email Address",
-                  Icons.email_outlined,
-                  validator: (v) =>
-                  v == null || !GetUtils.isEmail(v)
-                      ? "Invalid email"
-                      : null,
-                ),
-                const SizedBox(height: 18),
-
-                // Terms & Conditions
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Transform.scale(
-                      scale: 1.1,
-                      child: Checkbox(
-                        value: _isTermsAccepted,
-                        onChanged: (v) =>
-                            setState(() => _isTermsAccepted = v ?? false),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        activeColor: appYellow,
-                        checkColor: Colors.black,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text.rich(
-                          TextSpan(children: [
-                            const TextSpan(
-                              text: "I agree to the ",
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 13,
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Section
+                      Center(
+                        child: Column(
+                          children: [
+                            // Logo with hero animation
+                            Hero(
+                              tag: 'appLogo',
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.shade200,
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                child: Image.asset(
+                                  "assets/images/newLogo.png",
+                                  height: 70,
+                                ),
                               ),
                             ),
-                            TextSpan(
-                              text: "Terms & Conditions",
+                            const SizedBox(height: 20),
+                            const Text(
+                              "Create Account",
                               style: TextStyle(
-                                color: Colors.blue[700],
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                decoration: TextDecoration.underline,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
                               ),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () =>
-                                    Get.to(() => TermAndConditionScreen()),
                             ),
-                          ]),
+                            const SizedBox(height: 8),
+                            Text(
+                              isIndian
+                                  ? "Sign up using your mobile number"
+                                  : "Sign up using your email address",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 22),
 
-                // Send OTP button
-                _isLoading
-                    ? Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: appYellow,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                      strokeWidth: 2,
-                    ),
-                  ),
-                )
-                    : SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _sendOtp,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: appYellow,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                      const SizedBox(height: 40),
+
+                      // Form Fields Section
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.shade200,
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // NAME FIELD
+                            _buildAnimatedField(
+                              index: 0,
+                              child: _field(
+                                _nameController,
+                                "Full Name",
+                                Icons.person_outline,
+                                validator: (v) =>
+                                v == null || v.isEmpty ? "Please enter your full name" : null,
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // PHONE (INDIAN ONLY)
+                            if (isIndian)
+                              _buildAnimatedField(
+                                index: 1,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 90,
+                                      decoration: _boxDecoration(),
+                                      child: TextFormField(
+                                        controller: _countryCodeController,
+                                        keyboardType: TextInputType.phone,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(
+                                              RegExp(r'[0-9+]')),
+                                          LengthLimitingTextInputFormatter(4),
+                                        ],
+                                        decoration: InputDecoration(
+                                          border: InputBorder.none,
+                                          hintText: "+91",
+                                          hintStyle: TextStyle(color: Colors.grey.shade400),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _field(
+                                        _contactController,
+                                        "Mobile Number",
+                                        Icons.phone_android,
+                                        keyboardType: TextInputType.number,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.digitsOnly,
+                                          LengthLimitingTextInputFormatter(10),
+                                        ],
+                                        validator: (v) {
+                                          if (!isIndian) return null;
+                                          if (v == null || v.isEmpty) {
+                                            return "Please enter mobile number";
+                                          }
+                                          if (v.length != 10) {
+                                            return "Enter valid 10-digit number";
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            // EMAIL (NON INDIAN ONLY)
+                            if (!isIndian) ...[
+                              _buildAnimatedField(
+                                index: 1,
+                                child: _field(
+                                  _emailController,
+                                  "Email Address",
+                                  Icons.email_outlined,
+                                  keyboardType: TextInputType.emailAddress,
+                                  validator: (v) {
+                                    if (isIndian) return null;
+                                    if (v == null || v.isEmpty) {
+                                      return "Please enter email address";
+                                    }
+                                    if (!GetUtils.isEmail(v)) {
+                                      return "Please enter a valid email";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(height: 24),
+
+                            // TERMS & CONDITIONS
+                            _buildAnimatedField(
+                              index: 2,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: Checkbox(
+                                        value: _isTermsAccepted,
+                                        onChanged: (v) =>
+                                            setState(() => _isTermsAccepted = v ?? false),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        activeColor: appYellow,
+                                        checkColor: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: RichText(
+                                        text: TextSpan(
+                                          text: "I accept the ",
+                                          style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                            fontSize: 14,
+                                          ),
+                                          children: [
+                                            TextSpan(
+                                              text: "Terms & Conditions",
+                                              style: const TextStyle(
+                                                color: appYellow,
+                                                fontWeight: FontWeight.w600,
+                                                decoration: TextDecoration.underline,
+                                              ),
+                                              recognizer: TapGestureRecognizer()
+                                                ..onTap = () {
+                                                  Get.to(() => const TermAndConditionScreen());
+                                                },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      elevation: 2,
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.send_outlined, size: 18),
-                        SizedBox(width: 6),
-                        Text(
-                          "SEND OTP",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
 
-                // Sign in link
-                const SizedBox(height: 20),
-                Center(
-                  child: Text.rich(
-                    TextSpan(
-                      children: [
-                        const TextSpan(
-                          text: "Already have an account? ",
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 13,
+                      const SizedBox(height: 30),
+
+                      // SIGN UP BUTTON
+                      _buildAnimatedField(
+                        index: 3,
+                        child: Container(
+                          width: double.infinity,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              colors: [
+                                appYellow,
+                                appYellow.withOpacity(0.8),
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: appYellow.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _sendOtp,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              foregroundColor: Colors.black,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                              ),
+                            )
+                                : const Text(
+                              "SIGN UP",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
                           ),
                         ),
-                        TextSpan(
-                          text: "Sign In",
-                          style: TextStyle(
-                            color: Colors.blue[700],
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            decoration: TextDecoration.underline,
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // LOGIN LINK
+                      Center(
+                        child: RichText(
+                          text: TextSpan(
+                            text: "Already have an account? ",
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: "Login",
+                                style: const TextStyle(
+                                  color: appYellow,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    isIndian
+                                        ? Get.offAll(() => LoginScreen(), transition: Transition.fadeIn)
+                                        : Get.offAll(() => LoginWithEmailScreen(), transition: Transition.fadeIn);
+                                  },
+                              ),
+                            ],
                           ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () {
-                              // Add your sign in navigation here
-                              // Get.to(() => SignInScreen());
-                            },
                         ),
-                      ],
-                    ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // OR DIVIDER
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              "OR",
+                              style: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // SOCIAL LOGIN (Optional - if you have social login)
+                      // You can add social login buttons here if needed
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20), // Extra padding at bottom
-              ],
+              ),
             ),
           ),
         ),
@@ -372,6 +502,28 @@ class _SignupWithOtpScreenState extends State<SignupWithOtpScreen> {
     );
   }
 
+  // Animated field wrapper
+  Widget _buildAnimatedField({required int index, required Widget child}) {
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: Duration(milliseconds: 500 + (index * 100)),
+      curve: Curves.easeOut,
+      builder: (context, double value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
+  // ------------------------------------------------
+  // COMMON FIELD
+  // ------------------------------------------------
   Widget _field(
       TextEditingController controller,
       String hint,
@@ -385,46 +537,41 @@ class _SignupWithOtpScreenState extends State<SignupWithOtpScreen> {
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       validator: validator,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-      ),
+      style: const TextStyle(fontSize: 16),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(
-          color: Colors.grey[500],
-          fontWeight: FontWeight.w400,
-          fontSize: 13,
-        ),
-        prefixIcon: Icon(
-          icon,
-          color: Colors.grey[700],
-          size: 20,
-        ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        hintStyle: TextStyle(color: Colors.grey.shade400),
+        prefixIcon: Icon(icon, color: appYellow, size: 22),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Colors.grey.shade50,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: appYellow, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: appYellow, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.red, width: 1),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.red.shade300),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.red.shade400, width: 2),
         ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
+
+  BoxDecoration _boxDecoration() => BoxDecoration(
+    color: Colors.grey.shade50,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(color: Colors.grey.shade200),
+  );
 }

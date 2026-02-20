@@ -166,7 +166,7 @@ class FastApiEndpoints {
       "$fastApiBaseUrl/Customer_notification/register-token";
 
 
-  // ---------------- ADMIN ----------------
+  // ---------------- ADMIN ----------------f
   static const String adminGetUsers =
       "$fastApiBaseUrl/api/v1/admin/admin/users";
   static const String adminGetProfileById =

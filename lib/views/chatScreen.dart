@@ -133,30 +133,30 @@ class _ChatAstrologerScreenState extends State<ChatAstrologerScreen> {
                             ? Icon(Icons.person, size: 36, color: Colors.grey.shade400)
                             : null,
                       ),
-                      Container(
-                        width: 16,
-                        height: 16,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 10,
-                            height: 10,
-                            decoration: const BoxDecoration(
-                              color: Colors.green,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ),
+                      // Container(
+                      //   width: 16,
+                      //   height: 16,
+                      //   decoration: BoxDecoration(
+                      //     color: Colors.white,
+                      //     shape: BoxShape.circle,
+                      //     boxShadow: [
+                      //       BoxShadow(
+                      //         color: Colors.black.withOpacity(0.1),
+                      //         blurRadius: 4,
+                      //       ),
+                      //     ],
+                      //   ),
+                      //   child: Center(
+                      //     child: Container(
+                      //       width: 10,
+                      //       height: 10,
+                      //       decoration: const BoxDecoration(
+                      //         color: Colors.green,
+                      //         shape: BoxShape.circle,
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -259,7 +259,10 @@ class _ChatAstrologerScreenState extends State<ChatAstrologerScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          astro.languageKnown ?? 'English, Hindi',
+                          astro.languageKnown != null && astro.languageKnown!.isNotEmpty
+                              ? astro.languageKnown!
+                              : "Not specified",
+
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade700,
