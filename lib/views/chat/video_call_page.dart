@@ -43,6 +43,7 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
   bool _joined = false;
   int? _remoteUid;
   bool _isCharged = false;
+  bool _chargeFailed = false;
 
   Timer? _callTimer;
   int _secondsLeft = 600; // 10 minutes
@@ -61,15 +62,30 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
   String _connectionQuality = "Good";
   Color _qualityColor = Colors.green;
 
-  // Disconnection handling
+  // Disconnection handling - UPDATED to 2 minutes (120 seconds)
   bool _isRemoteUserDisconnected = false;
-  Timer? _disconnectTimer;
+  Timer? _reconnectTimer;
+  int _reconnectCountdown = 120; // 120 seconds = 2 minutes to reconnect
+  bool _showReconnectTimer = false;
+
+  // Waiting time tracking
+  DateTime? _joinAttemptStartTime;
+  Timer? _waitingTimer;
+  int _waitingSeconds = 0;
+  bool _showWaitingTimer = false;
+
+  // Disclaimer flag
+  bool _disclaimerShown = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _bootstrap();
+
+    // Show disclaimer first, then bootstrap
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showDisclaimerDialog();
+    });
 
     // Keep screen awake during call
     WakelockPlus.enable();
@@ -81,12 +97,138 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
     ]);
   }
 
+  // Show disclaimer dialog
+  void _showDisclaimerDialog() {
+    if (_disclaimerShown) return;
+    _disclaimerShown = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Video Call Rules',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(
+                        Icons.timer,
+                        size: 50,
+                        color: Colors.orange,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Video Call Session',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        '⚠️ IMPORTANT NOTES:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '• You will be charged immediately upon entering\n'
+                            '• Timer starts only when astrologer joins\n'
+                            '• If astrologer disconnects, wait 2 minutes for reconnection\n'
+                            '• If astrologer doesn\'t join in 2 minutes, contact support\n'
+                            '• DO NOT minimize or close the app\n'
+                            '• DO NOT switch to other apps\n'
+                            '• Ensure stable internet connection',
+                        style: TextStyle(fontSize: 13, height: 1.5),
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        '🚫 SHARING CONTACT INFO IS PROHIBITED',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Do not share phone numbers, email, or social media handles. '
+                            'All conversations are monitored for your safety.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _bootstrap();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                ),
+                child: const Text(
+                  'I Understand & Continue',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _callTimer?.cancel();
     _controlsTimer?.cancel();
-    _disconnectTimer?.cancel();
+    _reconnectTimer?.cancel();
+    _waitingTimer?.cancel();
     _stopEngine();
 
     // Reset orientation
@@ -105,11 +247,20 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Just track app state but don't do PiP
     if (state == AppLifecycleState.resumed) {
       debugPrint("📱 App resumed");
     } else if (state == AppLifecycleState.paused) {
       debugPrint("📱 App paused");
+      if (mounted && !_isRemoteUserDisconnected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Timer is still running! Please stay on this screen.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -126,19 +277,76 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
     _isCharged = true;
 
     try {
-      debugPrint("💰 Initializing upfront deduction: ₹$_videoRate");
+      debugPrint("💰 Charging customer: ₹$_videoRate");
       await FastAPIServices().sendMoney(
         astrologerId: widget.astroId,
         amount: _videoRate,
         type: "video_call",
       );
       if (mounted) {
-        _showSnackBar("₹$_videoRate deducted for the session start", Colors.green);
+        _showSnackBar("₹$_videoRate charged for the session", Colors.green);
       }
     } catch (e) {
-      debugPrint("💥 Deduction failed: $e");
-      _showSnackBar("Failed to deduct balance. Call may be interrupted.", Colors.red);
+      debugPrint("💥 Charge failed: $e");
+      _chargeFailed = true;
+      _showSnackBar("Failed to charge. Call may not start.", Colors.red);
+
+      // Show charge failed dialog
+      _showChargeFailedDialog();
     }
+  }
+
+  void _showChargeFailedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red, size: 28),
+              SizedBox(width: 8),
+              Text(
+                'Payment Failed',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Unable to charge your account.\n\n'
+                    'Please check your balance and try again.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(); // Go back
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                ),
+                child: const Text('OK'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showSnackBar(String message, Color color) {
@@ -160,13 +368,21 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
         throw 'Camera/Microphone permission denied';
       }
 
-      // Fetch Rate and Deduct Money Upfront
+      // Fetch Rate and Charge immediately
       try {
         final astro = await FastAPIServices().fetchAstrologerDetail(widget.astroId);
         _videoRate = (astro.videoCallCharge ?? 0).toDouble();
-        await _deductBalance();
+        await _deductBalance(); // Charge immediately when entering
       } catch (e) {
-        debugPrint("⚠️ Could not process upfront deduction: $e");
+        debugPrint("⚠️ Could not process charge: $e");
+      }
+
+      // If charge failed, don't proceed
+      if (_chargeFailed) {
+        if (mounted) {
+          setState(() => _loading = false);
+        }
+        return;
       }
 
       // Decide join params
@@ -195,7 +411,6 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
       await _engine!.enableVideo();
       await _engine!.startPreview();
 
-      // Set video configuration for portrait mode
       await _engine!.setVideoEncoderConfiguration(
         const VideoEncoderConfiguration(
           dimensions: VideoDimensions(width: 360, height: 640),
@@ -210,22 +425,32 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
           onJoinChannelSuccess: (conn, elapsed) {
             if (mounted) setState(() => _joined = true);
             debugPrint("✅ Joined channel successfully");
+
+            // Start waiting timer when joined but no astrologer
+            _startWaitingTimer();
           },
           onUserJoined: (conn, remoteUid, elapsed) {
             if (mounted) {
               setState(() {
                 _remoteUid = remoteUid;
                 _isRemoteUserDisconnected = false;
+                _showReconnectTimer = false;
+                _showWaitingTimer = false; // Hide waiting timer
               });
             }
+            // Start timer ONLY when astrologer joins
             if (!_timerStarted) {
               _startTimer();
               _timerStarted = true;
+              debugPrint("⏱️ Timer started - astrologer joined");
             }
             debugPrint("👤 Remote user joined: $remoteUid");
 
-            // Cancel any pending disconnect timer
-            _disconnectTimer?.cancel();
+            // Cancel waiting timer
+            _waitingTimer?.cancel();
+
+            // Cancel reconnection timer when user rejoins
+            _reconnectTimer?.cancel();
           },
           onUserOffline: (conn, remoteUid, reason) {
             debugPrint("👋 Remote user left: $remoteUid, reason: $reason");
@@ -233,18 +458,12 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
               setState(() {
                 _remoteUid = null;
                 _isRemoteUserDisconnected = true;
+                _showReconnectTimer = true;
+                _reconnectCountdown = 120; // Reset countdown to 2 minutes
               });
 
-              // Start timer to end session if remote user doesn't return
-              _disconnectTimer?.cancel();
-              _disconnectTimer = Timer(const Duration(seconds: 5), () {
-                if (mounted && _remoteUid == null) {
-                  _showSnackBar("Astrologer disconnected. Ending call...", Colors.red);
-                  Future.delayed(const Duration(seconds: 2), () {
-                    _endSession();
-                  });
-                }
-              });
+              // Start countdown for reconnection (2 minutes)
+              _startReconnectionCountdown();
             }
           },
           onNetworkQuality: (conn, uid, txQuality, rxQuality) {
@@ -277,10 +496,6 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
               _showSnackBar("Connected", Colors.green);
             } else if (state == ConnectionStateType.connectionStateFailed) {
               _showSnackBar("Connection lost", Colors.red);
-              // End session after connection failure
-              Future.delayed(const Duration(seconds: 2), () {
-                _endSession();
-              });
             }
           },
         ),
@@ -313,6 +528,174 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
     }
   }
 
+  // Start waiting timer (2 minutes max)
+  void _startWaitingTimer() {
+    _joinAttemptStartTime = DateTime.now();
+    _showWaitingTimer = true;
+    _waitingSeconds = 0;
+
+    _waitingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _waitingSeconds++;
+
+          // If waiting for more than 2 minutes (120 seconds), show support message
+          if (_waitingSeconds >= 120 && _remoteUid == null) {
+            timer.cancel();
+            _showSupportDialog();
+          }
+        });
+      }
+    });
+  }
+
+  // Show support dialog if astrologer doesn't join
+  void _showSupportDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.support_agent, color: Colors.blue, size: 28),
+              SizedBox(width: 8),
+              Text(
+                'Astrologer Not Joining',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.timer_off,
+                      size: 50,
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'The astrologer hasn\'t joined yet.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Please contact support with this information:',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SelectableText(
+                        'Astrologer ID: ${widget.astroId}\n'
+                            'Channel: $_channel\n'
+                            'Time: ${DateTime.now().toString()}\n'
+                            'Amount Charged: ₹$_videoRate',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Screenshot this and send to:\n'
+                          '📱 WhatsApp: +91 1234567890\n'
+                          '📧 Email: support@astroway.com',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    // End the call
+                    Navigator.of(context).pop();
+                    _endSession();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: const Text('End Call'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    // Continue waiting
+                    Navigator.of(context).pop();
+                    _startWaitingTimer(); // Restart waiting timer
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: const Text('Wait Longer'),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Start reconnection countdown (2 minutes)
+  void _startReconnectionCountdown() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (_reconnectCountdown > 0) {
+            _reconnectCountdown--;
+          } else {
+            // Time's up - end the session
+            timer.cancel();
+            _showSnackBar("Astrologer didn't reconnect. Ending call...", Colors.red);
+            Future.delayed(const Duration(seconds: 2), () {
+              _endSession();
+            });
+          }
+        });
+      }
+    });
+  }
+
   void _startTimer() {
     _callTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (_secondsLeft <= 0) {
@@ -325,7 +708,8 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
 
   Future<void> _endSession() async {
     _callTimer?.cancel();
-    _disconnectTimer?.cancel();
+    _reconnectTimer?.cancel();
+    _waitingTimer?.cancel();
 
     if (mounted) {
       _showSnackBar("Call ended", Colors.orange);
@@ -335,8 +719,40 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
   }
 
   Future<void> _leave() async {
+    // Show confirmation dialog when trying to leave
+    final shouldLeave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text('End Video Call?'),
+        content: const Text(
+            'Are you sure you want to end the call?\n\n'
+                'You have been charged for this session.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Continue Call'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('End Call'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLeave != true) return;
+
     _callTimer?.cancel();
-    _disconnectTimer?.cancel();
+    _reconnectTimer?.cancel();
+    _waitingTimer?.cancel();
 
     try {
       await _engine?.leaveChannel();
@@ -383,108 +799,267 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
     final minutes = (_secondsLeft ~/ 60).toString().padLeft(2, "0");
     final seconds = (_secondsLeft % 60).toString().padLeft(2, "0");
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: _loading
-          ? _buildLoadingScreen()
-          : GestureDetector(
-        onTap: _showControlsTemporarily,
-        child: Stack(
-          children: [
-            // Remote Video (Main)
-            Positioned.fill(
-              child: _remoteUid == null
-                  ? _buildWaitingScreen()
-                  : Container(
-                color: Colors.black,
-                child: AgoraVideoView(
-                  controller: VideoViewController.remote(
-                    rtcEngine: _engine!,
-                    canvas: VideoCanvas(uid: _remoteUid),
-                    connection: RtcConnection(channelId: _channel),
-                  ),
-                ),
-              ),
-            ),
+    // Format reconnect time as minutes:seconds
+    final reconnectMinutes = (_reconnectCountdown ~/ 60).toString().padLeft(2, '0');
+    final reconnectSeconds = (_reconnectCountdown % 60).toString().padLeft(2, '0');
 
-            // Local Video
-            Positioned(
-              top: 20,
-              right: 20,
-              width: 100,
-              height: 150,
-              child: _buildLocalVideo(),
-            ),
-
-            // Connection Quality Badge
-            if (_remoteUid != null)
-              Positioned(
-                top: 20,
-                left: 20,
-                child: _buildQualityBadge(),
-              ),
-
-            // Timer
-            Positioned(
-              top: 20,
-              left: MediaQuery.of(context).size.width / 2 - 50,
-              child: _buildTimerDisplay(minutes, seconds),
-            ),
-
-            // Disconnected Message
-            if (_isRemoteUserDisconnected)
+    return WillPopScope(
+      onWillPop: () async {
+        if (!_loading) {
+          await _leave();
+        }
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: _loading
+            ? _buildLoadingScreen()
+            : _chargeFailed
+            ? _buildChargeFailedScreen()
+            : GestureDetector(
+          onTap: _showControlsTemporarily,
+          child: Stack(
+            children: [
+              // Remote Video (Main)
               Positioned.fill(
-                child: Container(
-                  color: Colors.black54,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.warning_amber_rounded,
-                            color: Colors.orange,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            "Astrologer disconnected",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            "Ending call in a moment...",
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
+                child: _remoteUid == null
+                    ? _buildWaitingScreen()
+                    : Container(
+                  color: Colors.black,
+                  child: AgoraVideoView(
+                    controller: VideoViewController.remote(
+                      rtcEngine: _engine!,
+                      canvas: VideoCanvas(uid: _remoteUid),
+                      connection: RtcConnection(channelId: _channel),
                     ),
                   ),
                 ),
               ),
 
-            // Call Controls
-            if (_showControls)
+              // Local Video
               Positioned(
-                bottom: 40,
-                left: 0,
-                right: 0,
-                child: _buildCallControls(),
+                top: 20,
+                right: 20,
+                width: 100,
+                height: 150,
+                child: _buildLocalVideo(),
               ),
-          ],
+
+              // Connection Quality Badge
+              if (_remoteUid != null)
+                Positioned(
+                  top: 20,
+                  left: 20,
+                  child: _buildQualityBadge(),
+                ),
+
+              // Timer - Only show when astrologer has joined
+              if (_timerStarted && _remoteUid != null)
+                Positioned(
+                  top: 20,
+                  left: MediaQuery.of(context).size.width / 2 - 50,
+                  child: _buildTimerDisplay(minutes, seconds),
+                ),
+
+              // Waiting Timer
+              if (_showWaitingTimer && _remoteUid == null && !_timerStarted)
+                Positioned(
+                  top: 20,
+                  left: MediaQuery.of(context).size.width / 2 - 100,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.hourglass_empty, color: Colors.orange, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Waiting: $_waitingSeconds/120 sec",
+                          style: const TextStyle(
+                            color: Colors.orange,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Disconnected Message with Reconnection Timer (2 minutes)
+              if (_isRemoteUserDisconnected && _showReconnectTimer)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black54,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.orange,
+                              size: 48,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              "Astrologer disconnected",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Waiting for reconnection...",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.orange,
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: Text(
+                                "Reconnecting in $reconnectMinutes:$reconnectSeconds",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              "The astrologer has 2 minutes to rejoin.\nYou will not be charged for this waiting time.",
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Call Controls
+              if (_showControls && !_isRemoteUserDisconnected && !_chargeFailed)
+                Positioned(
+                  bottom: 40,
+                  left: 0,
+                  right: 0,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(width: 8),
+                        _buildControlButton(
+                          icon: _isMuted ? Icons.mic_off : Icons.mic,
+                          label: _isMuted ? "Unmute" : "Mute",
+                          color: _isMuted ? Colors.red : Colors.white,
+                          onTap: _toggleMute,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildControlButton(
+                          icon: _isCameraOff ? Icons.videocam_off : Icons.videocam,
+                          label: _isCameraOff ? "Camera On" : "Camera Off",
+                          color: _isCameraOff ? Colors.red : Colors.white,
+                          onTap: _toggleCamera,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildControlButton(
+                          icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_off,
+                          label: _isSpeakerOn ? "Speaker" : "Earpiece",
+                          color: Colors.white,
+                          onTap: _toggleSpeaker,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildControlButton(
+                          icon: Icons.flip_camera_ios,
+                          label: "Switch",
+                          color: Colors.white,
+                          onTap: _switchCamera,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildControlButton(
+                          icon: Icons.call_end,
+                          label: "End",
+                          color: Colors.red,
+                          onTap: _leave,
+                          isEndCall: true,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildChargeFailedScreen() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.error_outline,
+            color: Colors.red,
+            size: 80,
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Payment Failed',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Unable to charge your account.\nPlease check your balance.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 30),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: const Text('Go Back'),
+          ),
+        ],
       ),
     );
   }
@@ -611,52 +1186,6 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
     );
   }
 
-  Widget _buildCallControls() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildControlButton(
-            icon: _isMuted ? Icons.mic_off : Icons.mic,
-            label: _isMuted ? "Unmute" : "Mute",
-            color: _isMuted ? Colors.red : Colors.white,
-            onTap: _toggleMute,
-          ),
-          const SizedBox(width: 16),
-          _buildControlButton(
-            icon: _isCameraOff ? Icons.videocam_off : Icons.videocam,
-            label: _isCameraOff ? "Camera On" : "Camera Off",
-            color: _isCameraOff ? Colors.red : Colors.white,
-            onTap: _toggleCamera,
-          ),
-          const SizedBox(width: 16),
-          _buildControlButton(
-            icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_off,
-            label: _isSpeakerOn ? "Speaker" : "Earpiece",
-            color: Colors.white,
-            onTap: _toggleSpeaker,
-          ),
-          const SizedBox(width: 16),
-          _buildControlButton(
-            icon: Icons.flip_camera_ios,
-            label: "Switch",
-            color: Colors.white,
-            onTap: _switchCamera,
-          ),
-          const SizedBox(width: 16),
-          _buildControlButton(
-            icon: Icons.call_end,
-            label: "End",
-            color: Colors.red,
-            onTap: _leave,
-            isEndCall: true,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildControlButton({
     required IconData icon,
     required String label,
@@ -670,7 +1199,7 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isEndCall ? Colors.red : Colors.black54,
               shape: BoxShape.circle,
@@ -683,12 +1212,12 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
                 ),
               ],
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: color, size: 20),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(color: Colors.white, fontSize: 11),
+            style: const TextStyle(color: Colors.white, fontSize: 10),
           ),
         ],
       ),

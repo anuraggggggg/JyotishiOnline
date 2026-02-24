@@ -24,14 +24,14 @@ class CustomerChatPage extends StatefulWidget {
     required this.myUserId,
     required this.astrologerName,
     this.token,
-
   });
 
   @override
   State<CustomerChatPage> createState() => _CustomerChatPageState();
 }
 
-class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+class _CustomerChatPageState extends State<CustomerChatPage>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   final FastAPIServices _api = FastAPIServices();
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -45,6 +45,12 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
   bool _iAmReady = false;
   bool _otherIsReady = false;
   bool _timerStarted = false;
+
+  // Reconnection variables
+  Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 5;
+  static const int _reconnectDelaySeconds = 3;
 
   static const int _totalSessionSeconds = 10 * 60;
   int _secondsLeft = _totalSessionSeconds;
@@ -64,6 +70,9 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
   bool _hasMoreHistory = true;
   bool _loadingHistory = false;
   static const int _pageSize = 50;
+
+  // Flag to track if warning dialog has been shown
+  bool _warningDialogShown = false;
 
   // Contact detection constants
   static const List<String> _blockedKeywords = [
@@ -127,7 +136,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
       duration: const Duration(milliseconds: 800),
     );
     _typingAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _typingAnimationController, curve: Curves.easeInOut),
+      CurvedAnimation(
+          parent: _typingAnimationController, curve: Curves.easeInOut),
     );
     _typingAnimationController.repeat(reverse: true);
 
@@ -142,6 +152,102 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
         _loadOlderMessages();
       }
     });
+
+    // Show warning dialog after a short delay
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showStayOnScreenWarning();
+    });
+  }
+
+  // Show warning dialog about staying on screen
+  void _showStayOnScreenWarning() {
+    if (_warningDialogShown) return;
+    _warningDialogShown = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              SizedBox(width: 8),
+              Text(
+                'Important!',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Column(
+                  children: [
+                    Icon(
+                      Icons.timer,
+                      size: 50,
+                      color: Colors.orange,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Your 10-minute chat session starts now!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      '⚠️ Please do NOT:\n'
+                          '• Minimize the app\n'
+                          '• Switch to other apps\n'
+                          '• Turn off your screen\n'
+                          '• Close the chat\n\n'
+                          'The timer will continue running and you may lose your session!',
+                      style: TextStyle(fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                ),
+                child: const Text(
+                  'I Understand',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Contact Detection Methods
@@ -160,19 +266,12 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
 
     // 2. Check for phone numbers (multiple formats)
     final phonePatterns = [
-      // Indian mobile: 10 digits starting with 6-9
       r'\b[6-9]\d{9}\b',
-      // With country code: +91XXXXXXXXXX or 0091XXXXXXXXXX
       r'(\+91|0091)[6-9]\d{9}\b',
-      // With spaces/hyphens: XXX-XXX-XXXX
       r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b',
-      // International format: +XX XXXXXXXXXX
       r'\+\d{1,3}[-.\s]?\d{4,14}\b',
-      // Any 10+ digits (potential phone)
       r'\b\d{10,15}\b',
-      // Patterns like "12345 67890" or "12345-67890"
       r'\b\d{5}[-\s]?\d{5}\b',
-      // Patterns like "123 456 7890"
       r'\b\d{3}\s?\d{3}\s?\d{4}\b',
     ];
 
@@ -249,7 +348,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
       patterns.add('phone_international');
     }
 
-    if (RegExp(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b').hasMatch(message)) {
+    if (RegExp(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
+        .hasMatch(message)) {
       patterns.add('email');
     }
 
@@ -272,16 +372,12 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
       'timestamp': DateTime.now().toIso8601String(),
       'detected_patterns': _getDetectedPatterns(message),
     };
-
-    // Send to your backend (implement this in FastAPIServices if needed)
-    // _api.logSuspiciousMessage(logData);
     debugPrint("📝 Suspicious message logged: $logData");
   }
 
   void _onTextChanged() {
     final text = _controller.text;
     if (text.isNotEmpty && _containsPersonalContact(text)) {
-      // Debounce to avoid too many snackbars
       _warningDebounceTimer?.cancel();
       _warningDebounceTimer = Timer(const Duration(milliseconds: 800), () {
         if (mounted && _containsPersonalContact(_controller.text)) {
@@ -399,20 +495,16 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
     }
 
     try {
-      // First, try to fetch astrologer details to get profile image
       await _fetchAstrologerProfile();
-
-      // Then load chat history
       await _loadFullChatHistory();
-
-      // Deduct balance
       await _deductBalance();
+
+      // Start timer immediately when screen loads
+      _startSessionTimer();
 
     } catch (e) {
       debugPrint("Error initializing: $e");
-      // Use widget values as fallback
       _displayName = widget.astrologerName;
-
     }
 
     if (mounted) setState(() => _isLoading = false);
@@ -423,14 +515,15 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
 
   Future<void> _fetchAstrologerProfile() async {
     try {
-      debugPrint("📡 Fetching astrologer profile for ID: ${widget.astrologerProfileId}");
+      debugPrint(
+          "📡 Fetching astrologer profile for ID: ${widget.astrologerProfileId}");
 
-      final astro = await _api.fetchAstrologerDetail(widget.astrologerProfileId);
+      final astro =
+      await _api.fetchAstrologerDetail(widget.astrologerProfileId);
 
       if (mounted) {
         setState(() {
           _displayName = astro.name;
-
 
           if (astro.profileImage != null && astro.profileImage!.isNotEmpty) {
             _astrologerProfileImage = _getFullImageUrl(astro.profileImage);
@@ -444,7 +537,6 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
       debugPrint("❌ Error fetching astrologer profile: $e");
       setState(() {
         _displayName = widget.astrologerName;
-
       });
     }
   }
@@ -699,7 +791,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
               final newItemCount = _messages.length;
               final itemsAdded = newItemCount - oldItemCount;
               final newScrollPosition = oldScrollPosition +
-                  (_scrollController.position.maxScrollExtent * (itemsAdded / newItemCount));
+                  (_scrollController.position.maxScrollExtent *
+                      (itemsAdded / newItemCount));
               _scrollController.jumpTo(newScrollPosition);
             }
           });
@@ -725,22 +818,32 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
       _socket = await WebSocket.connect(uri.toString());
       _socket!.pingInterval = const Duration(seconds: 20);
 
+      // Reset reconnection attempts on successful connection
+      _reconnectAttempts = 0;
+
       if (mounted) setState(() => _isConnected = true);
 
       _socket!.listen(
         _onMessage,
         onDone: _handleDisconnect,
-        onError: (_) => _handleDisconnect(),
+        onError: (error) {
+          debugPrint("❌ WebSocket error: $error");
+          _handleDisconnect();
+        },
       );
 
+      // Send ready status
       _iAmReady = true;
-      _socket!.add(jsonEncode({
+      final readyMsg = jsonEncode({
         "type": "connectivity",
         "status": "ready",
         "user_id": _myUserId,
         "room_id": _roomId,
-      }));
-    } catch (_) {
+      });
+      _socket!.add(readyMsg);
+      debugPrint("📤 Sent ready status: $readyMsg");
+    } catch (e) {
+      debugPrint("❌ WebSocket connection error: $e");
       _handleDisconnect();
     }
   }
@@ -750,6 +853,54 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
     _stopSessionTimer();
     _socket = null;
     if (mounted) setState(() => _isConnected = false);
+
+    // Attempt to reconnect if not manually closed and within limits
+    if (!_manuallyClosed && _reconnectAttempts < _maxReconnectAttempts) {
+      _attemptReconnection();
+    } else if (_reconnectAttempts >= _maxReconnectAttempts) {
+      debugPrint("❌ Max reconnection attempts reached");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to connect to chat server'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _attemptReconnection() {
+    _reconnectAttempts++;
+    debugPrint("🔄 Attempting to reconnect (${_reconnectAttempts}/$_maxReconnectAttempts)...");
+
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(Duration(seconds: _reconnectDelaySeconds), () {
+      if (mounted && !_manuallyClosed) {
+        _connectWebSocket();
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (_socket == null && !_manuallyClosed) {
+        _connectWebSocket();
+      }
+    } else if (state == AppLifecycleState.paused) {
+      // Show warning when app is minimized
+      if (mounted && !_manuallyClosed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Chat timer is still running! Please stay on this screen.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _onMessage(dynamic data) {
@@ -765,12 +916,15 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
 
       if (parsed['type'] == 'connectivity') {
         if (parsed['user_id'] == _myUserId) return;
+
         if (parsed['status'] == 'ready') {
           _otherIsReady = true;
-          _tryStartTimer();
+          if (mounted) setState(() {});
+          debugPrint("✅ Astrologer is ready to chat");
         } else if (parsed['status'] == 'offline') {
           _otherIsReady = false;
-          _stopSessionTimer();
+          if (mounted) setState(() {});
+          debugPrint("❌ Astrologer went offline");
         } else if (parsed['status'] == 'typing') {
           _handleTypingIndicator(parsed['is_typing'] ?? false);
         }
@@ -782,8 +936,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
       final msg = parsed['message'];
       if (msg == null || msg['sender_user_id'].toString() == _myUserId) return;
 
+      // Ensure astrologer is marked as ready when they send a message
       _otherIsReady = true;
-      _tryStartTimer();
 
       final messageText = _decodeMessageContent(msg['content']);
 
@@ -820,16 +974,11 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
     }
   }
 
-  void _tryStartTimer() {
-    if (_timerStarted) return;
-    if (_iAmReady && _otherIsReady && _isConnected) {
-      _startSessionTimer();
-    }
-  }
-
   void _startSessionTimer() {
     if (_timerStarted) return;
     _timerStarted = true;
+    debugPrint("⏱️ Chat timer started: 10 minutes");
+
     _sessionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_secondsLeft <= 0) {
         _showTimeUpDialog();
@@ -846,7 +995,8 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Column(
             children: [
               Icon(Icons.timer_off, color: primaryYellow, size: 60),
@@ -874,9 +1024,11 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                 ),
-                child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text('OK',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -888,15 +1040,6 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
   void _stopSessionTimer() {
     _sessionTimer?.cancel();
     _timerStarted = false;
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      if (_socket == null) {
-        _connectWebSocket();
-      }
-    }
   }
 
   void _sendMessage() {
@@ -965,23 +1108,60 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: primaryLight,
-      appBar: _buildAppBar(),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: primaryYellow))
-          : Column(
-        children: [
-          _buildConnectionStatus(),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => FocusScope.of(context).unfocus(),
-              child: _buildMessageList(),
+    // Customer can always send messages if connected to WebSocket
+    // They don't need to wait for astrologer to be ready
+    final canSend = _isConnected;
+
+    return WillPopScope(
+      onWillPop: () async {
+        // Show warning when trying to go back
+        final shouldPop = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
+            title: const Text('End Chat Session?'),
+            content: const Text(
+                'Are you sure you want to leave?\n\n'
+                    'Your chat session will end and you may still be charged.'
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Stay'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Leave'),
+              ),
+            ],
           ),
-          if (_isAstrologerTyping) _buildTypingIndicator(),
-          _buildInput(),
-        ],
+        );
+        return shouldPop ?? false;
+      },
+      child: Scaffold(
+        backgroundColor: primaryLight,
+        appBar: _buildAppBar(),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: primaryYellow))
+            : Column(
+          children: [
+            _buildConnectionStatus(),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: _buildMessageList(),
+              ),
+            ),
+            if (_isAstrologerTyping) _buildTypingIndicator(),
+            _buildInput(canSend),
+          ],
+        ),
       ),
     );
   }
@@ -1017,7 +1197,39 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () async {
+                        // Show warning when trying to go back
+                        final shouldPop = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            title: const Text('End Chat Session?'),
+                            content: const Text(
+                                'Are you sure you want to leave?\n\n'
+                                    'Your chat session will end and you may still be charged.'
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Stay'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context, true);
+                                  Navigator.pop(context);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text('Leave'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(width: 8),
                     _buildAstrologerAvatar(),
@@ -1042,15 +1254,15 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
                                 width: 8,
                                 height: 8,
                                 decoration: BoxDecoration(
-                                  color: _otherIsReady ? onlineGreen : offlineGrey,
+                                  color: _otherIsReady ? onlineGreen : Colors.grey,
                                   shape: BoxShape.circle,
                                 ),
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                _otherIsReady ? 'Online' : 'Offline',
+                                _otherIsReady ? 'Online' : 'Away',
                                 style: TextStyle(
-                                  color: _otherIsReady ? onlineGreen : offlineGrey,
+                                  color: _otherIsReady ? onlineGreen : Colors.grey,
                                   fontSize: 12,
                                 ),
                               ),
@@ -1183,29 +1395,38 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
   }
 
   Widget _buildConnectionStatus() {
-    if (_isConnected && _otherIsReady) return const SizedBox.shrink();
+    // Show connection status with reconnection attempt info
+    if (_isConnected) return const SizedBox.shrink();
+
+    String message = 'Connecting...';
+    if (_reconnectAttempts > 0) {
+      message = 'Reconnecting... (Attempt $_reconnectAttempts/$_maxReconnectAttempts)';
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      color: _isConnected ? Colors.orange[100] : Colors.red[100],
+      color: Colors.red[100],
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            _isConnected ? Icons.access_time : Icons.wifi_off,
-            color: _isConnected ? Colors.orange : Colors.red,
-            size: 16,
-          ),
+          const Icon(Icons.wifi_off, color: Colors.red, size: 16),
           const SizedBox(width: 8),
           Text(
-            _isConnected
-                ? 'Waiting for astrologer to join...'
-                : 'Connecting... Please wait',
-            style: TextStyle(
-              color: _isConnected ? Colors.orange : Colors.red,
-              fontSize: 12,
-            ),
+            message,
+            style: const TextStyle(color: Colors.red, fontSize: 12),
           ),
+          if (_reconnectAttempts > 0)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -1228,21 +1449,24 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
         itemBuilder: (_, i) {
           final m = _messages[i];
           final isMine = m['sender_id'].toString() == _myUserId;
-          final showAvatar = !isMine && (i == 0 || _messages[i - 1]['sender_id'] != m['sender_id']);
+          final showAvatar = !isMine &&
+              (i == 0 || _messages[i - 1]['sender_id'] != m['sender_id']);
           return _buildEnhancedBubble(m, isMine, showAvatar);
         },
       ),
     );
   }
 
-  Widget _buildEnhancedBubble(Map<String, dynamic> m, bool isMine, bool showAvatar) {
+  Widget _buildEnhancedBubble(
+      Map<String, dynamic> m, bool isMine, bool showAvatar) {
     final messageTime = DateTime.parse(m['created_at']);
     final timeString = TimeOfDay.fromDateTime(messageTime).format(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+        isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMine && showAvatar)
@@ -1261,16 +1485,19 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
                     color: Colors.grey[300],
-                    child: const Icon(Icons.person, color: Colors.grey, size: 16),
+                    child: const Icon(Icons.person,
+                        color: Colors.grey, size: 16),
                   ),
                   errorWidget: (context, url, error) => Container(
                     color: Colors.grey[300],
-                    child: const Icon(Icons.person, color: Colors.grey, size: 16),
+                    child: const Icon(Icons.person,
+                        color: Colors.grey, size: 16),
                   ),
                 )
                     : Container(
                   color: Colors.grey[300],
-                  child: const Icon(Icons.person, color: Colors.grey, size: 16),
+                  child: const Icon(Icons.person,
+                      color: Colors.grey, size: 16),
                 ),
               ),
             ),
@@ -1346,16 +1573,19 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(
                   color: Colors.grey[300],
-                  child: const Icon(Icons.person, color: Colors.grey, size: 16),
+                  child: const Icon(Icons.person,
+                      color: Colors.grey, size: 16),
                 ),
                 errorWidget: (context, url, error) => Container(
                   color: Colors.grey[300],
-                  child: const Icon(Icons.person, color: Colors.grey, size: 16),
+                  child: const Icon(Icons.person,
+                      color: Colors.grey, size: 16),
                 ),
               )
                   : Container(
                 color: Colors.grey[300],
-                child: const Icon(Icons.person, color: Colors.grey, size: 16),
+                child: const Icon(Icons.person,
+                    color: Colors.grey, size: 16),
               ),
             ),
           ),
@@ -1412,7 +1642,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
     );
   }
 
-  Widget _buildInput() {
+  Widget _buildInput(bool canSend) {
     return Container(
       padding: EdgeInsets.only(
         left: 16,
@@ -1435,24 +1665,35 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: primaryLight,
+                color: canSend ? primaryLight : Colors.grey[200],
                 borderRadius: BorderRadius.circular(30),
               ),
               child: TextField(
                 controller: _controller,
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: null,
+                enabled: canSend,
                 onChanged: (text) {
-                  _sendTypingIndicator(text.isNotEmpty);
+                  if (canSend) {
+                    _sendTypingIndicator(text.isNotEmpty);
+                  }
                 },
                 decoration: InputDecoration(
-                  hintText: "Type a message...",
-                  hintStyle: TextStyle(color: Colors.grey[500]),
+                  hintText: canSend
+                      ? "Type a message..."
+                      : _reconnectAttempts > 0
+                      ? "Reconnecting... Please wait"
+                      : "Connecting...",
+                  hintStyle: TextStyle(
+                    color: canSend ? Colors.grey[500] : Colors.grey[400],
+                  ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                  suffixIcon: _controller.text.isNotEmpty
+                  contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  suffixIcon: _controller.text.isNotEmpty && canSend
                       ? IconButton(
-                    icon: const Icon(Icons.emoji_emotions_outlined, color: primaryYellow),
+                    icon: const Icon(Icons.emoji_emotions_outlined,
+                        color: primaryYellow),
                     onPressed: () {
                       // Implement emoji picker if needed
                     },
@@ -1466,14 +1707,14 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
           Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _isConnected && _otherIsReady ? primaryYellow : Colors.grey[400],
+              color: canSend ? primaryYellow : Colors.grey[400],
             ),
             child: IconButton(
               icon: Icon(
                 Icons.send,
-                color: _isConnected && _otherIsReady ? primaryDark : Colors.white,
+                color: canSend ? primaryDark : Colors.white,
               ),
-              onPressed: (_isConnected && _otherIsReady) ? _sendMessage : null,
+              onPressed: canSend ? _sendMessage : null,
             ),
           ),
         ],
@@ -1488,6 +1729,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
 
   @override
   void dispose() {
+    _reconnectTimer?.cancel();
     _controller.removeListener(_onTextChanged);
     _warningDebounceTimer?.cancel();
     _clearSession();
@@ -1496,12 +1738,16 @@ class _CustomerChatPageState extends State<CustomerChatPage> with WidgetsBinding
     _typingTimer?.cancel();
 
     _manuallyClosed = true;
-    _socket?.add(jsonEncode({
-      "type": "connectivity",
-      "status": "offline",
-      "user_id": _myUserId,
-      "room_id": _roomId,
-    }));
+    if (_socket != null) {
+      try {
+        _socket!.add(jsonEncode({
+          "type": "connectivity",
+          "status": "offline",
+          "user_id": _myUserId,
+          "room_id": _roomId,
+        }));
+      } catch (_) {}
+    }
     _stopSessionTimer();
     _socket?.close();
     _controller.dispose();

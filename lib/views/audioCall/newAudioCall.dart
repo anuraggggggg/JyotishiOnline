@@ -44,6 +44,7 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
   bool _joined = false;
   int? _remoteUid;
   bool _isCharged = false;
+  bool _chargeFailed = false;
 
   bool _muted = false;
   bool _speakerOn = true;
@@ -56,20 +57,36 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
   // Timer
   Duration _remaining = const Duration(minutes: 10);
   Timer? _timer;
+  bool _timerStarted = false;
 
-  // Disconnection handling
+  // Disconnection handling - 2 minutes waiting time
   bool _isRemoteUserDisconnected = false;
-  Timer? _disconnectTimer;
+  Timer? _reconnectTimer;
+  int _reconnectCountdown = 120; // 120 seconds = 2 minutes
+  bool _showReconnectTimer = false;
+
+  // Waiting time tracking for initial join
+  DateTime? _joinAttemptStartTime;
+  Timer? _waitingTimer;
+  int _waitingSeconds = 0;
+  bool _showWaitingTimer = false;
 
   // Connection Quality
   String _connectionQuality = "Good";
   Color _qualityColor = Colors.green;
 
+  // Disclaimer flag
+  bool _disclaimerShown = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _bootstrap();
+
+    // Show disclaimer first
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showDisclaimerDialog();
+    });
 
     // Keep screen awake during call
     WakelockPlus.enable();
@@ -81,11 +98,137 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
     ]);
   }
 
+  // Show disclaimer dialog
+  void _showDisclaimerDialog() {
+    if (_disclaimerShown) return;
+    _disclaimerShown = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Audio Call Rules',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(
+                        Icons.timer,
+                        size: 50,
+                        color: Colors.orange,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Audio Call Session',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        '⚠️ IMPORTANT NOTES:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '• You will be charged immediately upon entering\n'
+                            '• Timer starts only when astrologer joins\n'
+                            '• If astrologer disconnects, wait 2 minutes for reconnection\n'
+                            '• If astrologer doesn\'t join in 2 minutes, contact support\n'
+                            '• DO NOT minimize or close the app\n'
+                            '• DO NOT switch to other apps\n'
+                            '• Ensure stable internet connection',
+                        style: TextStyle(fontSize: 13, height: 1.5),
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        '🚫 SHARING CONTACT INFO IS PROHIBITED',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Do not share phone numbers, email, or social media handles. '
+                            'All conversations are monitored for your safety.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _bootstrap();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                ),
+                child: const Text(
+                  'I Understand & Continue',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
-    _disconnectTimer?.cancel();
+    _reconnectTimer?.cancel();
+    _waitingTimer?.cancel();
     _stopAgora();
 
     // Reset orientation
@@ -108,6 +251,16 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
       debugPrint("📱 Audio call app resumed");
     } else if (state == AppLifecycleState.paused) {
       debugPrint("📱 Audio call app paused");
+      if (mounted && !_isRemoteUserDisconnected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Timer is still running! Please stay on this screen.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -126,19 +279,76 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
     _isCharged = true;
 
     try {
-      debugPrint("💰 Upfront Audio Call Deduction: ₹$_audioRate");
+      debugPrint("💰 Charging customer: ₹$_audioRate");
       await _api.sendMoney(
         astrologerId: widget.astroId,
         amount: _audioRate,
         type: "audio_call",
       );
       if (mounted) {
-        _showSnackBar("₹$_audioRate deducted for the session start", Colors.green);
+        _showSnackBar("₹$_audioRate charged for the session", Colors.green);
       }
     } catch (e) {
-      debugPrint("💥 Audio deduction failed: $e");
-      _showSnackBar("Failed to deduct balance. Call may be interrupted.", Colors.red);
+      debugPrint("💥 Charge failed: $e");
+      _chargeFailed = true;
+      _showSnackBar("Failed to charge. Call may not start.", Colors.red);
+
+      // Show charge failed dialog
+      _showChargeFailedDialog();
     }
+  }
+
+  void _showChargeFailedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red, size: 28),
+              SizedBox(width: 8),
+              Text(
+                'Payment Failed',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Unable to charge your account.\n\n'
+                    'Please check your balance and try again.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(); // Go back
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                ),
+                child: const Text('OK'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showSnackBar(String message, Color color) {
@@ -172,10 +382,18 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
             _audioRate = (astro.audioCallCharge ?? 0).toDouble();
           });
         }
-        // Charge user immediately
+        // Charge user immediately when entering
         await _deductBalance();
       } catch (e) {
         debugPrint("⚠️ Could not fetch details/charge: $e");
+      }
+
+      // If charge failed, don't proceed
+      if (_chargeFailed) {
+        if (mounted) {
+          setState(() => _loading = false);
+        }
+        return;
       }
 
       // 2. Agora Credential Logic
@@ -217,35 +435,43 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
           onJoinChannelSuccess: (_, __) {
             setState(() => _joined = true);
             debugPrint("✅ Joined audio channel successfully");
-            _startTimer();
+
+            // Start waiting timer when joined but no astrologer
+            _startWaitingTimer();
           },
           onUserJoined: (_, uid, __) {
             setState(() {
               _remoteUid = uid;
               _isRemoteUserDisconnected = false;
+              _showReconnectTimer = false;
+              _showWaitingTimer = false; // Hide waiting timer
             });
             debugPrint("👤 Remote user joined audio: $uid");
 
-            // Cancel any pending disconnect timer
-            _disconnectTimer?.cancel();
+            // Start timer ONLY when astrologer joins
+            if (!_timerStarted) {
+              _startTimer();
+              _timerStarted = true;
+              debugPrint("⏱️ Timer started - astrologer joined");
+            }
+
+            // Cancel waiting timer
+            _waitingTimer?.cancel();
+
+            // Cancel any pending reconnect timer
+            _reconnectTimer?.cancel();
           },
           onUserOffline: (_, uid, __) {
             debugPrint("👋 Remote user left audio: $uid");
             setState(() {
               _remoteUid = null;
               _isRemoteUserDisconnected = true;
+              _showReconnectTimer = true;
+              _reconnectCountdown = 120; // Reset to 2 minutes
             });
 
-            // Start timer to end session if remote user doesn't return
-            _disconnectTimer?.cancel();
-            _disconnectTimer = Timer(const Duration(seconds: 5), () {
-              if (mounted && _remoteUid == null) {
-                _showSnackBar("Astrologer disconnected. Ending call...", Colors.red);
-                Future.delayed(const Duration(seconds: 2), () {
-                  _leave();
-                });
-              }
-            });
+            // Start reconnection countdown (2 minutes)
+            _startReconnectionCountdown();
           },
           onNetworkQuality: (_, uid, txQuality, rxQuality) {
             int rxQualityValue = rxQuality.index;
@@ -277,10 +503,6 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
               _showSnackBar("Connected", Colors.green);
             } else if (state == ConnectionStateType.connectionStateFailed) {
               _showSnackBar("Connection lost", Colors.red);
-              // End session after connection failure
-              Future.delayed(const Duration(seconds: 2), () {
-                _leave();
-              });
             }
           },
         ),
@@ -308,6 +530,173 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  // Start waiting timer (2 minutes max for astrologer to join)
+  void _startWaitingTimer() {
+    _showWaitingTimer = true;
+    _waitingSeconds = 0;
+
+    _waitingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _waitingSeconds++;
+
+          // If waiting for more than 2 minutes (120 seconds), show support message
+          if (_waitingSeconds >= 120 && _remoteUid == null) {
+            timer.cancel();
+            _showSupportDialog();
+          }
+        });
+      }
+    });
+  }
+
+  // Show support dialog if astrologer doesn't join
+  void _showSupportDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.support_agent, color: Colors.blue, size: 28),
+              SizedBox(width: 8),
+              Text(
+                'Astrologer Not Joining',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.timer_off,
+                      size: 50,
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'The astrologer hasn\'t joined yet.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Please contact support with this information:',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SelectableText(
+                        'Astrologer ID: ${widget.astroId}\n'
+                            'Channel: $_channel\n'
+                            'Time: ${DateTime.now().toString()}\n'
+                            'Amount Charged: ₹$_audioRate',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Screenshot this and send to:\n'
+                          '📱 WhatsApp: +91 1234567890\n'
+                          '📧 Email: support@astroway.com',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    // End the call
+                    Navigator.of(context).pop();
+                    _leave();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: const Text('End Call'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    // Continue waiting
+                    Navigator.of(context).pop();
+                    _startWaitingTimer(); // Restart waiting timer
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: const Text('Wait Longer'),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Start reconnection countdown (2 minutes)
+  void _startReconnectionCountdown() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (_reconnectCountdown > 0) {
+            _reconnectCountdown--;
+          } else {
+            // Time's up - end the session
+            timer.cancel();
+            _showSnackBar("Astrologer didn't reconnect. Ending call...", Colors.red);
+            Future.delayed(const Duration(seconds: 2), () {
+              _leave();
+            });
+          }
+        });
+      }
+    });
   }
 
   void _startTimer() {
@@ -343,8 +732,40 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
   }
 
   Future<void> _leave() async {
+    // Show confirmation dialog when trying to leave
+    final shouldLeave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text('End Audio Call?'),
+        content: const Text(
+            'Are you sure you want to end the call?\n\n'
+                'You have been charged for this session.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Continue Call'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('End Call'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLeave != true) return;
+
     _timer?.cancel();
-    _disconnectTimer?.cancel();
+    _reconnectTimer?.cancel();
+    _waitingTimer?.cancel();
     await _stopAgora();
     if (mounted) Navigator.pop(context);
   }
@@ -354,6 +775,10 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
     final mm = _remaining.inMinutes.toString().padLeft(2, "0");
     final ss = (_remaining.inSeconds % 60).toString().padLeft(2, "0");
     final imageUrl = buildImageUrl(_profileImageUrl);
+
+    // Format reconnect time as minutes:seconds
+    final reconnectMinutes = (_reconnectCountdown ~/ 60).toString().padLeft(2, '0');
+    final reconnectSeconds = (_reconnectCountdown % 60).toString().padLeft(2, '0');
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A1A),
@@ -375,6 +800,8 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
           color: Color(0xFFFFC31F),
         ),
       )
+          : _chargeFailed
+          ? _buildChargeFailedScreen()
           : Stack(
         children: [
           // Main content
@@ -477,25 +904,54 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
 
               const SizedBox(height: 40),
 
-              // Timer
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Text(
-                  "$mm:$ss",
-                  style: const TextStyle(
-                    color: Color(0xFFFFC31F),
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
+              // Timer - Only show when astrologer has joined
+              if (_timerStarted && _remoteUid != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Text(
+                    "$mm:$ss",
+                    style: const TextStyle(
+                      color: Color(0xFFFFC31F),
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
+
+              // Waiting Timer
+              if (_showWaitingTimer && _remoteUid == null && !_timerStarted)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.hourglass_empty, color: Colors.orange, size: 24),
+                      const SizedBox(width: 12),
+                      Text(
+                        "Waiting: $_waitingSeconds/120 sec",
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               const SizedBox(height: 60),
 
@@ -531,8 +987,8 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
             ],
           ),
 
-          // Disconnected Overlay
-          if (_isRemoteUserDisconnected)
+          // Disconnected Message with Reconnection Timer (2 minutes)
+          if (_isRemoteUserDisconnected && _showReconnectTimer)
             Positioned.fill(
               child: Container(
                 color: Colors.black54,
@@ -561,12 +1017,37 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          "Ending call in a moment...",
+                        Text(
+                          "Waiting for reconnection...",
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 14,
                           ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.orange,
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Text(
+                            "Reconnecting in $reconnectMinutes:$reconnectSeconds",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          "The astrologer has 2 minutes to rejoin.\nYou will not be charged for this waiting time.",
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
@@ -574,6 +1055,52 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChargeFailedScreen() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.error_outline,
+            color: Colors.red,
+            size: 80,
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Payment Failed',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Unable to charge your account.\nPlease check your balance.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 30),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: const Text('Go Back'),
+          ),
         ],
       ),
     );
