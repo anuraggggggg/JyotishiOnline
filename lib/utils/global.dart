@@ -514,15 +514,15 @@ String getSystemFlagValue(String flag) {
 String getSystemFlagValueForLogin(String flag) {
   try {
     // Check if the list is not empty
-    if (splashController.syatemFlag.isNotEmpty) {
-      // Use where().isNotEmpty to check if flag exists first
-      final matchingFlags =
-          splashController.syatemFlag.where((e) => e.name == flag);
-
-      if (matchingFlags.isNotEmpty) {
-        return matchingFlags.first.value;
-      }
-    }
+    // if (splashController.syatemFlag.isNotEmpty) {
+    //   // Use where().isNotEmpty to check if flag exists first
+    //   final matchingFlags =
+    //       splashController.syatemFlag.where((e) => e.name == flag);
+    //
+    //   if (matchingFlags.isNotEmpty) {
+    //     return matchingFlags.first.value;
+    //   }
+    // }
 
     // Return a default value if flag not found or list is empty
     print('Warning: System flag "$flag" not found, returning default value');

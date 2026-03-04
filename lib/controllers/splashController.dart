@@ -17,21 +17,15 @@ import '../services/location_services.dart';
 import '../views/loginWithEmail.dart';
 
 class SplashController extends GetxController {
-  // =====================================================
-  // STATE (KEEPED)
-  // =====================================================
   CurrentUserModel? currentUser;
   String currentLanguageCode = 'en';
   String? version;
   double? totalGst;
-  var syatemFlag = <SystemFlag>[]; // ✅ REQUIRED
-  String? appShareLinkForLiveSreaming;
+  var systemFlag = <SystemFlag>[];
+  String? appShareLinkForLiveStreaming;
 
   final APIHelper apiHelper = APIHelper();
 
-  // =====================================================
-  // INIT
-  // =====================================================
   @override
   void onInit() {
     super.onInit();
@@ -40,66 +34,116 @@ class SplashController extends GetxController {
   }
 
   // =====================================================
-  // FORCE UPDATE
+  // SIMPLE FORCE UPDATE CHECK - NO PLUGIN DEPENDENCIES
   // =====================================================
   Future<bool> _checkForceUpdate() async {
     debugPrint("[SPLASH] 🔍 Force update check started");
 
-    final info = await PackageInfo.fromPlatform();
-    final int installed = int.parse(info.buildNumber);
-    const int required = 5;
+    try {
+      final info = await PackageInfo.fromPlatform();
 
-    debugPrint("[SPLASH] 📦 Version → installed=$installed required=$required");
+      // Safely parse build number
+      int installed = 0;
+      if (info.buildNumber.isNotEmpty) {
+        installed = int.tryParse(info.buildNumber) ?? 0;
+      }
 
-    if (installed < required) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Get.dialog(
-          WillPopScope(
-            onWillPop: () async => false,
-            child: AlertDialog(
-              title: const Text("Update Required"),
-              content: const Text(
-                "A new version of the app is available. Please update to continue.",
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: () async {
-                    final url = Uri.parse(
-                      "https://play.google.com/store/apps/details?id=com.jyotishi2025.user",
-                    );
-                    await launchUrl(url, mode: LaunchMode.externalApplication);
-                  },
-                  child: const Text("Update"),
-                ),
-              ],
-            ),
-          ),
-          barrierDismissible: false,
-        );
-      });
-      return true;
+      // IMPORTANT: Update this number EVERY TIME you publish to Play Store
+      const int requiredVersion = 17;
+
+      debugPrint("[SPLASH] 📱 Current build: $installed, Required: $requiredVersion");
+
+      if (installed < requiredVersion) {
+        debugPrint("[SPLASH] ⚠️ Update required! Showing dialog");
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showUpdateDialog();
+        });
+        return true; // Block navigation
+      }
+
+      debugPrint("[SPLASH] ✅ App is up to date");
+      return false;
+
+    } catch (e) {
+      debugPrint("[SPLASH] ❌ Update check failed: $e");
+      return false; // Continue even if check fails
     }
-
-    debugPrint("[SPLASH] ✅ No force update needed");
-    return false;
   }
 
   // =====================================================
-  // MAIN FLOW (FINAL & SAFE)
+  // UPDATE DIALOG - REDIRECTS TO PLAY STORE
+  // =====================================================
+  void _showUpdateDialog() {
+    Get.dialog(
+      PopScope(
+        canPop: false, // Prevent back button
+        child: AlertDialog(
+          title: const Text(
+            "Update Available",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("A new version of Jyotishi Online is available."),
+              SizedBox(height: 12),
+              Text(
+                "Please update to continue using the app.",
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () async {
+                final url = Uri.parse(
+                    "https://play.google.com/store/apps/details?id=com.jyotishi2025.user"
+                );
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Get.theme.primaryColor,
+                minimumSize: const Size(double.infinity, 45),
+              ),
+              child: const Text(
+                "Update Now",
+                style: TextStyle(fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
+      barrierDismissible: false, // Can't dismiss by tapping outside
+    );
+  }
+
+  // =====================================================
+  // MAIN FLOW
   // =====================================================
   Future<void> _init() async {
     debugPrint("[SPLASH] 🚀 _init() started");
 
-    final blocked = await _checkForceUpdate();
-    if (blocked) return;
-
-    // Language
+    // Initialize SharedPreferences
     global.sp = await SharedPreferences.getInstance();
+
+    // Check for updates FIRST
+    final updateBlocked = await _checkForceUpdate();
+    if (updateBlocked) {
+      debugPrint("[SPLASH] ⏸ Navigation blocked by update check");
+      return;
+    }
+
+    // Language setup
     currentLanguageCode = global.sp!.getString('currentLanguage') ?? 'en';
-    global.sp!.setString('currentLanguage', currentLanguageCode);
+    await global.sp!.setString('currentLanguage', currentLanguageCode);
     debugPrint("[SPLASH] 🌐 Language = $currentLanguageCode");
 
-    Timer(const Duration(seconds: 4), () async {
+    // Small delay for splash screen
+    Timer(const Duration(seconds: 2), () async {
       debugPrint("[SPLASH] ⏱ Splash delay completed");
 
       final hasSession = await _hasFastApiSession();
@@ -107,44 +151,30 @@ class SplashController extends GetxController {
 
       if (!hasSession) {
         debugPrint("[SPLASH] ➡ Redirecting to Login");
-        // Get.off(() => LoginScreen());
-        LocationService.isIndianUser ?
-        Get.offAll(() => LoginScreen()) :
-        Get.offAll(() => LoginWithEmailScreen());
+        if (LocationService.isIndianUser) {
+          Get.offAll(() => LoginScreen());
+        } else {
+          Get.offAll(() => LoginWithEmailScreen());
+        }
         return;
       }
 
-      // ✅ SESSION EXISTS → GO HOME (NO VALIDATION)
+      // Navigate to Home
       debugPrint("[SPLASH] 🏠 Navigating to Home");
-
       Get.find<BottomNavigationController>().setIndex(0, 0);
       Get.off(() => BottomNavigationBarScreen(index: 0));
 
-      // Load flags AFTER navigation
+      // Load system flags
       getSystemFlag();
     });
   }
 
-  // =====================================================
-  // SESSION CHECK (FASTAPI ONLY)
-  // =====================================================
   Future<bool> _hasFastApiSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("access_token");
-    final userId = prefs.getString("user_id");
-
-    debugPrint("[AUTH] access_token = $token");
-    debugPrint("[AUTH] user_id = $userId");
-
-    return token != null &&
-        token.isNotEmpty &&
-        userId != null &&
-        userId.isNotEmpty;
+    final token = global.sp!.getString("access_token");
+    final userId = global.sp!.getString("user_id");
+    return token != null && token.isNotEmpty && userId != null && userId.isNotEmpty;
   }
 
-  // =====================================================
-  // SYSTEM FLAGS (SAFE)
-  // =====================================================
   Future<void> getSystemFlag() async {
     try {
       debugPrint("[SPLASH] 🌐 Loading system flags");
@@ -154,7 +184,7 @@ class SplashController extends GetxController {
 
       final apiResult = await apiHelper.getSystemFlag();
       if (apiResult != null && apiResult.status == "200") {
-        syatemFlag = apiResult.recordList;
+        systemFlag = apiResult.recordList;
         update();
         debugPrint("[SPLASH] ✅ System flags loaded");
       }

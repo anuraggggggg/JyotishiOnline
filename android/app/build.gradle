@@ -49,6 +49,15 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+
     kotlinOptions {
         jvmTarget = '17'
     }
@@ -68,6 +77,9 @@ android {
             shrinkResources false
             signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            ndk {
+                debugSymbolLevel 'FULL'  // Or 'SYMBOL_TABLE' for smaller size
+            }
         }
     }
 }
@@ -77,4 +89,5 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.9'
     implementation 'com.google.firebase:firebase-auth'
     implementation 'androidx.multidex:multidex:2.0.1'
+    implementation 'com.google.android.gms:play-services-auth:20.7.0'
 }

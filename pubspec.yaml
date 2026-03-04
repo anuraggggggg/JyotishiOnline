@@ -3,7 +3,7 @@ description: The Astrology app
 
 publish_to: "none"
 
-version: 1.0.0+14
+version: 1.0.0+19
 
 environment:
   sdk: ">=3.2.1 <4.0.0"
@@ -113,6 +113,9 @@ dependencies:
   provider: ^6.1.5+1
   web_socket_channel: ^3.0.3
   dio: ^5.9.0
+#  app_version_update: ^6.2.0
+#  app_update_monitor: ^1.0.1
+#  in_app_update: ^4.2.3
 #  flutter_in_app_pip: ^1.5.0
 #  android_pip: ^1.0.2
 #  flutter_pip: ^1.0.2

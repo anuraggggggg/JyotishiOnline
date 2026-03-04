@@ -44,15 +44,17 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _videoController.value.isInitialized
-          ? SizedBox.expand(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: _videoController.value.size.width,
-            height: _videoController.value.size.height,
+          ? Stack(
+        fit: StackFit.expand,
+        children: [
+          // Video player with proper aspect ratio handling
+          AspectRatio(
+            aspectRatio: _videoController.value.aspectRatio,
             child: VideoPlayer(_videoController),
           ),
-        ),
+          // Optional: Add a color overlay if needed
+          // Container(color: Colors.black.withOpacity(0.3)),
+        ],
       )
           : const Center(
         child: CircularProgressIndicator(),

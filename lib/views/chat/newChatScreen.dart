@@ -15,6 +15,7 @@ class CustomerChatPage extends StatefulWidget {
   final String myUserId;
   final String astrologerName;
   final String? token;
+  final double? chatCharge; // Add this parameter
 
   const CustomerChatPage({
     super.key,
@@ -24,6 +25,7 @@ class CustomerChatPage extends StatefulWidget {
     required this.myUserId,
     required this.astrologerName,
     this.token,
+    this.chatCharge, // Add this
   });
 
   @override
@@ -41,6 +43,7 @@ class _CustomerChatPageState extends State<CustomerChatPage>
   bool _isLoading = true;
   bool _manuallyClosed = false;
   bool _isCharged = false;
+  bool _chargeFailed = false;
 
   bool _iAmReady = false;
   bool _otherIsReady = false;
@@ -495,9 +498,24 @@ class _CustomerChatPageState extends State<CustomerChatPage>
     }
 
     try {
+      // First fetch astrologer profile to get chat rate
       await _fetchAstrologerProfile();
+
+      // Charge user immediately when entering, just like video call page
+      if (_chatRate > 0) {
+        await _deductBalance(); // Charge immediately
+      }
+
+      // If charge failed, don't proceed
+      if (_chargeFailed) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+        return;
+      }
+
+      // Load chat history
       await _loadFullChatHistory();
-      await _deductBalance();
 
       // Start timer immediately when screen loads
       _startSessionTimer();
@@ -524,6 +542,8 @@ class _CustomerChatPageState extends State<CustomerChatPage>
       if (mounted) {
         setState(() {
           _displayName = astro.name;
+          _chatRate = astro.chatCharge ?? 0; // Set chat rate here
+          debugPrint("💰 Chat rate set to: $_chatRate");
 
           if (astro.profileImage != null && astro.profileImage!.isNotEmpty) {
             _astrologerProfileImage = _getFullImageUrl(astro.profileImage);
@@ -537,6 +557,11 @@ class _CustomerChatPageState extends State<CustomerChatPage>
       debugPrint("❌ Error fetching astrologer profile: $e");
       setState(() {
         _displayName = widget.astrologerName;
+        // If we can't fetch profile, use the passed chat charge if available
+        if (widget.chatCharge != null) {
+          _chatRate = widget.chatCharge!;
+          debugPrint("💰 Using passed chat rate: $_chatRate");
+        }
       });
     }
   }
@@ -1046,6 +1071,17 @@ class _CustomerChatPageState extends State<CustomerChatPage>
     final text = _controller.text.trim();
     if (text.isEmpty || !_isConnected || _socket == null) return;
 
+    // Check if charge failed
+    if (_chargeFailed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Payment failed. Please check your balance.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     // Check for personal contact info
     if (_containsPersonalContact(text)) {
       _logSuspiciousMessage(text);
@@ -1091,26 +1127,100 @@ class _CustomerChatPageState extends State<CustomerChatPage>
     });
   }
 
+  // Enhanced deduct balance method matching video call page pattern
   Future<void> _deductBalance() async {
-    if (_isCharged || _chatRate <= 0) return;
+    if (_isCharged) return;
     _isCharged = true;
+
     try {
+      debugPrint("💰 Charging customer: ₹$_chatRate");
       await _api.sendMoney(
         astrologerId: widget.astrologerProfileId,
         amount: _chatRate,
         type: "chat",
       );
+      if (mounted) {
+        _showSnackBar("₹${_chatRate.toStringAsFixed(2)} charged for chat session", Colors.green);
+      }
     } catch (e) {
-      debugPrint("Error deducting balance: $e");
-      _isCharged = false;
+      debugPrint("💥 Charge failed: $e");
+      _chargeFailed = true;
+      _showSnackBar("Failed to charge. Chat may not start.", Colors.red);
+
+      // Show charge failed dialog (same as video call page)
+      _showChargeFailedDialog();
     }
+  }
+
+  // Charge failed dialog (copied from video call page)
+  void _showChargeFailedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red, size: 28),
+              SizedBox(width: 8),
+              Text(
+                'Payment Failed',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Unable to charge your account.\n\n'
+                    'Please check your balance and try again.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(); // Go back
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                ),
+                child: const Text('OK'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Customer can always send messages if connected to WebSocket
-    // They don't need to wait for astrologer to be ready
-    final canSend = _isConnected;
+    // Customer can send messages if connected to WebSocket and payment succeeded
+    final canSend = _isConnected && !_chargeFailed;
 
     return WillPopScope(
       onWillPop: () async {
@@ -1149,6 +1259,8 @@ class _CustomerChatPageState extends State<CustomerChatPage>
         appBar: _buildAppBar(),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator(color: primaryYellow))
+            : _chargeFailed
+            ? _buildChargeFailedScreen()
             : Column(
           children: [
             _buildConnectionStatus(),
@@ -1162,6 +1274,53 @@ class _CustomerChatPageState extends State<CustomerChatPage>
             _buildInput(canSend),
           ],
         ),
+      ),
+    );
+  }
+
+  // Charge failed screen (copied from video call page)
+  Widget _buildChargeFailedScreen() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.error_outline,
+            color: Colors.red,
+            size: 80,
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Payment Failed',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Unable to charge your account.\nPlease check your balance.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 30),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: const Text('Go Back'),
+          ),
+        ],
       ),
     );
   }
@@ -1681,6 +1840,8 @@ class _CustomerChatPageState extends State<CustomerChatPage>
                 decoration: InputDecoration(
                   hintText: canSend
                       ? "Type a message..."
+                      : _chargeFailed
+                      ? "Payment failed. Please go back."
                       : _reconnectAttempts > 0
                       ? "Reconnecting... Please wait"
                       : "Connecting...",

@@ -11,5 +11,8 @@
 -dontwarn org.openjsse.javax.net.ssl.SSLSocket
 -dontwarn org.openjsse.net.ssl.OpenJSSE
 -keep class com.hiennv.flutter_callkit_incoming.** { *; }
+# Google Credentials API
+-keep class com.google.android.gms.auth.api.credentials.** { *; }
+-dontwarn com.google.android.gms.auth.api.credentials.**
 
 

@@ -1387,6 +1387,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                       },
                     ),
                   ),
+
+                  SizedBox(height: 70,)
                 ],
               ),
             );
