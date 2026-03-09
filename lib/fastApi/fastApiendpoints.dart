@@ -39,6 +39,8 @@ class FastApiEndpoints {
   // ---------------- SESSION / CALL ----------------
   static const String createSession = "$fastApiBaseUrl/api/v1/create";
 
+  static const String appVersion = "$fastApiBaseUrl/api/v1/astro/app-version";
+
   // ---------------- USERS ----------------
   // ----------------ALL CUSTOMER DETAILS ----------------
   static const String customerDetails =

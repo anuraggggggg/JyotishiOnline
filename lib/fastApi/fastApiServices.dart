@@ -188,6 +188,47 @@ class FastAPIServices {
     }
   }
 
+  /// 📱 Fetch app version information from server
+  /// Returns: Map with android_min_build, ios_min_build, force_update, etc.
+  Future<Map<String, dynamic>?> fetchAppVersion() async {
+    final url = Uri.parse("${FastApiEndpoints.appVersion}");
+
+    debugPrint("📱 [APP VERSION] Fetching from: $url");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          "accept": "application/json",
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      debugPrint("📱 [APP VERSION] Status: ${response.statusCode}");
+      debugPrint("📱 [APP VERSION] Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'android_min_build': data['android_min_build'] ?? 0,
+          'ios_min_build': data['ios_min_build'] ?? 0,
+          'force_update': data['force_update'] ?? false,
+          'update_message': data['update_message'] ?? 'New version available',
+          'play_store_url': data['play_store_url'] ?? '',
+          'app_store_url': data['app_store_url'] ?? '',
+        };
+      } else {
+        debugPrint("❌ [APP VERSION] Failed with status: ${response.statusCode}");
+        return null;
+      }
+    } on TimeoutException catch (e) {
+      debugPrint("⏰ [APP VERSION] Timeout: $e");
+      return null;
+    } catch (e) {
+      debugPrint("❌ [APP VERSION] Error: $e");
+      return null;
+    }
+  }
+
 
 
 

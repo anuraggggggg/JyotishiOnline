@@ -1787,7 +1787,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       Consumer<LiveAstrologerProvider>(
                         builder: (context, provider, child) {
-
                           // 1️⃣ Show loader while fetching data
                           if (provider.isLoading) {
                             return SizedBox(
@@ -1807,12 +1806,26 @@ class _HomeScreenState extends State<HomeScreen> {
                             children: [
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                                child: Text(
-                                  "Live Now 🔴",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Live Now 🔴",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+
+                                    // 👇 Simple refresh button
+                                    IconButton(
+                                      icon: const Icon(Icons.refresh, size: 22),
+                                      onPressed: () => provider.fetchLiveAstrologers(),
+                                      color: Colors.grey.shade700,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    ),
+                                  ],
                                 ),
                               ),
 
@@ -1848,7 +1861,42 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
 
-                          ],
+                            // 👇 Refresh button added here
+                            Consumer<GetOnlineAstrologerProvider>(
+                              builder: (context, provider, child) {
+                                return GestureDetector(
+                                  onTap: () async {
+                                    // Show loading indicator (optional)
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Refreshing online astrologers...'),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+
+                                    // Call the refresh method
+                                    await provider.fetchOnlineAstrologers();
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.grey.shade100,
+                                    ),
+                                    child: AnimatedRotation(
+                                      duration: const Duration(milliseconds: 500),
+                                      turns: provider.isLoading ? 1 : 0,
+                                      child: Icon(
+                                        Icons.refresh,
+                                        size: 20,
+                                        color: provider.isLoading ? Colors.blue : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ]
                         ),
                       ),
 

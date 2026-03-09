@@ -12,6 +12,7 @@ import 'package:AstrowayCustomer/utils/global.dart' as global;
 import 'package:AstrowayCustomer/utils/services/api_helper.dart';
 import 'package:AstrowayCustomer/views/loginScreen.dart';
 import 'package:AstrowayCustomer/views/bottomNavigationBarScreen.dart';
+import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 
 import '../services/location_services.dart';
 import '../views/loginWithEmail.dart';
@@ -25,6 +26,7 @@ class SplashController extends GetxController {
   String? appShareLinkForLiveStreaming;
 
   final APIHelper apiHelper = APIHelper();
+  final FastAPIServices fastApiServices = FastAPIServices();
 
   @override
   void onInit() {
@@ -34,7 +36,7 @@ class SplashController extends GetxController {
   }
 
   // =====================================================
-  // SIMPLE FORCE UPDATE CHECK - NO PLUGIN DEPENDENCIES
+  // API-BASED FORCE UPDATE CHECK
   // =====================================================
   Future<bool> _checkForceUpdate() async {
     debugPrint("[SPLASH] 🔍 Force update check started");
@@ -43,27 +45,60 @@ class SplashController extends GetxController {
       final info = await PackageInfo.fromPlatform();
 
       // Safely parse build number
-      int installed = 0;
+      int installedBuild = 0;
       if (info.buildNumber.isNotEmpty) {
-        installed = int.tryParse(info.buildNumber) ?? 0;
+        installedBuild = int.tryParse(info.buildNumber) ?? 0;
       }
 
-      // IMPORTANT: Update this number EVERY TIME you publish to Play Store
-      const int requiredVersion = 17;
+      debugPrint("[SPLASH] 📱 Current build: $installedBuild");
 
-      debugPrint("[SPLASH] 📱 Current build: $installed, Required: $requiredVersion");
+      // Fetch version info from API
+      final versionData = await fastApiServices.fetchAppVersion();
 
-      if (installed < requiredVersion) {
-        debugPrint("[SPLASH] ⚠️ Update required! Showing dialog");
+      if (versionData != null) {
+        final int requiredBuild = versionData['android_min_build'] ?? 0;
+        final bool forceUpdate = versionData['force_update'] ?? false;
+        final String updateMessage = versionData['update_message'] ?? 'New version available';
+        final String playStoreUrl = versionData['play_store_url'] ??
+            'https://play.google.com/store/apps/details?id=com.jyotishi2025.user';
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showUpdateDialog();
-        });
-        return true; // Block navigation
+        debugPrint("[SPLASH] 📡 API → required=$requiredBuild, force=$forceUpdate");
+
+        // Check if update is needed
+        if (installedBuild < requiredBuild && forceUpdate) {
+          debugPrint("[SPLASH] ⚠️ Force update required! Showing dialog");
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showUpdateDialog(
+              message: updateMessage,
+              storeUrl: playStoreUrl,
+            );
+          });
+          return true; // Block navigation
+        } else if (installedBuild < requiredBuild && !forceUpdate) {
+          debugPrint("[SPLASH] ℹ️ Optional update available (not forced)");
+          // Optional: Show non-blocking update prompt here if desired
+        } else {
+          debugPrint("[SPLASH] ✅ App is up to date");
+        }
+      } else {
+        // Fallback to hardcoded value if API fails
+        debugPrint("[SPLASH] ⚠️ API failed, using fallback check");
+        const int fallbackRequired = 17;
+
+        if (installedBuild < fallbackRequired) {
+          debugPrint("[SPLASH] ⚠️ Fallback: Update required");
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showUpdateDialog(
+              message: "A new version is available. Please update to continue.",
+              storeUrl: "https://play.google.com/store/apps/details?id=com.jyotishi2025.user",
+            );
+          });
+          return true;
+        }
       }
 
-      debugPrint("[SPLASH] ✅ App is up to date");
-      return false;
+      return false; // No update needed
 
     } catch (e) {
       debugPrint("[SPLASH] ❌ Update check failed: $e");
@@ -74,7 +109,10 @@ class SplashController extends GetxController {
   // =====================================================
   // UPDATE DIALOG - REDIRECTS TO PLAY STORE
   // =====================================================
-  void _showUpdateDialog() {
+  void _showUpdateDialog({
+    required String message,
+    required String storeUrl,
+  }) {
     Get.dialog(
       PopScope(
         canPop: false, // Prevent back button
@@ -83,24 +121,22 @@ class SplashController extends GetxController {
             "Update Available",
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          content: const Column(
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("A new version of Jyotishi Online is available."),
-              SizedBox(height: 12),
+              const Text("A new version of Jyotishi Online is available."),
+              const SizedBox(height: 12),
               Text(
-                "Please update to continue using the app.",
-                style: TextStyle(fontWeight: FontWeight.w500),
+                message,
+                style: const TextStyle(fontWeight: FontWeight.w500),
               ),
             ],
           ),
           actions: [
             ElevatedButton(
               onPressed: () async {
-                final url = Uri.parse(
-                    "https://play.google.com/store/apps/details?id=com.jyotishi2025.user"
-                );
+                final url = Uri.parse(storeUrl);
                 if (await canLaunchUrl(url)) {
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 }
@@ -130,7 +166,7 @@ class SplashController extends GetxController {
     // Initialize SharedPreferences
     global.sp = await SharedPreferences.getInstance();
 
-    // Check for updates FIRST
+    // Check for updates FIRST using API
     final updateBlocked = await _checkForceUpdate();
     if (updateBlocked) {
       debugPrint("[SPLASH] ⏸ Navigation blocked by update check");
