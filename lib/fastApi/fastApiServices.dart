@@ -2332,6 +2332,34 @@ class FastAPIServices {
     }
   }
 
+  Future<double> convertUsdToInr(double usdAmount) async {
+    try {
+      final response =
+      await http.get(Uri.parse("https://open.er-api.com/v6/latest/USD"));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        double rate = data["rates"]["INR"];
+
+        debugPrint("💱 USD→INR rate: $rate");
+
+        return usdAmount * rate;
+      }
+    } catch (e) {
+      debugPrint("💥 Currency API failed: $e");
+    }
+
+    /// fallback only if API fails
+    const fallbackRate = 83.0;
+
+    debugPrint("⚠ Using fallback rate: $fallbackRate");
+
+    return usdAmount * fallbackRate;
+  }
+
+
+
 
 
   Future<SendMoneyResponse> sendMoney({

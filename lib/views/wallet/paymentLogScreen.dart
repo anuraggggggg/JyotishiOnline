@@ -1,11 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
 import '../../controllers/fastApiProvider/WalletProvider.dart';
 import 'package:AstrowayCustomer/theme/appTheme.dart';
-// ✅ Updated to use the new file name
 import 'package:AstrowayCustomer/model/fastApiModel/wallet_tx_model.dart';
+import '../../services/location_services.dart';
 
 class PaymentLogScreen extends StatefulWidget {
   @override
@@ -13,16 +15,37 @@ class PaymentLogScreen extends StatefulWidget {
 }
 
 class _PaymentLogScreenState extends State<PaymentLogScreen> {
-  String _selectedFilter = 'all'; // all | credit | debit
+  String _selectedFilter = 'all';
   final GlobalKey<RefreshIndicatorState> _refreshKey =
   GlobalKey<RefreshIndicatorState>();
+
+  double _usdRate = 83; // fallback
 
   @override
   void initState() {
     super.initState();
+
+    _fetchUsdRate();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<WalletProvider>().fetchWalletTransactions();
     });
+  }
+
+  Future<void> _fetchUsdRate() async {
+    try {
+      final response =
+      await http.get(Uri.parse("https://open.er-api.com/v6/latest/USD"));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _usdRate = data["rates"]["INR"];
+        });
+      }
+    } catch (e) {
+      debugPrint("Currency fetch failed: $e");
+    }
   }
 
   Future<void> _refresh() async {
@@ -68,7 +91,7 @@ class _PaymentLogScreenState extends State<PaymentLogScreen> {
 
   Widget _buildList(
       WalletProvider provider,
-      List<WalletTxModel> list, // ✅ Updated Type
+      List<WalletTxModel> list,
       ) {
     if (provider.isLoading) {
       return const Center(
@@ -94,12 +117,19 @@ class _PaymentLogScreenState extends State<PaymentLogScreen> {
   // TRANSACTION CARD
   // ---------------------------------------------------------------------------
 
-  Widget _transactionCard(WalletTxModel tx) { // ✅ Updated Type
+  Widget _transactionCard(WalletTxModel tx) {
     final bool isCredit = tx.isCredit;
     final Color color = isCredit ? Colors.green : Colors.red;
 
-    // Check for null duration or default empty value
     final bool hasDuration = tx.duration != "00:00:00";
+
+    double displayAmount = tx.amount;
+
+    if (!LocationService.isIndianUser) {
+      displayAmount = tx.amount / _usdRate;
+    }
+
+    String currency = LocationService.isIndianUser ? "₹" : "\$";
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -143,8 +173,8 @@ class _PaymentLogScreenState extends State<PaymentLogScreen> {
         ),
         trailing: Text(
           isCredit
-              ? "+₹${tx.amount.toStringAsFixed(0)}"
-              : "-₹${tx.amount.toStringAsFixed(0)}",
+              ? "+$currency${displayAmount.toStringAsFixed(2)}"
+              : "-$currency${displayAmount.toStringAsFixed(2)}",
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -156,32 +186,44 @@ class _PaymentLogScreenState extends State<PaymentLogScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // HELPERS (Same as before)
+  // HELPERS
   // ---------------------------------------------------------------------------
 
   IconData _icon(String type) {
     switch (type) {
-      case 'chat': return Icons.chat_bubble_outline;
-      case 'audio_call': return Icons.call_outlined;
-      case 'video_call': return Icons.videocam_outlined;
-      case 'send_money': return Icons.compare_arrows;
-      default: return Icons.account_balance_wallet;
+      case 'chat':
+        return Icons.chat_bubble_outline;
+      case 'audio_call':
+        return Icons.call_outlined;
+      case 'video_call':
+        return Icons.videocam_outlined;
+      case 'send_money':
+        return Icons.compare_arrows;
+      default:
+        return Icons.account_balance_wallet;
     }
   }
 
   String _description(String type, bool isCredit) {
     if (isCredit) return "Wallet Credit";
     switch (type) {
-      case 'chat': return "Chat Consultation";
-      case 'audio_call': return "Audio Call";
-      case 'video_call': return "Video Call";
-      case 'send_money': return "Money Sent";
-      default: return "Wallet Transaction";
+      case 'chat':
+        return "Chat Consultation";
+      case 'audio_call':
+        return "Audio Call";
+      case 'video_call':
+        return "Video Call";
+      case 'send_money':
+        return "Money Sent";
+      default:
+        return "Wallet Transaction";
     }
   }
 
   Widget _statusChip(String status) {
-    final color = status.toLowerCase() == 'success' ? Colors.green : Colors.orange;
+    final color =
+    status.toLowerCase() == 'success' ? Colors.green : Colors.orange;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
@@ -190,7 +232,8 @@ class _PaymentLogScreenState extends State<PaymentLogScreen> {
       ),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold),
+        style: TextStyle(
+            fontSize: 10, color: color, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -229,7 +272,6 @@ class _PaymentLogScreenState extends State<PaymentLogScreen> {
   Widget build(BuildContext context) {
     return Consumer<WalletProvider>(
       builder: (_, provider, __) {
-        // ✅ Updated Type here
         final List<WalletTxModel> all = [...provider.transactions]
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
@@ -245,7 +287,8 @@ class _PaymentLogScreenState extends State<PaymentLogScreen> {
           appBar: AppBar(
             title: const Text(
               "Payment History",
-              style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: textColor, fontWeight: FontWeight.bold),
             ),
             backgroundColor: appYellow,
             iconTheme: const IconThemeData(color: textColor),

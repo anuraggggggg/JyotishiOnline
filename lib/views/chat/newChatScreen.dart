@@ -7,6 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/model/fastApiModel/astrologerProfileModel.dart';
+import 'package:http/http.dart' as http;
+
+import '../../services/location_services.dart';
 
 class CustomerChatPage extends StatefulWidget {
   final String astrologerUserId;
@@ -68,6 +71,9 @@ class _CustomerChatPageState extends State<CustomerChatPage>
   String? _displayName;
   String? _astrologerProfileImage;
   double _chatRate = 0;
+
+  double _chatRateInr = 0;
+  double _chatRateUsd = 0;
 
   int _historyPage = 1;
   bool _hasMoreHistory = true;
@@ -502,7 +508,7 @@ class _CustomerChatPageState extends State<CustomerChatPage>
       await _fetchAstrologerProfile();
 
       // Charge user immediately when entering, just like video call page
-      if (_chatRate > 0) {
+      if (_chatRateInr > 0 || _chatRateUsd > 0) {
         await _deductBalance(); // Charge immediately
       }
 
@@ -533,36 +539,30 @@ class _CustomerChatPageState extends State<CustomerChatPage>
 
   Future<void> _fetchAstrologerProfile() async {
     try {
-      debugPrint(
-          "📡 Fetching astrologer profile for ID: ${widget.astrologerProfileId}");
-
       final astro =
       await _api.fetchAstrologerDetail(widget.astrologerProfileId);
 
       if (mounted) {
         setState(() {
           _displayName = astro.name;
-          _chatRate = astro.chatCharge ?? 0; // Set chat rate here
-          debugPrint("💰 Chat rate set to: $_chatRate");
+
+           _chatRateInr = astro.chatCharge ?? 0;
+           _chatRateUsd = astro.chatChargeUSD ?? 0;
+
+          debugPrint("💰 Chat INR rate: $_chatRateInr");
+          debugPrint("💰 Chat USD rate: $_chatRateUsd");
 
           if (astro.profileImage != null && astro.profileImage!.isNotEmpty) {
             _astrologerProfileImage = _getFullImageUrl(astro.profileImage);
-            debugPrint("✅ Profile image found: $_astrologerProfileImage");
-          } else {
-            debugPrint("⚠️ No profile image in astrologer data");
           }
         });
       }
     } catch (e) {
       debugPrint("❌ Error fetching astrologer profile: $e");
-      setState(() {
-        _displayName = widget.astrologerName;
-        // If we can't fetch profile, use the passed chat charge if available
-        if (widget.chatCharge != null) {
-          _chatRate = widget.chatCharge!;
-          debugPrint("💰 Using passed chat rate: $_chatRate");
-        }
-      });
+
+      if (widget.chatCharge != null) {
+        _chatRateInr = widget.chatCharge!;
+      }
     }
   }
 
@@ -1130,24 +1130,58 @@ class _CustomerChatPageState extends State<CustomerChatPage>
   // Enhanced deduct balance method matching video call page pattern
   Future<void> _deductBalance() async {
     if (_isCharged) return;
+
     _isCharged = true;
 
     try {
-      debugPrint("💰 Charging customer: ₹$_chatRate");
+      double chargeAmount;
+
+      if (LocationService.isIndianUser) {
+        chargeAmount = _chatRateInr;
+
+        debugPrint("🇮🇳 Indian user → ₹$chargeAmount");
+
+      } else {
+        double usdAmount = _chatRateUsd > 0 ? _chatRateUsd : _chatRateInr;
+
+        debugPrint("🌍 International user → \$${usdAmount}");
+
+        final response =
+        await http.get(Uri.parse("https://open.er-api.com/v6/latest/USD"));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+
+          double rate = data["rates"]["INR"];
+
+          chargeAmount = usdAmount * rate;
+
+          debugPrint("💱 Converted: \$${usdAmount} → ₹$chargeAmount");
+
+        } else {
+          chargeAmount = usdAmount * 83;
+        }
+      }
+
+      debugPrint("📤 Final amount sent to astrologer: ₹$chargeAmount");
+
       await _api.sendMoney(
         astrologerId: widget.astrologerProfileId,
-        amount: _chatRate,
+        amount: chargeAmount.round(),
         type: "chat",
       );
+
       if (mounted) {
-        _showSnackBar("₹${_chatRate.toStringAsFixed(2)} charged for chat session", Colors.green);
+        _showMoneyDeductedDialog(chargeAmount);
       }
+
     } catch (e) {
       debugPrint("💥 Charge failed: $e");
+
       _chargeFailed = true;
+
       _showSnackBar("Failed to charge. Chat may not start.", Colors.red);
 
-      // Show charge failed dialog (same as video call page)
       _showChargeFailedDialog();
     }
   }
@@ -1914,5 +1948,49 @@ class _CustomerChatPageState extends State<CustomerChatPage>
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _showMoneyDeductedDialog(double amount) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 28),
+              SizedBox(width: 8),
+              Text(
+                "Payment Successful",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Text(
+            LocationService.isIndianUser
+                ? "₹${_chatRateInr.toStringAsFixed(2)} has been deducted"
+                : "\$${_chatRateUsd.toStringAsFixed(2)} has been deducted",
+            style: const TextStyle(fontSize: 15),
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text("OK"),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

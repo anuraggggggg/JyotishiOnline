@@ -9,6 +9,11 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../fastApi/agora_service.dart';
 import '../../fastApi/fastApiServices.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+import '../../services/location_services.dart';
+
 
 class CustomerVideoCallPage extends StatefulWidget {
   final String astroId;
@@ -49,7 +54,8 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
   int _secondsLeft = 600; // 10 minutes
   bool _timerStarted = false;
 
-  double _videoRate = 0;
+  double _videoRateInr = 0;
+  double _videoRateUsd = 0;
 
   // UI States
   bool _isMuted = false;
@@ -274,24 +280,70 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
 
   Future<void> _deductBalance() async {
     if (_isCharged) return;
+
     _isCharged = true;
 
     try {
-      debugPrint("💰 Charging customer: ₹$_videoRate");
+      double chargeAmount;
+      double displayAmount;
+      String currency;
+
+      if (LocationService.isIndianUser) {
+
+        chargeAmount = _videoRateInr;
+        displayAmount = _videoRateInr;
+        currency = "₹";
+
+        debugPrint("🇮🇳 Indian user → ₹$chargeAmount");
+
+      } else {
+
+        double usdAmount = _videoRateUsd > 0 ? _videoRateUsd : _videoRateInr;
+
+        displayAmount = usdAmount;
+        currency = "\$";
+
+        debugPrint("🌍 International user → \$${usdAmount}");
+
+        final response =
+        await http.get(Uri.parse("https://open.er-api.com/v6/latest/USD"));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+
+          double rate = data["rates"]["INR"];
+
+          chargeAmount = usdAmount * rate;
+
+          debugPrint("💱 Converted: \$${usdAmount} → ₹$chargeAmount");
+
+        } else {
+          chargeAmount = usdAmount * 83;
+        }
+      }
+
+      debugPrint("📤 Sending to backend: ₹$chargeAmount");
+
       await FastAPIServices().sendMoney(
         astrologerId: widget.astroId,
-        amount: _videoRate,
+        amount: chargeAmount.round(),
         type: "video_call",
       );
+
       if (mounted) {
-        _showSnackBar("₹$_videoRate charged for the session", Colors.green);
+        _showSnackBar(
+          "$currency${displayAmount.toStringAsFixed(2)} charged for the session",
+          Colors.green,
+        );
       }
+
     } catch (e) {
       debugPrint("💥 Charge failed: $e");
+
       _chargeFailed = true;
+
       _showSnackBar("Failed to charge. Call may not start.", Colors.red);
 
-      // Show charge failed dialog
       _showChargeFailedDialog();
     }
   }
@@ -371,7 +423,11 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
       // Fetch Rate and Charge immediately
       try {
         final astro = await FastAPIServices().fetchAstrologerDetail(widget.astroId);
-        _videoRate = (astro.videoCallCharge ?? 0).toDouble();
+        _videoRateInr = (astro.videoCallCharge ?? 0).toDouble();
+        _videoRateUsd = (astro.videoCallChargeUSD ?? 0).toDouble();
+
+        debugPrint("💰 Video INR rate: $_videoRateInr");
+        debugPrint("💰 Video USD rate: $_videoRateUsd");
         await _deductBalance(); // Charge immediately when entering
       } catch (e) {
         debugPrint("⚠️ Could not process charge: $e");
@@ -611,7 +667,7 @@ class _CustomerVideoCallPageState extends State<CustomerVideoCallPage> with Widg
                         'Astrologer ID: ${widget.astroId}\n'
                             'Channel: $_channel\n'
                             'Time: ${DateTime.now().toString()}\n'
-                            'Amount Charged: ₹$_videoRate',
+                            'Amount Charged: ${LocationService.isIndianUser ? "₹$_videoRateInr" : "\$$_videoRateUsd"}',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),

@@ -8,6 +8,9 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../fastApi/agora_service.dart';
 import '../../fastApi/fastApiServices.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../services/location_services.dart';
 
 class AudioCallPage extends StatefulWidget {
   final String astroId;
@@ -52,7 +55,8 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
   // Dynamic Astrologer Data
   String? _displayName;
   String? _profileImageUrl;
-  double _audioRate = 0;
+  double _audioRateInr = 0;
+  double _audioRateUsd = 0;
 
   // Timer
   Duration _remaining = const Duration(minutes: 10);
@@ -276,24 +280,70 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
   // -------------------------------------------------------------------
   Future<void> _deductBalance() async {
     if (_isCharged) return;
+
     _isCharged = true;
 
     try {
-      debugPrint("💰 Charging customer: ₹$_audioRate");
+      double chargeAmount;
+      double displayAmount;
+      String currency;
+
+      if (LocationService.isIndianUser) {
+
+        chargeAmount = _audioRateInr;
+        displayAmount = _audioRateInr;
+        currency = "₹";
+
+        debugPrint("🇮🇳 Indian user → ₹$chargeAmount");
+
+      } else {
+
+        double usdAmount = _audioRateUsd > 0 ? _audioRateUsd : _audioRateInr;
+
+        displayAmount = usdAmount;
+        currency = "\$";
+
+        debugPrint("🌍 International user → \$${usdAmount}");
+
+        final response =
+        await http.get(Uri.parse("https://open.er-api.com/v6/latest/USD"));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+
+          double rate = data["rates"]["INR"];
+
+          chargeAmount = usdAmount * rate;
+
+          debugPrint("💱 Converted: \$${usdAmount} → ₹$chargeAmount");
+
+        } else {
+          chargeAmount = usdAmount * 83;
+        }
+      }
+
+      debugPrint("📤 Final amount sent to astrologer: ₹$chargeAmount");
+
       await _api.sendMoney(
         astrologerId: widget.astroId,
-        amount: _audioRate,
+        amount: chargeAmount.round(),
         type: "audio_call",
       );
+
       if (mounted) {
-        _showSnackBar("₹$_audioRate charged for the session", Colors.green);
+        _showSnackBar(
+          "$currency${displayAmount.toStringAsFixed(2)} charged for the session",
+          Colors.green,
+        );
       }
+
     } catch (e) {
       debugPrint("💥 Charge failed: $e");
+
       _chargeFailed = true;
+
       _showSnackBar("Failed to charge. Call may not start.", Colors.red);
 
-      // Show charge failed dialog
       _showChargeFailedDialog();
     }
   }
@@ -379,7 +429,11 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
           setState(() {
             _displayName = astro.name;
             _profileImageUrl = astro.profileImage;
-            _audioRate = (astro.audioCallCharge ?? 0).toDouble();
+            _audioRateInr = (astro.audioCallCharge ?? 0).toDouble();
+            _audioRateUsd = (astro.audioCallChargeUSD ?? 0).toDouble();
+
+            debugPrint("💰 Audio INR rate: $_audioRateInr");
+            debugPrint("💰 Audio USD rate: $_audioRateUsd");
           });
         }
         // Charge user immediately when entering
@@ -614,7 +668,7 @@ class _AudioCallPageState extends State<AudioCallPage> with WidgetsBindingObserv
                         'Astrologer ID: ${widget.astroId}\n'
                             'Channel: $_channel\n'
                             'Time: ${DateTime.now().toString()}\n'
-                            'Amount Charged: ₹$_audioRate',
+                            'Amount Charged: ${LocationService.isIndianUser ? "₹$_audioRateInr" : "\$$_audioRateUsd"}',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),

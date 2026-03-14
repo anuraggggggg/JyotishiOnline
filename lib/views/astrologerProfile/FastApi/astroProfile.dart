@@ -5,10 +5,15 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../../../fastApi/fastApiServices.dart';
 import '../../../model/fastApiModel/astrologerProfileModel.dart';
+import '../../../services/location_services.dart';
 import '../../../theme/appTheme.dart';
 import '../../audioCall/newAudioCall.dart';
 import '../../chat/newChatScreen.dart';
 import '../../chat/video_call_page.dart';
+import '../../wallet/walletRechargeScreen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 
 class AstrologerDetailPage extends StatefulWidget {
   final String astroId;
@@ -61,7 +66,10 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                 left: 20,
                 right: 20,
                 top: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                bottom: MediaQuery
+                    .of(ctx)
+                    .viewInsets
+                    .bottom + 20,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -115,7 +123,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                       onPressed: isSubmitting
                           ? null
                           : () async {
-                        if (reviewController.text.trim().isEmpty) {
+                        if (reviewController.text
+                            .trim()
+                            .isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content:
@@ -178,12 +188,12 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
   }
 
 
-
   Future<void> fetchTokenId() async {
     _d("🟡 fetchTokenId() → loadFromStorage()");
     final fastApi = FastAPIServices();
     await fastApi.loadFromStorage();
-    _d("🟢 fetchTokenId() done. userId=${fastApi.userId}, hasToken=${fastApi.accessToken != null}");
+    _d("🟢 fetchTokenId() done. userId=${fastApi.userId}, hasToken=${fastApi
+        .accessToken != null}");
   }
 
   // ⚠️ Disclaimer Popup
@@ -193,7 +203,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
           title: const Text(
             "Disclaimer",
             style: TextStyle(fontWeight: FontWeight.bold),
@@ -214,7 +225,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(backgroundColor: appColor),
-              child: const Text("I Accept", style: TextStyle(color: Colors.white)).tr(),
+              child: const Text(
+                  "I Accept", style: TextStyle(color: Colors.white)).tr(),
             ),
           ],
         );
@@ -227,7 +239,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     required Astrologer astrologer,
     required String type,
     required String roomId,
-    required String sessionType,   // "audio_call" | "video_call" | "chat"
+    required String sessionType, // "audio_call" | "video_call" | "chat"
     required String customerId,
     required String astrologerId,
   }) async {
@@ -255,15 +267,16 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       }
 
       final payload = {
-        "call_type": type,            // "audio" / "video" / "chat"
-        "session_type": sessionType,  // "audio_call" / "video_call" / "chat"
+        "call_type": type, // "audio" / "video" / "chat"
+        "session_type": sessionType, // "audio_call" / "video_call" / "chat"
         "room_id": roomId,
         "customer_id": customerId,
         "astrologer_id": astrologerId,
         "timestamp": DateTime.now().toIso8601String(),
       };
 
-      _d("📡 Sending FCM to ${astrologer.name} (${astrologer.astroId}) with payload → $payload");
+      _d("📡 Sending FCM to ${astrologer.name} (${astrologer
+          .astroId}) with payload → $payload");
 
       final res = await api.sendNotificationToAstrologer(
         astrologerId: astrologer.astroId,
@@ -278,7 +291,6 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       } else {
         _d("⚠️ Failed to send notification: ${res['error']}");
       }
-
     } catch (e, st) {
       _d("💥 Exception in _sendAstrologerNotification: $e\n$st");
     }
@@ -306,6 +318,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
+
           /// ⭐ RATE & REVIEW
           IconButton(
             icon: const Icon(Icons.rate_review_outlined),
@@ -337,7 +350,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
         future: astrologerFuture,
         builder: (context, snapshot) {
           _d(
-              "📦 FutureBuilder state=${snapshot.connectionState} hasErr=${snapshot.hasError} hasData=${snapshot.hasData}");
+              "📦 FutureBuilder state=${snapshot
+                  .connectionState} hasErr=${snapshot
+                  .hasError} hasData=${snapshot.hasData}");
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoadingShimmer();
           } else if (snapshot.hasError) {
@@ -349,7 +364,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
           }
           final astrologer = snapshot.data!;
           _d(
-              "✅ astrologer loaded: id=${astrologer.astroId}, name=${astrologer.name}");
+              "✅ astrologer loaded: id=${astrologer.astroId}, name=${astrologer
+                  .name}");
           return _buildAstrologerUI(astrologer);
         },
       ),
@@ -376,7 +392,6 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
           _buildHeaderSection(astrologer),
           _buildProfileDetails(astrologer),
           _buildConsultationOptions(astrologer),
-
 
 
         ],
@@ -554,7 +569,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                     astrologer.languageKnown ?? 'Not specified'),
                 _buildProfileRow(
                     'Location',
-                    '${astrologer.currentCity ?? 'Not specified'}${astrologer.country != null ? ', ${astrologer.country}' : ''}'),
+                    '${astrologer.currentCity ?? 'Not specified'}${astrologer
+                        .country != null ? ', ${astrologer.country}' : ''}'),
                 _buildProfileRow(
                     'Contact Verified',
                     astrologer.isContactVerified
@@ -576,15 +592,24 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               children: [
                 _buildProfileRow(
                     'Audio Call',
-                    _rateOrNA(astrologer.audioCallCharge,
+                    _rateOrNA(
+                        astrologer,
+                        astrologer.audioCallCharge,
+                        astrologer.audioCallChargeUSD,
                         suffix: '/10 min')),
                 _buildProfileRow(
                     'Video Call',
-                    _rateOrNA(astrologer.videoCallCharge,
+                    _rateOrNA(
+                        astrologer,
+                        astrologer.videoCallCharge,
+                        astrologer.videoCallChargeUSD,
                         suffix: '/10 min')),
                 _buildProfileRow(
                     'Chat',
-                    _rateOrNA(astrologer.chatCharge,
+                    _rateOrNA(
+                        astrologer,
+                        astrologer.chatCharge,
+                        astrologer.chatChargeUSD,
                         suffix: '/message')),
                 if (astrologer.monthlyEarning != null &&
                     astrologer.monthlyEarning!.isNotEmpty)
@@ -604,7 +629,9 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     final hasChat = (astrologer.chatCharge) > 0;
 
     _d(
-        "🎛 options: audio=$hasAudio(${astrologer.audioCallCharge}) video=$hasVideo(${astrologer.videoCallCharge}) chat=$hasChat(${astrologer.chatCharge})");
+        "🎛 options: audio=$hasAudio(${astrologer
+            .audioCallCharge}) video=$hasVideo(${astrologer
+            .videoCallCharge}) chat=$hasChat(${astrologer.chatCharge})");
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -618,7 +645,10 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               title: 'Audio Call',
               subtitle: 'Clear voice consultation',
               price: _priceLabel(
-                  astrologer.audioCallCharge, '/10 min'),
+                  astrologer,
+                  astrologer.audioCallCharge,
+                  astrologer.audioCallChargeUSD,
+                  '/10 min'),
               features: [
                 'Best for quick guidance',
                 'Uninterrupted connection'
@@ -634,7 +664,10 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               title: 'Video Call',
               subtitle: 'Face-to-face consultation',
               price: _priceLabel(
-                  astrologer.videoCallCharge, '/10 min'),
+                  astrologer,
+                  astrologer.videoCallCharge,
+                  astrologer.videoCallChargeUSD,
+                  '/10 min'),
               features: [
                 'Better understanding',
                 'Screen sharing'
@@ -650,7 +683,11 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               title: 'Chat',
               subtitle: 'Text-based consultation',
               price:
-              _priceLabel(astrologer.chatCharge, '/message'),
+              _priceLabel(
+                  astrologer,
+                  astrologer.chatCharge,
+                  astrologer.chatChargeUSD,
+                  '/message'),
               features: [
                 '24×7 availability',
                 'Share images'
@@ -736,18 +773,19 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                 runSpacing: 4,
                 children: features
                     .map(
-                      (f) => Chip(
-                    label: Text(
-                      f,
-                      style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey.shade700),
-                    ),
-                    backgroundColor: Colors.grey.shade100,
-                    visualDensity: VisualDensity.compact,
-                    materialTapTargetSize:
-                    MaterialTapTargetSize.shrinkWrap,
-                  ),
+                      (f) =>
+                      Chip(
+                        label: Text(
+                          f,
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey.shade700),
+                        ),
+                        backgroundColor: Colors.grey.shade100,
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize:
+                        MaterialTapTargetSize.shrinkWrap,
+                      ),
                 )
                     .toList(),
               ),
@@ -795,7 +833,10 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               icon: Icons.audiotrack,
               label: 'Audio Call',
               price: _priceLabel(
-                  astrologer.audioCallCharge, '/10 min'),
+                  astrologer,
+                  astrologer.audioCallCharge,
+                  astrologer.audioCallChargeUSD,
+                  '/10 min'),
               onPressed: hasAudio
                   ? () async {
                 _showCallRequestDialog(astrologer, 'Audio');
@@ -809,8 +850,10 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
             child: _buildFAB(
               icon: Icons.videocam,
               label: 'Video Call',
-              price: _priceLabel(
-                  astrologer.videoCallCharge, '/10 min'),
+              price: _priceLabel(astrologer,
+                  astrologer.videoCallCharge,
+                  astrologer.videoCallChargeUSD,
+                  '/10 min'),
               onPressed: hasVideo
                   ? () async {
                 _showCallRequestDialog(astrologer, 'Video');
@@ -825,7 +868,11 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
               icon: Icons.chat,
               label: 'Chat',
               price:
-              _priceLabel(astrologer.chatCharge, '/message'),
+              _priceLabel(
+                  astrologer,
+                  astrologer.chatCharge,
+                  astrologer.chatChargeUSD,
+                  '/message'),
               onPressed: hasChat
                   ? () async {
                 _showCallRequestDialog(astrologer, 'Chat');
@@ -897,59 +944,92 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     required double requiredAmount,
     required BuildContext notifyContext,
   }) async {
-    _d(
-        "💳 _hasSufficientBalanceForSession() -> required=₹$requiredAmount");
-    if (requiredAmount <= 0) {
-      _d("⚠️ requiredAmount<=0 → treating as no check");
-      return true;
-    }
     try {
-      final api = FastAPIServices();
-      _d("🟡 fetchCurrentWallet()");
-      final wallet = await api.fetchCurrentWallet();
-      if (wallet == null) {
-        _d("❌ wallet == null");
-        ScaffoldMessenger.of(notifyContext).showSnackBar(
-          const SnackBar(
-            content: Text(
-                "Unable to fetch wallet. Please try again."),
-          ),
-        );
+      // Get user's current balance - replace with your actual balance fetching logic
+      final userBalance = await _getUserBalance(); // You need to implement this
+
+      if (userBalance < requiredAmount) {
+        // Close any open bottom sheets first
+        if (Navigator.canPop(notifyContext)) {
+          Navigator.pop(notifyContext);
+        }
+
+        // Show dialog using the root context
+        if (notifyContext.mounted) {
+          await showDialog(
+            context: notifyContext,
+            barrierDismissible: false,
+            builder: (dialogContext) =>
+                AlertDialog(
+                  title: const Text('Insufficient Balance'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        LocationService.isIndianUser
+                            ? 'You need ${currencySymbol()}${requiredAmount
+                            .toStringAsFixed(0)} to start this consultation.'
+                            : 'You need \$${requiredAmount.toStringAsFixed(
+                            0)} to start this consultation.',
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        LocationService.isIndianUser
+                            ? 'Your current balance: ₹${userBalance
+                            .toStringAsFixed(0)}'
+                            : 'Your current balance: \$${userBalance
+                            .toStringAsFixed(0)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: const Text('OK'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RechargeWalletScreen(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: appColor,
+                      ),
+                      child: const Text('Add Funds'),
+                    ),
+                  ],
+                ),
+          );
+        }
         return false;
       }
-      final current = (wallet.amount ?? 0);
-      _d("🟢 wallet.amount=$current");
 
-      if (current < requiredAmount) {
-        final short = (requiredAmount - current).round();
-        _d("⛔ insufficient balance. need +₹$short");
+      return true;
+    } catch (e) {
+      _d("Error checking balance: $e");
+
+      // Show error dialog
+      if (notifyContext.mounted) {
         ScaffoldMessenger.of(notifyContext).showSnackBar(
           SnackBar(
-            content:
-            Text("Insufficient balance. You need ₹$short more."),
+            content: Text("Error checking balance: $e"),
             backgroundColor: Colors.red,
           ),
         );
-        return false;
       }
-
-      _d("✅ Sufficient balance for session (no deduction here)");
-      return true;
-    } catch (e, st) {
-      _d("💥 wallet check failed: $e\n$st");
-      ScaffoldMessenger.of(notifyContext).showSnackBar(
-        SnackBar(
-          content: Text("Wallet check failed: $e"),
-        ),
-      );
       return false;
     }
   }
 
   // ---------- Bottom sheet / main flow ----------
 
-  void _showCallRequestDialog(
-      Astrologer astrologer, String callType) async {
+  void _showCallRequestDialog(Astrologer astrologer, String callType) async {
     final BuildContext pageContext = context;
 
     // Show disclaimer first
@@ -969,11 +1049,21 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
     final isVideo = callType.toLowerCase().startsWith('video');
     final isChat = callType.toLowerCase().startsWith('chat');
 
-    final double rate = isAudio
-        ? astrologer.audioCallCharge
-        : isVideo
-        ? astrologer.videoCallCharge
-        : astrologer.chatCharge;
+    double rate;
+
+    if (LocationService.isIndianUser) {
+      rate = isAudio
+          ? astrologer.audioCallCharge
+          : isVideo
+          ? astrologer.videoCallCharge
+          : astrologer.chatCharge;
+    } else {
+      rate = isAudio
+          ? (astrologer.audioCallChargeUSD ?? 0)
+          : isVideo
+          ? (astrologer.videoCallChargeUSD ?? 0)
+          : (astrologer.chatChargeUSD ?? 0);
+    }
 
     // For audio/video we display 10-minute block price, but DO NOT deduct here.
     final bool pricedPerTenMinBlock = isAudio || isVideo;
@@ -1044,7 +1134,7 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                           ),
                         ),
                         Text(
-                          '₹ ${rate.toStringAsFixed(0)}',
+                          '${currencySymbol()} ${rate.toStringAsFixed(0)}',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -1083,306 +1173,204 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                       onPressed: _isProcessing
                           ? null
                           : () async {
-                        setSB(() => _isProcessing = true);
-                        try {
-                          _d(
-                              "🟡 [SEND_REQUEST] tap → type=$callType astroId=${astrologer.astroId}");
+                        if (mounted) {
+                          setState(() {
+                            _isProcessing = true;
+                          });
+                        }
 
-                          // Map callType → backend enum
+
+                        try {
+                          _d("🟡 [SEND_REQUEST] tap → type=$callType astroId=${astrologer.astroId}");
+
+                          /// -------------------------------
+                          /// 1️⃣ Map call type
+                          /// -------------------------------
                           String mappedSessionType;
+
                           switch (callType.toLowerCase()) {
                             case "audio":
                             case "audio call":
-                              mappedSessionType =
-                              "audio_call";
+                              mappedSessionType = "audio_call";
                               break;
+
                             case "video":
                             case "video call":
-                              mappedSessionType =
-                              "video_call";
+                              mappedSessionType = "video_call";
                               break;
+
                             case "chat":
                             default:
                               mappedSessionType = "chat";
                           }
-                          _d(
-                              "✅ mappedSessionType=$mappedSessionType");
 
-                          // Optional: just check balance (NO deduction).
+                          _d("✅ mappedSessionType=$mappedSessionType");
+
+                          /// -------------------------------
+                          /// 2️⃣ Balance check (NO deduction)
+                          /// -------------------------------
                           final double requiredAmount = rate;
-                          _d(
-                              "💰 balance check: rate=$rate per ${pricedPerTenMinBlock ? '10min' : 'message'} (no deduction)");
-                          final hasBalance =
-                          await _hasSufficientBalanceForSession(
+
+                          final hasBalance = await _hasSufficientBalanceForSession(
                             requiredAmount: requiredAmount,
-                            notifyContext: sheetCtx,
+                            notifyContext: pageContext,
                           );
+
                           if (!hasBalance) {
-                            _d(
-                                "⛔ insufficient balance → not creating session");
+                            _d("⛔ insufficient balance → stop flow");
+
+                            if (mounted) {
+                              setState(() {
+                                _isProcessing = false;
+                              });
+                            }
+
+                            if (Navigator.canPop(pageContext)) {
+                              Navigator.pop(pageContext);
+                            }
+
                             return;
                           }
 
-                          // 2) Create session (NO payment here)
-                          _d("🟡 createSession()");
-                          await FastAPIServices()
-                              .loadFromStorage();
-                          final myUserIdFromStorage =
-                              FastAPIServices().userId;
-                          _d("🔑 storage userId=$myUserIdFromStorage");
+                          /// -------------------------------
+                          /// 3️⃣ Create Session
+                          /// -------------------------------
+                          await FastAPIServices().loadFromStorage();
 
-                          final dynamic raw =
-                          await FastAPIServices()
-                              .createSession(
+                          final myUserIdFromStorage = FastAPIServices().userId;
+
+                          final dynamic raw = await FastAPIServices().createSession(
                             astrologerId: astrologer.astroId,
                             sessionType: mappedSessionType,
                           );
-                          _d("📩 createSession raw=$raw");
 
                           Map<String, dynamic>? session;
-                          if (raw
-                          is Map<String, dynamic>) {
+
+                          if (raw is Map<String, dynamic>) {
                             session = raw;
                           } else if (raw is String) {
                             try {
-                              final decoded =
-                              jsonDecode(raw);
-                              if (decoded
-                              is Map<String, dynamic>) {
+                              final decoded = jsonDecode(raw);
+                              if (decoded is Map<String, dynamic>) {
                                 session = decoded;
                               }
                             } catch (e) {
-                              _d(
-                                  "❌ decode string to map failed: $e");
+                              _d("❌ decode error: $e");
                             }
-                          } else if (raw == null) {
-                            _d(
-                                "❌ createSession returned null");
-                          } else {
-                            _d(
-                                "⚠️ unexpected createSession type: ${raw.runtimeType}");
                           }
 
                           if (session == null) {
-                            _d(
-                                "❌ session==null. show snack & stop");
-                            ScaffoldMessenger.of(sheetCtx)
-                                .showSnackBar(
+                            ScaffoldMessenger.of(pageContext).showSnackBar(
                               const SnackBar(
-                                content: Text(
-                                    "Failed to create session. Please try again."),
+                                content: Text("Failed to create session."),
                               ),
                             );
                             return;
                           }
 
-                          // Normalize fields
-                          final Map<String, dynamic> s =
-                          Map<String, dynamic>.from(
-                              session);
-                          final String roomId =
-                          (s["room_id"] ?? "")
-                              .toString();
-                          _d("🔎 session.room_id=$roomId");
+                          final Map<String, dynamic> s = Map<String, dynamic>.from(session);
 
-                          // user field
-                          final dynamic userField =
-                          s["user"];
+                          final String roomId = (s["room_id"] ?? "").toString();
+
+                          /// -------------------------------
+                          /// 4️⃣ Extract userId
+                          /// -------------------------------
                           String userUid = '';
+
+                          final dynamic userField = s["user"];
+
                           if (userField is Map) {
-                            final m = Map<String, dynamic>.from(
-                                userField);
-                            userUid = (m['id'] ??
-                                m['user_id'] ??
-                                m['uid'] ??
-                                m['uuid'] ??
+                            userUid = (userField["id"] ??
+                                userField["user_id"] ??
+                                userField["uid"] ??
                                 '')
                                 .toString();
                           } else if (userField is String) {
                             userUid = userField;
                           }
-                          if (userUid.isEmpty) {
-                            userUid = (s["user_id"] ??
-                                myUserIdFromStorage ??
-                                '')
-                                .toString();
-                          }
-                          _d("🔎 session.userUid=$userUid");
 
-                          // astrologer field
+                          if (userUid.isEmpty) {
+                            userUid = (s["user_id"] ?? myUserIdFromStorage ?? '').toString();
+                          }
+
+                          /// -------------------------------
+                          /// 5️⃣ Extract astrologerId
+                          /// -------------------------------
                           String astrologerUid = '';
-                          final dynamic astroField =
-                          s["astrologer"];
+
+                          final dynamic astroField = s["astrologer"];
+
                           if (astroField is Map) {
-                            final m = Map<String, dynamic>.from(
-                                astroField);
-                            astrologerUid = (m['id'] ??
-                                m['astro_id'] ??
-                                m['uid'] ??
-                                m['uuid'] ??
+                            astrologerUid = (astroField["id"] ??
+                                astroField["astro_id"] ??
                                 '')
                                 .toString();
                           }
+
                           if (astrologerUid.isEmpty) {
                             astrologerUid =
-                                (s["astrologer_id"] ??
-                                    astrologer
-                                        .astroId)
-                                    .toString();
+                                (s["astrologer_id"] ?? astrologer.astroId).toString();
                           }
-                          _d(
-                              "🔎 session.astrologerUid=$astrologerUid");
 
-                          final String apiType =
-                          (s["session_type"] ?? "")
-                              .toString();
-                          _d(
-                              "🔎 session.session_type=$apiType");
-
-                          final missing = <String>[];
-                          if (roomId.isEmpty) {
-                            missing.add('roomId');
-                          }
-                          if (userUid.isEmpty) {
-                            missing.add('userUid');
-                          }
-                          if (astrologerUid.isEmpty) {
-                            missing.add('astrologerUid');
-                          }
-                          if (missing.isNotEmpty) {
-                            _d("⛔ missing: ${missing.join(', ')}");
-                            ScaffoldMessenger.of(sheetCtx)
-                                .showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    "Couldn't get session details (${missing.join(', ')}). Please try again."),
+                          if (roomId.isEmpty || userUid.isEmpty || astrologerUid.isEmpty) {
+                            ScaffoldMessenger.of(pageContext).showSnackBar(
+                              const SnackBar(
+                                content: Text("Session data missing."),
                               ),
                             );
                             return;
                           }
 
-                          // Save debug vars
-                          setSB(() {
-                            _lastRoomId = roomId;
-                            _lastAstrologerUid =
-                                astrologerUid;
-                            _lastMyUserId = userUid;
-                          });
-                          _d(
-                              "💾 saved debug: roomId=$_lastRoomId, astro=$_lastAstrologerUid, me=$_lastMyUserId");
+                          /// -------------------------------
+                          /// 6️⃣ Save debug vars
+                          /// -------------------------------
+                          _lastRoomId = roomId;
+                          _lastAstrologerUid = astrologerUid;
+                          _lastMyUserId = userUid;
 
-                          // 3) Send Notification AFTER session creation (still NO payment)
-                          _d(
-                              "📨 Sending notification now (after session created, no deduction)...");
+                          /// -------------------------------
+                          /// 7️⃣ Send Notification
+                          /// -------------------------------
                           await _sendAstrologerNotification(
                             astrologer: astrologer,
                             type: callType,
                             roomId: roomId,
-                            sessionType: apiType,       // example: "audio_call" / "video_call"
+                            sessionType: mappedSessionType,
                             customerId: userUid,
                             astrologerId: astrologerUid,
                           );
 
-
-                          // Close sheet then navigate
-                          if (Navigator.of(sheetCtx).canPop()) {
-                            Navigator.of(sheetCtx).pop();
+                          /// -------------------------------
+                          /// 8️⃣ Close Bottom Sheet safely
+                          /// -------------------------------
+                          if (Navigator.canPop(pageContext)) {
+                            Navigator.pop(pageContext);
                           }
+
                           if (!mounted) return;
 
-                          _showRequestSentDialog(
-                            callType,
-                            // onOk: () {
-                            //   final type =
-                            //   apiType.toLowerCase();
-                            //   _d(
-                            //       "➡️ navigate type=$type");
-                            //   if (type == 'chat') {
-                            //     Navigator.of(
-                            //         pageContext,
-                            //         rootNavigator: true)
-                            //         .push(
-                            //       MaterialPageRoute(
-                            //         builder: (_) =>
-                            //             CustomerChatPage(
-                            //               chatRate: astrologer.chatCharge,
-                            //               astrologerUid:
-                            //               astrologerUid,
-                            //               myUserId: userUid,
-                            //               roomId: roomId,
-                            //               astrologerName:
-                            //               astrologer
-                            //                   .name,
-                            //             ),
-                            //       ),
-                            //     );
-                            //   } else if (type ==
-                            //       'video_call') {
-                            //     Navigator.of(
-                            //         pageContext,
-                            //         rootNavigator: true)
-                            //         .push(
-                            //       MaterialPageRoute(
-                            //         builder: (_) =>
-                            //             CustomerVideoCallPage(
-                            //               astroId: astrologerUid,
-                            //             ),
-                            //       ),
-                            //     );
-                            //   } else if (type ==
-                            //       'audio_call') {
-                            //     Navigator.of(
-                            //         pageContext,
-                            //         rootNavigator: true)
-                            //         .push(
-                            //       MaterialPageRoute(
-                            //         builder: (_) =>
-                            //             AudioCallPage(
-                            //               otherUserId:
-                            //               astrologerUid,
-                            //             ),
-                            //       ),
-                            //     );
-                            //   } else {
-                            //     _d(
-                            //         "⚠️ unknown session_type=$type, fallback chat");
-                            //     Navigator.of(
-                            //         pageContext,
-                            //         rootNavigator: true)
-                            //         .push(
-                            //       MaterialPageRoute(
-                            //         builder: (_) =>
-                            //             CustomerChatPage(
-                            //               chatRate: astrologer.chatCharge,
-                            //               astrologerUid:
-                            //               astrologerUid,
-                            //               myUserId: userUid,
-                            //               roomId: roomId,
-                            //               astrologerName:
-                            //               astrologer
-                            //                   .name,
-                            //             ),
-                            //       ),
-                            //     );
-                            //   }
-                            // },
-                          );
+                          /// -------------------------------
+                          /// 9️⃣ Show waiting dialog
+                          /// -------------------------------
+                          _showRequestSentDialog(callType);
+
                         } catch (e, st) {
-                          _d(
-                              "💥 Exception in SEND_REQUEST: $e\n$st");
+                          _d("💥 Exception in SEND_REQUEST: $e\n$st");
+
                           if (mounted) {
-                            ScaffoldMessenger.of(sheetCtx)
-                                .showSnackBar(
+                            ScaffoldMessenger.of(pageContext).showSnackBar(
                               SnackBar(
-                                content: Text(
-                                    "Something went wrong: $e"),
+                                content: Text("Something went wrong: $e"),
                               ),
                             );
                           }
-                        } finally {
-                          if (mounted) {
-                            setSB(() => _isProcessing = false);
-                          }
+                        }
+                        finally {
+                          if (!mounted) return;
+
+                          setState(() {
+                            _isProcessing = false;
+                          });
                         }
                       },
                     ),
@@ -1400,14 +1388,26 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
 
   // ---------- Helpers / misc ----------
 
-  String _priceLabel(double value, String suffix) {
-    if (value <= 0) return 'Not available';
-    return '₹ ${value.toStringAsFixed(0)}$suffix';
+  String _priceLabel(Astrologer astrologer, double inr, double? usd,
+      String suffix) {
+    if (inr <= 0) return 'Not available';
+
+    if (LocationService.isIndianUser) {
+      return '₹ ${inr.toStringAsFixed(0)}$suffix';
+    } else {
+      return '\$ ${(usd ?? 0).toStringAsFixed(0)}$suffix';
+    }
   }
 
-  String _rateOrNA(double value, {String suffix = ''}) {
-    if (value <= 0) return 'Not available';
-    return '₹ ${value.toStringAsFixed(0)} $suffix'.trim();
+  String _rateOrNA(Astrologer astrologer, double inr, double? usd,
+      {String suffix = ''}) {
+    if (inr <= 0) return 'Not available';
+
+    if (LocationService.isIndianUser) {
+      return '₹ ${inr.toStringAsFixed(0)} $suffix';
+    } else {
+      return '\$ ${(usd ?? 0).toStringAsFixed(0)} $suffix';
+    }
   }
 
   Widget _buildInfoCard({
@@ -1613,12 +1613,16 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
 
   String _getCompleteImageUrl(String imageUrl) {
     if (imageUrl.startsWith('file://')) {
-      final String fileName = imageUrl.split('/').last;
+      final String fileName = imageUrl
+          .split('/')
+          .last;
       return 'https://fastapi.jyotishionline.com/static/uploads/$fileName';
     }
     if (imageUrl.startsWith('http')) return imageUrl;
     if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
-      return 'https://fastapi.jyotishionline.com${imageUrl.startsWith('/') ? imageUrl : '/$imageUrl'}';
+      return 'https://fastapi.jyotishionline.com${imageUrl.startsWith('/')
+          ? imageUrl
+          : '/$imageUrl'}';
     }
     return imageUrl;
   }
@@ -1664,18 +1668,23 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Your $requestType request has been sent.\n\n"
-                        // "Please stay on this page — the astrologer will accept your request "
-                        // "within 1 minute if they are available.\n\n"
-                        // "Once accepted, the session will automatically start.",
+                      "Your $requestType request has been sent.\n\n"
+                    // "Please stay on this page — the astrologer will accept your request "
+                    // "within 1 minute if they are available.\n\n"
+                    // "Once accepted, the session will automatically start.",
                   ),
-                  
-                  Text("Please stay on this page — the astrologer will accept your request within 1 minute if they are available.").tr(),
 
-                  Text("Once accepted, the session will automatically start.").tr(),
-                  
-                  Text('If he didnt repond now , you will be notified once they respoond').tr(),
-                  
+                  Text(
+                      "Please stay on this page — the astrologer will accept your request within 1 minute if they are available.")
+                      .tr(),
+
+                  Text("Once accepted, the session will automatically start.")
+                      .tr(),
+
+                  Text(
+                      'If he didnt repond now , you will be notified once they respoond')
+                      .tr(),
+
 
                   const SizedBox(height: 12),
                   Center(
@@ -1698,7 +1707,8 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                     timer?.cancel();
                     Navigator.of(dialogContext).pop();
                   },
-                  child: const Text("OK", style: TextStyle(color: Colors.white)),
+                  child: const Text(
+                      "OK", style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -1709,8 +1719,6 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
       timer?.cancel(); // extra safety
     });
   }
-
-
 
 
   void _showReportDialog() {
@@ -1887,5 +1895,61 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
         );
       },
     );
+  }
+
+  Future<double> _getUserBalance() async {
+    try {
+      _d("💰 Fetching user wallet balance...");
+
+      /// load token + userId
+      await FastAPIServices().loadFromStorage();
+
+      /// call wallet API
+      final wallet = await FastAPIServices().fetchCurrentWallet();
+
+      if (wallet == null) {
+        _d("⚠ Wallet API returned null");
+        return 0.0;
+      }
+
+      double balanceInr = wallet.amount.toDouble();
+
+      _d("💰 Wallet balance (INR): $balanceInr");
+
+      /// 🌍 If user is international convert INR → USD
+      if (!LocationService.isIndianUser) {
+        try {
+          final response = await http.get(
+            Uri.parse("https://open.er-api.com/v6/latest/INR"),
+          );
+
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            double usdRate = data["rates"]["USD"];
+
+            double balanceUsd = balanceInr * usdRate;
+
+            _d("💱 Converted balance: $balanceInr INR → $balanceUsd USD");
+
+            return balanceUsd;
+          }
+        } catch (e) {
+          _d("⚠ Currency API failed, using fallback rate");
+
+          /// fallback conversion
+          return balanceInr * 0.012;
+        }
+      }
+
+      /// 🇮🇳 Indian user
+      return balanceInr;
+    } catch (e) {
+      _d("❌ Error fetching user balance: $e");
+      return 0.0;
+    }
+  }
+
+  String currencySymbol() {
+    return LocationService.isIndianUser ? "₹" : "\$";
   }
 }

@@ -15,6 +15,11 @@ class Astrologer {
   final double audioCallCharge;
   final double videoCallCharge;
 
+
+  final double? chatChargeUSD;
+  final double? audioCallChargeUSD;
+  final double? videoCallChargeUSD;
+
   /// Extra rates in the payload
   final double? videoCallRate; // sometimes separate from videoCallCharge
   final double? reportRate;
@@ -113,6 +118,9 @@ class Astrologer {
     this.callStatus,
     this.callWaitTime,
     this.availabilitiesId,
+    this.chatChargeUSD,
+    this.audioCallChargeUSD,
+    this.videoCallChargeUSD,
   });
 
   /// Helpers to safely parse dynamic types from inconsistent APIs
@@ -173,6 +181,10 @@ class Astrologer {
       chatCharge: _toDouble(json["chatCharge"]) ?? 0.0,
       audioCallCharge: _toDouble(json["audioCallCharge"]) ?? 0.0,
       videoCallCharge: _toDouble(json["videoCallCharge"]) ?? 0.0,
+
+      chatChargeUSD: _toDouble(json["chatChargeUSD"]),
+      audioCallChargeUSD: _toDouble(json["audioCallChargeUSD"]),
+      videoCallChargeUSD: _toDouble(json["videoCallChargeUSD"]),
 
       videoCallRate: _toDouble(json["videoCallRate"]),
       reportRate: _toDouble(json["reportRate"]),
@@ -242,6 +254,10 @@ class Astrologer {
       "chatCharge": chatCharge,
       "audioCallCharge": audioCallCharge,
       "videoCallCharge": videoCallCharge,
+
+      "chatChargeUSD": chatChargeUSD,
+      "audioCallChargeUSD": audioCallChargeUSD,
+      "videoCallChargeUSD": videoCallChargeUSD,
 
       "videoCallRate": videoCallRate,
       "reportRate": reportRate,
@@ -342,6 +358,10 @@ class Astrologer {
     String? callStatus,
     String? callWaitTime,
     String? availabilitiesId,
+
+    double? chatChargeUSD,
+    double? audioCallChargeUSD,
+    double? videoCallChargeUSD,
   }) {
     return Astrologer(
       astroId: astroId ?? this.astroId,
@@ -399,6 +419,9 @@ class Astrologer {
       callStatus: callStatus ?? this.callStatus,
       callWaitTime: callWaitTime ?? this.callWaitTime,
       availabilitiesId: availabilitiesId ?? this.availabilitiesId,
+      chatChargeUSD: chatChargeUSD ?? this.chatChargeUSD,
+      audioCallChargeUSD: audioCallChargeUSD ?? this.audioCallChargeUSD,
+      videoCallChargeUSD: videoCallChargeUSD ?? this.videoCallChargeUSD,
     );
   }
 }
