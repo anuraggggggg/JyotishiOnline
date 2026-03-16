@@ -297,7 +297,12 @@ class _ChatAstrologerScreenState extends State<ChatAstrologerScreen> {
                     alignment: Alignment.centerRight,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        // Handle chat initiation
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AstrologerDetailPage(astroId: astro.astroId),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: appYellow,

@@ -1,3 +1,4 @@
+import 'package:AstrowayCustomer/services/location_services.dart';
 import 'package:flutter/material.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/views/astrologerProfile/FastApi/astroProfile.dart';
@@ -346,8 +347,15 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
                           children: [
                             Icon(Icons.chat_bubble_outline, size: 14, color: appYellow),
                             const SizedBox(width: 6),
-                            Text(
+                            LocationService.isIndianUser ? Text(
                               "₹${astro.chatCharge.toStringAsFixed(0)}",
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ) : Text(
+                              "\$${astro.chatChargeUSD.toStringAsFixed(0)}",
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -371,8 +379,15 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
                           children: [
                             Icon(Icons.call_outlined, size: 14, color: Colors.blue),
                             const SizedBox(width: 6),
-                            Text(
+                            LocationService.isIndianUser ? Text(
                               "₹${astro.audioCallCharge.toStringAsFixed(0)}",
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ) : Text(
+                              "\$${astro.audioCallChargeUSD.toStringAsFixed(0)}",
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -396,14 +411,21 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
                           children: [
                             Icon(Icons.videocam_outlined, size: 14, color: Colors.purple),
                             const SizedBox(width: 6),
-                            Text(
+                            LocationService.isIndianUser ? Text(
                               "₹${astro.videoCallCharge.toStringAsFixed(0)}",
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black87,
                               ),
-                            ),
+                            ) : Text(
+                              "\$${astro.videoCallChargeUSD.toStringAsFixed(0)}",
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ) ,
                           ],
                         ),
                       ),

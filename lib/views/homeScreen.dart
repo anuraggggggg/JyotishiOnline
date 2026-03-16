@@ -1004,34 +1004,34 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         body: RefreshIndicator(
-            onRefresh: () async {
-              // 🔹 Providers (single source of truth for UI)
-              final onlineProvider =
-              Provider.of<GetOnlineAstrologerProvider>(context, listen: false);
+          onRefresh: () async {
 
-              final liveProvider =
-              Provider.of<LiveAstrologerProvider>(context, listen: false);
+    final onlineProvider =
+    Provider.of<GetOnlineAstrologerProvider>(context, listen: false);
 
-              final allAstroProvider =
-              Provider.of<GetAllAstrologerProvider>(context, listen: false);
+    final liveProvider =
+    Provider.of<LiveAstrologerProvider>(context, listen: false);
 
-              // 🔥 IMPORTANT: Await provider methods so UI rebuilds
-              await onlineProvider.fetchOnlineAstrologers();
+    final allAstroProvider =
+    Provider.of<GetAllAstrologerProvider>(context, listen: false);
 
-              await liveProvider.fetchLiveAstrologers();
+    await onlineProvider.fetchOnlineAstrologers();
+    await liveProvider.fetchLiveAstrologers();
+    await allAstroProvider.getAstrologers();
 
-              await allAstroProvider.getAstrologers();
+    await FastAPIServices().fetchCustomerDetails();
+    await FastAPIServices().fetchCurrentUserDetails();
+    await FastAPIServices().getAllWalletDetails();
 
-              // 🔹 Keep your existing calls (if needed elsewhere)
-              await FastAPIServices().fetchCustomerDetails();
-              await FastAPIServices().fetchCurrentUserDetails();
-              await FastAPIServices().getAllWalletDetails();
-              await FastAPIServices().fetchCurrentWallet();
+    /// ✅ UPDATE WALLET STATE
+    final wallet = await FastAPIServices().fetchCurrentWallet();
 
-              // 🔹 Your existing methods
-              await _fetchUserProfile();
-              // await _fetchAllData();
-            },
+    setState(() {
+    _wallet = wallet;
+    });
+
+    await _fetchUserProfile();
+    },
 
             child: GetBuilder<BottomNavigationController>(
               builder: (bottomController) {

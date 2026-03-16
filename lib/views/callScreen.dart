@@ -1,4 +1,5 @@
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
+import 'package:AstrowayCustomer/services/location_services.dart';
 import 'package:flutter/material.dart';
 import '../../../model/fastApiModel/allAstrologerModel.dart';
 import 'astrologerProfile/FastApi/astroProfile.dart';
@@ -140,30 +141,7 @@ class _CallAstrologerScreenState extends State<CallAstrologerScreen> {
                             ? Icon(Icons.person, size: 36, color: Colors.grey.shade400)
                             : null,
                       ),
-                      // Container(
-                      //   width: 16,
-                      //   height: 16,
-                      //   decoration: BoxDecoration(
-                      //     color: Colors.white,
-                      //     shape: BoxShape.circle,
-                      //     boxShadow: [
-                      //       BoxShadow(
-                      //         color: Colors.black.withOpacity(0.1),
-                      //         blurRadius: 4,
-                      //       ),
-                      //     ],
-                      //   ),
-                      //   child: Center(
-                      //     child: Container(
-                      //       width: 10,
-                      //       height: 10,
-                      //       decoration: const BoxDecoration(
-                      //         color: Colors.green,
-                      //         shape: BoxShape.circle,
-                      //       ),
-                      //     ),
-                      //   ),
-                      // ),
+
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -245,14 +223,21 @@ class _CallAstrologerScreenState extends State<CallAstrologerScreen> {
                           color: Colors.blue.shade50,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(
+                        child: LocationService.isIndianUser ? Text(
                           "₹${astro.audioCallCharge.toStringAsFixed(0)}/min",
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: Colors.blue,
                           ),
-                        ),
+                        ) : Text(
+                          "\$${astro.audioCallChargeUSD.toStringAsFixed(0)}/min",
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                        )
                       ),
                     ],
                   ),
@@ -301,7 +286,7 @@ class _CallAstrologerScreenState extends State<CallAstrologerScreen> {
                     alignment: Alignment.centerRight,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        // Handle call initiation
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => AstrologerDetailPage(astroId: astro.astroId)));
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
@@ -419,18 +404,7 @@ class _CallAstrologerScreenState extends State<CallAstrologerScreen> {
                       color: Colors.grey.shade700,
                     ),
                   ),
-                  // Row(
-                  //   children: [
-                  //     Icon(Icons.filter_list, size: 18, color: Colors.grey.shade600),
-                  //     const SizedBox(width: 6),
-                  //     Text(
-                  //       "Filter",
-                  //       style: TextStyle(
-                  //         color: Colors.grey.shade600,
-                  //       ),
-                  //     ),
-                  //   ],
-                  // ),
+
                 ],
               ),
             ),
