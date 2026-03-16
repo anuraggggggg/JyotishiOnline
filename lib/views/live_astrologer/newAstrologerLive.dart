@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:AstrowayCustomer/services/location_services.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 
@@ -1175,6 +1176,11 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
       return '₹${v.toStringAsFixed(0)}$suffix';
     }
 
+    String _usdprice(double v, String suffix) {
+      if (v <= 0) return 'N/A';
+      return ' \$${v.toStringAsFixed(0)}$suffix';
+    }
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -1197,7 +1203,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
             _buildVerticalConsultButton(
               icon: Icons.videocam,
               label: "Video Call",
-              price: _price(astro.videoCallCharge, "/10m"),
+              price: LocationService.isIndianUser ? _price(astro.videoCallCharge, "/10m") : _usdprice(astro.videoCallChargeUSD!.toDouble(), "/10m"),
               color: Colors.greenAccent,
               onTap: () => _onConsultTap("Video"),
             ),
@@ -1206,7 +1212,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
             _buildVerticalConsultButton(
               icon: Icons.call,
               label: "Audio Call",
-              price: _price(astro.audioCallCharge, "/10m"),
+              price: LocationService.isIndianUser ? _price(astro.audioCallCharge, "/10m") : _usdprice(astro.audioCallChargeUSD!.toDouble(), "/10m") ,
               color: Colors.blueAccent,
               onTap: () => _onConsultTap("Audio"),
             ),
@@ -1215,7 +1221,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
             _buildVerticalConsultButton(
               icon: Icons.chat,
               label: "Chat",
-              price: _price(astro.chatCharge, "/msg"),
+              price: LocationService.isIndianUser ? _price(astro.chatCharge, "/msg") : _usdprice(astro.chatChargeUSD!.toDouble(), "/msg"),
               color: Colors.orangeAccent,
               onTap: () => _onConsultTap("Chat"),
             ),
