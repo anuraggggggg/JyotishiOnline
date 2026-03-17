@@ -315,36 +315,49 @@ class _DrawerWidgetState extends State<DrawerWidget> {
                         );
                       },
                     ),
-          _buildMenuItem(
-          icon: Icons.logout,
-          title: 'Logout my account',
-          onTap: () async {
-          bool isLogin = await global.isLogin();
+                    _buildMenuItem(
+                      icon: Icons.logout,
+                      title: 'Logout my account',
+                      onTap: () async {
 
-          if (isLogin) {
-          // 🧹 Clear all history controllers
-          historyController.chatHistoryList.clear();
-          historyController.astroMallHistoryList.clear();
-          historyController.reportHistoryList.clear();
-          historyController.callHistoryList.clear();
-          historyController.paymentLogsList.clear();
-          historyController.walletTransactionList.clear();
+                        print("👆 Logout button tapped");
 
-          // 🔥 Logout and delete FCM token
-          await FastAPIServices().logout();
+                        // 🧹 Clear all history controllers
+                        print("🧹 Clearing history lists...");
+                        historyController.chatHistoryList.clear();
+                        historyController.astroMallHistoryList.clear();
+                        historyController.reportHistoryList.clear();
+                        historyController.callHistoryList.clear();
+                        historyController.paymentLogsList.clear();
+                        historyController.walletTransactionList.clear();
 
-          // 🚪 Close drawer before redirecting (optional but better UX)
-          if (Get.isOverlaysOpen) {
-          Get.back(); // close drawer if open
-          }
+                        // 🔥 Logout service
+                        print("🚪 Calling logout service...");
+                        await FastAPIServices().logout();
 
-          // ⬅️ Navigate to Login Screen
-         LocationService.isIndianUser ?
-         Get.offAll(() => LoginScreen()) :
-         Get.offAll(() => LoginWithEmailScreen());
-          }
-          },
-          ),
+                        print("🌍 isIndianUser after logout: ${LocationService.isIndianUser}");
+
+                        // 🚪 Close drawer if open
+                        if (Get.isOverlaysOpen) {
+                          print("📦 Closing drawer...");
+                          Get.back();
+                        }
+
+                        // ⏳ Small delay (important for smooth navigation)
+                        await Future.delayed(const Duration(milliseconds: 200));
+
+                        // 🚀 Navigate based on user type
+                        if (LocationService.isIndianUser) {
+                          print("➡️ Navigating to LoginScreen (Indian)");
+                          Get.offAll(() => LoginScreen());
+                        } else {
+                          print("➡️ Navigating to LoginWithEmailScreen (International)");
+                          Get.offAll(() => LoginWithEmailScreen());
+                        }
+
+                        print("✅ Logout flow completed");
+                      },
+                    ),
 
 
 

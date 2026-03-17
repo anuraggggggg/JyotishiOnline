@@ -55,6 +55,7 @@ import '../controllers/fastApiProvider/cosmic_services_provider.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/splashController.dart';
 import '../controllers/walletController.dart';
+import '../fastApi/currencyService.dart';
 import '../model/fastApiModel/CustomerDetailModel.dart';
 import '../model/fastApiModel/LiveAstrologerModel.dart';
 import '../model/fastApiModel/OnlineAstrologerModel.dart';
@@ -769,8 +770,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               _wallet != null
                                   ? LocationService.isIndianUser
-                                  ? "₹${_wallet!.amount}"
-                                  : "\$${(_wallet!.amount * (usdRate ?? 0.012)).toStringAsFixed(2)}"
+                                  ? "₹${_wallet!.amount.toStringAsFixed(2)}"
+                                  : "\$${CurrencyService.inrToUsd(_wallet!.amount.toDouble()).toStringAsFixed(2)}"
                                   : "Loading...",
                               style: TextStyle(
                                 fontSize: 16.sp,

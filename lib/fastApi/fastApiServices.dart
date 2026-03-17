@@ -1186,11 +1186,13 @@ class FastAPIServices {
   // ---------------- LOGOUT ----------------
   Future<void> logout() async {
     try {
-      // 🔥 Delete FCM token
+      print("🚪 Logout started...");
+
       await FirebaseMessaging.instance.deleteToken();
       print("🧨 FCM token deleted");
 
       final prefs = await SharedPreferences.getInstance();
+
       await prefs.remove("access_token");
       await prefs.remove("user_id");
       await prefs.remove("customer_details");
@@ -1199,11 +1201,9 @@ class FastAPIServices {
       _accessToken = null;
       _userId = null;
 
-      print("✅ User logged out successfully.");
+      print("✅ User data cleared");
+      print("🌍 isIndianUser inside logout: ${LocationService.isIndianUser}");
 
-      LocationService.isIndianUser ?
-      Get.offAll(() => LoginScreen()) :
-      Get.offAll(() => LoginWithEmailScreen());
     } catch (e) {
       print("❌ Failed to log out: $e");
     }
