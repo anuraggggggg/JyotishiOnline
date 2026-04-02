@@ -572,11 +572,6 @@ class _AstrologerDetailPageState extends State<AstrologerDetailPage> {
                     '${astrologer.currentCity ?? 'Not specified'}${astrologer
                         .country != null ? ', ${astrologer.country}' : ''}'),
                 _buildProfileRow(
-                    'Contact Verified',
-                    astrologer.isContactVerified
-                        ? '✅ Verified'
-                        : '❌ Not Verified'),
-                _buildProfileRow(
                     'Profile Status',
                     astrologer.isVerified
                         ? '✅ Verified Astrologer'

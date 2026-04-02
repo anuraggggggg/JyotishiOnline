@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:AstrowayCustomer/fastApi/fastApiServices.dart';
 import 'package:AstrowayCustomer/views/astrologerProfile/FastApi/astroProfile.dart';
 import '../../../model/fastApiModel/allAstrologerModel.dart';
+import 'dart:async';
 
 class ViewAllAstrologersPage extends StatefulWidget {
   const ViewAllAstrologersPage({Key? key}) : super(key: key);
@@ -24,8 +25,17 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
   bool _isLoading = false;
   bool _hasMoreData = true;
   bool _isFirstLoad = true;
+  int _totalAstrologers = 0;
+
+  // Search state
+  String _currentSearchQuery = '';
+  bool _isSearching = false;
+  bool _hasSearched = false;
+  int _searchCurrentPage = 1;
+  bool _searchHasMoreData = true;
 
   static const Color appYellow = Color(0xFFFFC31F);
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -35,7 +45,9 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent - 200) {
-        if (!_isLoading && _hasMoreData && _searchController.text.isEmpty) {
+        if (_isSearching && _searchHasMoreData && !_isLoading) {
+          _loadMoreSearchResults();
+        } else if (!_isSearching && !_isLoading && _hasMoreData && _searchController.text.isEmpty) {
           _fetchNextPage();
         }
       }
@@ -43,18 +55,25 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
   }
 
   // ------------------------------------------------------
-  // 📡 PAGINATION LOGIC
+  // 📡 PAGINATION LOGIC FOR NORMAL LIST
   // ------------------------------------------------------
   Future<void> _fetchNextPage() async {
-    if (_isLoading || !_hasMoreData) return;
+    if (_isLoading || !_hasMoreData || _isSearching) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final List<GetAllAstrologerModel> newItems =
-      await _apiService.fetchAllAstrologers(page: _currentPage, size: 10);
+      final response = await _apiService.fetchAllAstrologers(
+        page: _currentPage,
+        size: 10,
+      );
+
+      final List<GetAllAstrologerModel> newItems = response["list"];
+      final int total = response["total"];
 
       setState(() {
+        _totalAstrologers = total;
+
         if (newItems.isEmpty) {
           _hasMoreData = false;
         } else {
@@ -63,13 +82,125 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
           _filteredAstrologers = List.from(_allAstrologers);
           _sortAstrologers();
         }
+
         _isFirstLoad = false;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
       debugPrint("Pagination Error: $e");
+      _showErrorSnackBar("Failed to load astrologers");
     }
+  }
+
+  // ------------------------------------------------------
+  // 🔍 SEARCH FUNCTION - SEARCHES ENTIRE DATABASE
+  // ------------------------------------------------------
+  Future<void> _performSearch(String query, {bool loadMore = false}) async {
+    if (query.isEmpty) {
+      _clearSearch();
+      return;
+    }
+
+    if (_isLoading) return;
+
+    if (!loadMore) {
+      // New search - reset everything
+      setState(() {
+        _isLoading = true;
+        _isSearching = true;
+        _hasSearched = true;
+        _currentSearchQuery = query;
+        _filteredAstrologers = [];
+        _searchCurrentPage = 1;
+        _searchHasMoreData = true;
+      });
+    } else {
+      setState(() => _isLoading = true);
+    }
+
+    try {
+      final response = await _apiService.searchAstrologers(
+        search: query,
+        page: loadMore ? _searchCurrentPage : 1,
+        size: 10,
+        orderBy: 'rating',
+        orderDir: 'desc',
+      );
+
+      final List<GetAllAstrologerModel> newItems = response["list"];
+      final int total = response["total"];
+
+      setState(() {
+        _totalAstrologers = total;
+
+        if (loadMore) {
+          // Append to existing search results
+          _filteredAstrologers.addAll(newItems);
+        } else {
+          // Replace with new search results
+          _filteredAstrologers = newItems;
+        }
+
+        // Check if we have more data to load
+        if (newItems.isEmpty || _filteredAstrologers.length >= total) {
+          _searchHasMoreData = false;
+        } else {
+          _searchCurrentPage++;
+          _searchHasMoreData = true;
+        }
+
+        _isLoading = false;
+        _sortAstrologers();
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      debugPrint("Search Error: $e");
+      _showErrorSnackBar("Search failed. Please try again.");
+    }
+  }
+
+  Future<void> _loadMoreSearchResults() async {
+    if (_currentSearchQuery.isNotEmpty && _searchHasMoreData && !_isLoading) {
+      await _performSearch(_currentSearchQuery, loadMore: true);
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (query.isEmpty) {
+        _clearSearch();
+      } else if (query.length >= 2) { // Only search if at least 2 characters
+        _performSearch(query);
+      }
+    });
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _isSearching = false;
+      _hasSearched = false;
+      _currentSearchQuery = '';
+      _searchCurrentPage = 1;
+      _searchHasMoreData = true;
+      _filteredAstrologers = List.from(_allAstrologers);
+      _sortAstrologers();
+      // Reset total count to normal list total
+      _totalAstrologers = _allAstrologers.length;
+    });
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   // ------------------------------------------------------
@@ -84,24 +215,6 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
     });
   }
 
-  void _filterAstrologers(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredAstrologers = List.from(_allAstrologers);
-      } else {
-        _filteredAstrologers = _allAstrologers.where((astro) {
-          final name = astro.name.toLowerCase();
-          final skill = astro.primarySkill?.toLowerCase() ?? '';
-          final language = astro.languageKnown?.toLowerCase() ?? '';
-          return name.contains(query.toLowerCase()) ||
-              skill.contains(query.toLowerCase()) ||
-              language.contains(query.toLowerCase());
-        }).toList();
-      }
-      _sortAstrologers();
-    });
-  }
-
   // ------------------------------------------------------
   // 🖼️ IMAGE URL HELPER
   // ------------------------------------------------------
@@ -113,7 +226,7 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
   }
 
   // ------------------------------------------------------
-  // 🎨 ENHANCED ASTROLOGER CARD
+  // 🎨 ASTROLOGER CARD
   // ------------------------------------------------------
   Widget _buildAstrologerCard(GetAllAstrologerModel astro) {
     final imageUrl = _buildImageUrl(astro.profileImage);
@@ -172,30 +285,6 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
                             ? Icon(Icons.person, size: 36, color: Colors.grey.shade400)
                             : null,
                       ),
-                      // Container(
-                      //   width: 16,
-                      //   height: 16,
-                      //   decoration: BoxDecoration(
-                      //     color: Colors.white,
-                      //     shape: BoxShape.circle,
-                      //     boxShadow: [
-                      //       BoxShadow(
-                      //         color: Colors.black.withOpacity(0.1),
-                      //         blurRadius: 4,
-                      //       ),
-                      //     ],
-                      //   ),
-                      //   child: Center(
-                      //     child: Container(
-                      //       width: 10,
-                      //       height: 10,
-                      //       decoration: const BoxDecoration(
-                      //         color: Colors.green,
-                      //         shape: BoxShape.circle,
-                      //       ),
-                      //     ),
-                      //   ),
-                      // ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -444,6 +533,7 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
   void dispose() {
     _scrollController.dispose();
     _searchController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
@@ -489,10 +579,16 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
             ),
             child: TextField(
               controller: _searchController,
-              onChanged: _filterAstrologers,
+              onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 hintText: "Search by name, skill, or language...",
                 prefixIcon: Icon(Icons.search, color: appYellow),
+                suffixIcon: _isSearching && _searchController.text.isNotEmpty
+                    ? IconButton(
+                  icon: Icon(Icons.clear, color: Colors.grey.shade500),
+                  onPressed: _clearSearch,
+                )
+                    : null,
                 filled: true,
                 fillColor: Colors.grey.shade50,
                 border: OutlineInputBorder(
@@ -522,20 +618,19 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "${_filteredAstrologers.length} Astrologers Found",
+                  _isSearching
+                      ? "Found $_totalAstrologers Astrologer${_totalAstrologers != 1 ? 's' : ''}"
+                      : "$_totalAstrologers Astrologer${_totalAstrologers != 1 ? 's' : ''} Available",
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Colors.grey.shade700,
                   ),
                 ),
-                if (_searchController.text.isNotEmpty)
+                if (_isSearching)
                   TextButton(
-                    onPressed: () {
-                      _searchController.clear();
-                      _filterAstrologers('');
-                    },
+                    onPressed: _clearSearch,
                     child: Text(
-                      "Clear Search",
+                      "Clear",
                       style: TextStyle(
                         color: appYellow,
                         fontWeight: FontWeight.w600,
@@ -548,7 +643,7 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
 
           // Astrologers List
           Expanded(
-            child: _isFirstLoad
+            child: _isFirstLoad && !_isSearching
                 ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -574,26 +669,23 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.search_off,
+                    _isSearching ? Icons.search_off : Icons.people_outline,
                     size: 64,
                     color: Colors.grey.shade400,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _searchController.text.isEmpty
-                        ? "No astrologers available"
-                        : "No results found for '${_searchController.text}'",
+                    _isSearching
+                        ? "No results found for '${_searchController.text}'"
+                        : "No astrologers available",
                     style: TextStyle(
                       color: Colors.grey.shade600,
                       fontSize: 16,
                     ),
                   ),
-                  if (_searchController.text.isNotEmpty)
+                  if (_isSearching)
                     TextButton(
-                      onPressed: () {
-                        _searchController.clear();
-                        _filterAstrologers('');
-                      },
+                      onPressed: _clearSearch,
                       child: Text(
                         "View all astrologers",
                         style: TextStyle(
@@ -626,7 +718,9 @@ class _ViewAllAstrologersPageState extends State<ViewAllAstrologersPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            "Loading more astrologers...",
+                            _isSearching
+                                ? "Loading more results..."
+                                : "Loading more astrologers...",
                             style: TextStyle(
                               color: Colors.grey.shade600,
                               fontSize: 12,

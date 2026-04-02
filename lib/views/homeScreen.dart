@@ -99,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double? usdRate;
   bool _isLoadingUser = true;
   List<Map<String, dynamic>> banners = [];
+  bool _isRefreshingWallet = false;
 
   // AppEventsLogger logger = AppEventsLogger.newLogger(this);
   @override
@@ -753,39 +754,47 @@ class _HomeScreenState extends State<HomeScreen> {
                       margin: EdgeInsets.symmetric(horizontal: 1.w),
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(2.w, 1.w, 2.w, 1.w),
-                        child: Row(
+                        child:
+                        Row(
                           children: [
                             Image.asset(
                               "assets/images/wallet1.png",
                               height: 20,
                               width: 20,
                             ),
-                            // Icon(Icons.wallet_outlined, color: Colors.black,),
                             SizedBox(width: 8),
-                            Text('',
-                                style: TextStyle(
-                                    fontSize: 16.sp,
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.w600)),
-                            Text(
-                              _wallet != null
-                                  ? LocationService.isIndianUser
-                                  ? "₹${_wallet!.amount.toStringAsFixed(2)}"
-                                  : "\$${CurrencyService.inrToUsd(_wallet!.amount.toDouble()).toStringAsFixed(2)}"
-                                  : "Loading...",
+
+                            /// 💰 Wallet Amount
+                            _wallet != null
+                                ? Text(
+                              "₹${_wallet!.amount.toString()}",
                               style: TextStyle(
                                 fontSize: 16.sp,
-                                color: Colors.black,
                                 fontWeight: FontWeight.w600,
+                              ),
+                            )
+                                : Text("Loading..."),
+
+                            SizedBox(width: 8),
+
+                            /// 🔄 REFRESH BUTTON
+                            InkWell(
+                              onTap: _refreshWallet,
+                              child: Icon(
+                                Icons.refresh,
+                                size: 20,
+                                color: Colors.blue,
                               ),
                             ),
 
-                            SizedBox(width: 8),
+                            SizedBox(width: 6),
+
+                            /// ➕ Add Money
                             Icon(
                               Icons.add_circle,
                               color: Colors.black,
                               size: 20,
-                            )
+                            ),
                           ],
                         ),
                       ),
@@ -1810,12 +1819,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      "Live Now 🔴",
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          "Live Now ",
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 10,
+                                        ),
+                                        Icon(
+                                          Icons.circle,
+                                          color: Colors.green, // ✅ green dot
+                                          size: 20, // adjust size if needed
+                                        ),
+                                      ],
                                     ),
 
                                     // 👇 Simple refresh button
@@ -2759,6 +2781,30 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+
+  Future<void> _refreshWallet() async {
+    setState(() {
+      _isRefreshingWallet = true;
+    });
+
+    try {
+      final wallet = await FastAPIServices().fetchCurrentWallet();
+
+      setState(() {
+        _wallet = wallet;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Wallet updated")),
+      );
+    } catch (e) {
+      debugPrint("❌ Wallet refresh error: $e");
+    }
+
+    setState(() {
+      _isRefreshingWallet = false;
+    });
+  }
 }
 
 class _ServiceCircle extends StatelessWidget {

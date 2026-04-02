@@ -21,6 +21,7 @@ class _CallAstrologerScreenState extends State<CallAstrologerScreen> {
   bool _isLoading = false;
   bool _hasMoreData = true;
   bool _isFirstLoad = true;
+  int _totalAstrologers = 0;
 
   static const Color appYellow = Color(0xFFFFC31F);
 
@@ -45,20 +46,28 @@ class _CallAstrologerScreenState extends State<CallAstrologerScreen> {
   // ------------------------------------------------------
   Future<void> _fetchAstrologers() async {
     if (_isLoading || !_hasMoreData) return;
+
     setState(() => _isLoading = true);
 
     try {
-      final List<GetAllAstrologerModel> newItems =
-      await _apiService.fetchAllAstrologers(page: _currentPage, size: 10);
+      final response = await _apiService.fetchAllAstrologers(
+        page: _currentPage,
+        size: 10,
+      );
+
+      final List<GetAllAstrologerModel> newItems = response["list"];
+      final int total = response["total"];
 
       setState(() {
+        _totalAstrologers = total; // ✅ store total count
+
         if (newItems.isEmpty) {
           _hasMoreData = false;
         } else {
           _currentPage++;
           _allAstrologers.addAll(newItems);
 
-          // Sort by rating and reviews
+          // ✅ OPTIONAL SORT (remove if backend handles it)
           _allAstrologers.sort((a, b) {
             if (b.overallRating != a.overallRating) {
               return b.overallRating.compareTo(a.overallRating);
@@ -66,6 +75,7 @@ class _CallAstrologerScreenState extends State<CallAstrologerScreen> {
             return b.totalReviews.compareTo(a.totalReviews);
           });
         }
+
         _isFirstLoad = false;
         _isLoading = false;
       });
@@ -398,7 +408,7 @@ class _CallAstrologerScreenState extends State<CallAstrologerScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "${_allAstrologers.length} Astrologers Available",
+                    "$_totalAstrologers Astrologers Available",
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: Colors.grey.shade700,

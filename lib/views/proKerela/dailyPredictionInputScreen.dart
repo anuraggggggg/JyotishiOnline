@@ -98,6 +98,8 @@ class _DailyPredictionInputScreenState
 
   /// 💳 PAYMENT / FREE FLOW
   Future<void> _handlePrediction() async {
+    if (controller.isLoading.value) return; // ✅ prevent double click
+
     if (controller.selectedSign.value.isEmpty) {
       _showSnackbar('Error', 'Please select a zodiac sign', warningRed);
       return;
@@ -106,22 +108,40 @@ class _DailyPredictionInputScreenState
     controller.isLoading.value = true;
 
     try {
+      print("isFreeAccess: ${isFreeAccess.value}");
+
       /// 🟢 FREE FLOW
       if (isFreeAccess.value) {
+        print("FREE FLOW EXECUTED");
+
         controller.fetchPrediction();
+
+        // ✅ Reset free access after use
+        isFreeAccess.value = false;
+
         return;
       }
 
       /// 🔵 PAID FLOW
       final double price = widget.servicePrice;
+      print("Service price: $price");
 
       final wallet = await FastAPIServices().fetchCurrentWallet();
+
       if (wallet == null) {
-        _showSnackbar('Wallet Error', 'Unable to fetch wallet balance', warningRed);
+        print("Wallet NULL");
+        _showSnackbar(
+          'Wallet Error',
+          'Unable to fetch wallet balance',
+          warningRed,
+        );
         return;
       }
 
+      print("Wallet BEFORE: ${wallet.amount}");
+
       if (wallet.amount < price) {
+        print("Insufficient balance");
         _showSnackbar(
           'Insufficient Balance',
           'You need ₹${(price - wallet.amount).toStringAsFixed(0)} more',
@@ -130,16 +150,46 @@ class _DailyPredictionInputScreenState
         return;
       }
 
+      print("Calling debit API...");
+
+      /// ✅ Correct amount handling
       final updatedWallet =
-      await FastAPIServices().debitWallet(price.toInt());
+      await FastAPIServices().debitWallet(price.round());
+
+      print("Wallet AFTER: ${updatedWallet?.amount}");
 
       if (updatedWallet == null) {
-        _showSnackbar('Payment Failed', 'Wallet deduction failed', warningRed);
+        print("Debit FAILED");
+        _showSnackbar(
+          'Payment Failed',
+          'Wallet deduction failed',
+          warningRed,
+        );
         return;
       }
 
+      print("Payment SUCCESS");
+
       _wallet = updatedWallet;
+
+      /// ✅ SUCCESS SNACKBAR
+      _showSnackbar(
+        'Payment Successful',
+        '₹${price.toStringAsFixed(0)} debited from wallet',
+        Colors.green,
+      );
+
+      /// ✅ Small delay for better UX
+      await Future.delayed(const Duration(milliseconds: 800));
+
       controller.fetchPrediction();
+    } catch (e) {
+      print("Exception: $e");
+      _showSnackbar(
+        'Error',
+        'Something went wrong',
+        warningRed,
+      );
     } finally {
       controller.isLoading.value = false;
     }

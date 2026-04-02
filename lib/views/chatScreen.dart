@@ -20,6 +20,8 @@ class _ChatAstrologerScreenState extends State<ChatAstrologerScreen> {
   bool _isLoading = false;
   bool _hasMoreData = true;
   bool _isFirstLoad = true;
+  int _totalAstrologers = 0;
+
 
   static const Color appYellow = Color(0xFFFFC31F);
 
@@ -43,22 +45,28 @@ class _ChatAstrologerScreenState extends State<ChatAstrologerScreen> {
   // ------------------------------------------------------
   Future<void> _fetchAstrologers() async {
     if (_isLoading || !_hasMoreData) return;
+
     setState(() => _isLoading = true);
 
     try {
-      final List<GetAllAstrologerModel> newItems =
-      await _apiService.fetchAllAstrologers(page: _currentPage, size: 10);
+      final response = await _apiService.fetchAllAstrologers(
+        page: _currentPage,
+        size: 10,
+      );
+
+      final List<GetAllAstrologerModel> newItems = response["list"];
+      final int total = response["total"];
 
       setState(() {
+        _totalAstrologers = total; // ✅ store total
+
         if (newItems.isEmpty) {
           _hasMoreData = false;
         } else {
           _currentPage++;
           _allAstrologers.addAll(newItems);
-
-          // Sort by rating in descending order
-          _allAstrologers.sort((a, b) => b.overallRating.compareTo(a.overallRating));
         }
+
         _isFirstLoad = false;
         _isLoading = false;
       });
@@ -239,7 +247,7 @@ class _ChatAstrologerScreenState extends State<ChatAstrologerScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          "₹${astro.chatCharge}/chat",
+                          "₹${astro.chatCharge}/10 mins",
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
@@ -411,7 +419,7 @@ class _ChatAstrologerScreenState extends State<ChatAstrologerScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "${_allAstrologers.length} Astrologers Available",
+                    "$_totalAstrologers Astrologers Available",
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: Colors.grey.shade700,

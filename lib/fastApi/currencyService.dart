@@ -2,47 +2,32 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class CurrencyService {
-  static double? _usdToInr;
-  static double? _inrToUsd;
 
-  /// 🔄 Fetch latest exchange rate
-  static Future<void> fetchRates() async {
+  /// 💱 Convert INR → USD (from your backend)
+  static Future<double> inrToUsd(double inrAmount) async {
     try {
-      final response = await http.get(
-        Uri.parse("https://api.exchangerate-api.com/v4/latest/USD"),
-      );
+      final url =
+          "https://fastapi.jyotishionline.com/api/v1/auth/convert?amount=$inrAmount";
+
+      print("🌍 API Call → $url");
+
+      final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        _usdToInr = (data['rates']['INR'] ?? 83.0).toDouble();
-        _inrToUsd = 1 / _usdToInr!;
+        double usd = (data["usd_value"] ?? 0).toDouble();
 
-        print("💱 USD → INR: $_usdToInr");
-        print("💱 INR → USD: $_inrToUsd");
+        print("💱 Converted: ₹$inrAmount → \$$usd");
+
+        return usd;
       } else {
-        print("❌ Failed to fetch exchange rate");
+        print("❌ API Error: ${response.statusCode}");
+        return inrAmount / 83; // fallback
       }
     } catch (e) {
-      print("💥 Error fetching exchange rate: $e");
-    }
-  }
-
-  /// 💵 Convert USD → INR
-  static double usdToInr(double usdAmount) {
-    if (_usdToInr == null) {
-      print("⚠️ Rate not loaded, using fallback");
-      return usdAmount * 83; // fallback
-    }
-    return usdAmount * _usdToInr!;
-  }
-
-  /// 💴 Convert INR → USD
-  static double inrToUsd(double inrAmount) {
-    if (_inrToUsd == null) {
-      print("⚠️ Rate not loaded, using fallback");
+      print("💥 Conversion error: $e");
       return inrAmount / 83; // fallback
     }
-    return inrAmount * _inrToUsd!;
   }
 }

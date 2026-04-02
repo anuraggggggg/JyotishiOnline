@@ -35,6 +35,9 @@ class FastApiEndpoints {
   static const String blockAstrologer = "$fastApiBaseUrl/api/v1/block";
   static const String reportAstrologer = "$fastApiBaseUrl/api/v1/block/report";
 
+  static const String customerVerifyOtpV2 =
+      "$fastApiBaseUrl/api/v1/auth/customer-verify2";
+
 
   // ---------------- SESSION / CALL ----------------
   static const String createSession = "$fastApiBaseUrl/api/v1/create";

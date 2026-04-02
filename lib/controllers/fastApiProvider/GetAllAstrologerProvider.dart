@@ -11,25 +11,27 @@ class GetAllAstrologerProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Fetch the data (This returns List<GetAllAstrologerModel>)
-      final List<GetAllAstrologerModel> response =
+      final response =
       await FastAPIServices().fetchAllAstrologers();
 
-      // 2. ✅ FIX: Use dot notation for printing (No more astro['name'])
-      print("🧙‍♂️ Total Astrologers: ${response.length}");
-      for (var astro in response) {
+      final List<GetAllAstrologerModel> list = response["list"];
+      final int total = response["total"];
+
+      print("📊 Total Astrologers: $total");
+
+      for (var astro in list) {
         print("🔮 Name: ${astro.name}, Skill: ${astro.primarySkill}");
       }
 
-      // 3. ✅ SORT: Highest Rating first, then by Reviews
-      response.sort((a, b) {
+      // ✅ SORT (optional, but backend should handle ideally)
+      list.sort((a, b) {
         if (b.overallRating != a.overallRating) {
           return b.overallRating.compareTo(a.overallRating);
         }
         return b.totalReviews.compareTo(a.totalReviews);
       });
 
-      astrologers = response;
+      astrologers = list;
     } catch (e) {
       print("❌ Error fetching astrologers: $e");
       astrologers = [];

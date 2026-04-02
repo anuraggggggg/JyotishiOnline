@@ -78,7 +78,7 @@ class _VerifyEmailOtpScreenState extends State<VerifyEmailOtpScreen>
       debugPrint("🔢 OTP: ${loginController.smsCode}");
 
       final response =
-      await FastAPIServices().customerVerifyOtp(
+      await FastAPIServices().customerMailVerifyOtp(
         contactNo: widget.phoneNumber.trim(),
         countryCode:
         widget.countryCode.replaceAll("+", ""),

@@ -43,6 +43,8 @@ class FastAPIServices {
   String? get userId => _userId;
   String? get accessToken => _accessToken;
 
+  int _totalAstrologers = 0;
+
 
   Future<bool> ensureAuthenticated() async {
     await _loadCredentials();
@@ -1140,9 +1142,9 @@ class FastAPIServices {
 
 
   // ---------------- FETCH ALL ASTROLOGERS ----------------
-  Future<List<GetAllAstrologerModel>> fetchAllAstrologers({
+  Future<Map<String, dynamic>> fetchAllAstrologers({
     int page = 1,
-    int size = 10,
+    int size = 11,
   }) async {
     await _loadCredentials();
 
@@ -1166,20 +1168,80 @@ class FastAPIServices {
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
 
-      /// ✅ PAGINATED LIST
       final List<dynamic> list = decoded['data'] ?? [];
+      final int total = decoded['total'] ?? 0; // ✅ GET TOTAL HERE
 
       final astrologers = list
           .map((e) => GetAllAstrologerModel.fromJson(e))
           .toList();
 
-      print("🧙‍♂️ Total Astrologers Fetched: ${astrologers.length}");
+      print("🧙‍♂️ Page Count: ${astrologers.length}");
+      print("📊 Total Count: $total");
 
-      return astrologers;
+      return {
+        "list": astrologers,
+        "total": total,
+      };
     } else if (response.statusCode == 401) {
       throw Exception("🚨 Unauthorized. Please login again.");
     } else {
       throw Exception("❌ Failed to fetch astrologers: ${response.body}");
+    }
+  }
+
+  // Add this new function to your FastAPIServices class
+
+  Future<Map<String, dynamic>> searchAstrologers({
+    required String search,
+    int page = 1,
+    int size = 10,
+    String orderBy = 'rating',
+    String orderDir = 'desc',
+  }) async {
+    await _loadCredentials();
+
+    final url = Uri.parse(
+      "${FastApiEndpoints.allAstrologers}?page=$page&size=$size&search=$search&order_by=$orderBy&order_dir=$orderDir",
+    );
+
+    print("🔍 [API SEARCH] Searching astrologers with query: '$search' from $url");
+
+    final response = await http.get(
+      url,
+      headers: {
+        "accept": "application/json",
+        if (_accessToken != null)
+          "Authorization": "Bearer $_accessToken",
+      },
+    );
+
+    print("📡 Search Status Code: ${response.statusCode}");
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+
+      final List<dynamic> list = decoded['data'] ?? [];
+      final int total = decoded['total'] ?? 0;
+      final int currentPage = decoded['page'] ?? page;
+      final int totalPages = decoded['total_pages'] ?? 0;
+
+      final astrologers = list
+          .map((e) => GetAllAstrologerModel.fromJson(e))
+          .toList();
+
+      print("🔍 Found ${astrologers.length} astrologers matching '$search'");
+      print("📊 Total matching records: $total");
+
+      return {
+        "list": astrologers,
+        "total": total,
+        "page": currentPage,
+        "total_pages": totalPages,
+      };
+    } else if (response.statusCode == 401) {
+      throw Exception("🚨 Unauthorized. Please login again.");
+    } else {
+      throw Exception("❌ Failed to search astrologers: ${response.body}");
     }
   }
 
@@ -1301,14 +1363,14 @@ class FastAPIServices {
     return response;
   }
 
-  Future<http.Response> customerVerifyOtp({
+  Future<http.Response> customerMailVerifyOtp({
     required String contactNo,
     required String countryCode,
     required String email,
     required String otp,
   }) async {
     final Uri url = Uri.parse(
-      "https://fastapi.jyotishionline.com/api/v1/auth/customer-verify2",
+      FastApiEndpoints.customerVerifyOtpV2, // ✅ USING ENDPOINT
     );
 
     debugPrint("────────────────────────────");
@@ -1317,6 +1379,7 @@ class FastAPIServices {
     debugPrint("🌍 countryCode : $countryCode");
     debugPrint("📧 email       : $email");
     debugPrint("🔢 otp         : $otp");
+    debugPrint("🔗 URL         : $url");
     debugPrint("────────────────────────────");
 
     final response = await http.post(
@@ -1344,11 +1407,13 @@ class FastAPIServices {
       final accessToken = decoded["access_token"];
       final user = decoded["user"];
 
+      // 🔐 Save token
       if (accessToken != null) {
         await prefs.setString("access_token", accessToken);
         _accessToken = accessToken;
       }
 
+      // 👤 Save user ID
       if (user != null && user["id"] != null) {
         await prefs.setString("user_id", user["id"]);
         _userId = user["id"];
@@ -1357,6 +1422,27 @@ class FastAPIServices {
       await prefs.setBool("isLoggedIn", true);
 
       debugPrint("✅ Customer Login Success");
+
+      // =====================================================
+      // 🔔 FCM TOKEN REGISTRATION (FIX ADDED)
+      // =====================================================
+      try {
+        debugPrint("📲 Fetching FCM token...");
+        final fcmToken = await FirebaseMessaging.instance.getToken();
+
+        debugPrint("📲 FCM Token → $fcmToken");
+
+        if (fcmToken != null && fcmToken.isNotEmpty && _userId != null) {
+          debugPrint("🚀 Registering FCM token with backend...");
+          await registerCustomerFcmToken(_userId!);
+          debugPrint("✅ FCM token registered successfully");
+        } else {
+          debugPrint("⚠️ FCM token NULL / EMPTY or userId missing");
+        }
+      } catch (e) {
+        debugPrint("❌ FCM registration failed: $e");
+      }
+      // =====================================================
     }
 
     return response;
