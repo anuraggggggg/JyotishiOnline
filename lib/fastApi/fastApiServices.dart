@@ -22,6 +22,7 @@ import '../model/fastApiModel/NotificationModel.dart';
 import '../model/fastApiModel/OnlineAstrologerModel.dart';
 import '../model/fastApiModel/allAstrologerModel.dart';
 import '../model/fastApiModel/astrologerProfileModel.dart';
+import '../model/fastApiModel/giftModel.dart';
 import '../model/fastApiModel/newChatModel.dart';
 import '../model/fastApiModel/sendMoneyModel.dart';
 import '../model/fastApiModel/wallet_tx_model.dart';
@@ -74,6 +75,9 @@ class FastAPIServices {
       return [];
     }
   }
+
+
+
 
   // ---------------- SEND SIGN UP OTP (NEW CUSTOMER API) ----------------
   // ---------------- SEND SIGN UP OTP (UPDATED FLEXIBLE API) ----------------
@@ -230,6 +234,9 @@ class FastAPIServices {
       return null;
     }
   }
+
+
+
 
 
 
@@ -2443,6 +2450,9 @@ class FastAPIServices {
 
     return usdAmount * fallbackRate;
   }
+
+
+
 
 
 

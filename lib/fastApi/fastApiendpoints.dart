@@ -218,6 +218,9 @@ class FastApiEndpoints {
   // Verify OTP for customer login (form-urlencoded)
   static const String verifyLoginOTP =
       "$fastApiBaseUrl/api/v1/customer/verify-otp";
+
+
+  static const String getGifts = "$fastApiBaseUrl/api/v1/users/gifts";
 }
 
 
